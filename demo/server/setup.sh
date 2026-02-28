@@ -11,7 +11,14 @@ fi
 # Create virtual environment if it doesn't exist
 if [ ! -d "$SCRIPT_DIR/venv" ]; then
 	echo Creating virtual environment...
-	python3 -m venv "$SCRIPT_DIR/venv"
+	if ! python3 -m venv "$SCRIPT_DIR/venv"; then
+		echo ""
+		echo "ERROR: Failed to create virtual environment."
+		echo "On Debian/Ubuntu, install the venv module with:"
+		echo "  sudo apt-get install python3-venv"
+		echo ""
+		exit 1
+	fi
 fi
 
 # Activate virtual environment
