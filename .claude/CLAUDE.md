@@ -54,7 +54,7 @@ Copy `config-example.json` to `config.json` and modify as needed. Supports singl
 **API Documentation:**
 - Swagger UI: http://localhost:8080/docs
 - ReDoc: http://localhost:8080/redoc
-- Public demo: https://i3x.cesmii.net
+- Public demo: https://api.i3x.dev/v0/
 
 ### Server Architecture
 
