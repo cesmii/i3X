@@ -22,7 +22,7 @@ This repo is focused on the development of a specification for the API, includin
 
 For general information about i3X, please visit [https://www.i3x.dev](https://www.i3x.dev)
 
-For implementation information for Client and Server developers, please visit [https://www.i3x.dev/docs](https://www.i3x.dev/docs)
+For implementation information for Client and Server developers, please visit [https://www.i3x.dev/sdk](https://www.i3x.dev/sdk)
 
 ## Problem Statement
 The manufacturing information ecosystem benefits from the contributions of many players, over multiple decades of technology evolution. While this diversity creates a lot of platform choice for manufacturers, it has the opposite effect on the creation of app value. Application developers must choose which platforms to build against, and therefore are forced to develop against proprietary, or open but competing, API implementations with no hope of portability between them. Apps create information value by consuming and producing the data available in a platform, and rendering it in ways that are helpful to end users -- analytics, visualization, notification, machine learning... all of these need contextualized data, and all end up abstracted by an underlying platform (be it an Historian, MES, MOM, EMI, or broker or server).
