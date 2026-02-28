@@ -8,9 +8,10 @@ if [ ! -e "$SCRIPT_DIR/config.json" ]; then
 	cp "$SCRIPT_DIR/config-example.json" "$SCRIPT_DIR/config.json"
 fi
 
-# Create virtual environment if it doesn't exist
-if [ ! -d "$SCRIPT_DIR/venv" ]; then
+# Create virtual environment if it doesn't exist or is broken
+if [ ! -f "$SCRIPT_DIR/venv/bin/activate" ]; then
 	echo Creating virtual environment...
+	rm -rf "$SCRIPT_DIR/venv"
 	if ! python3 -m venv "$SCRIPT_DIR/venv"; then
 		echo ""
 		echo "ERROR: Failed to create virtual environment."
