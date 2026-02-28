@@ -8,7 +8,7 @@ i3X is in a _pre-release_ Alpha state. While the API signature is largely stable
 
 i3X is a Common API for Contextual Manufacturing Information Platforms. It aims to provide a common interface for a wide array of composable back-end data sources with a unified namespace.
 
-<a href="https://i3x.dev/video/i3x-explainer.mp4"><img src="https://i3x.dev/images/i3XHero.png?1"><br>Click to View Video</a>
+<a href="https://i3x.dev/viz"><img src="https://i3x.dev/images/i3XHero.png?1"><br>Click to View Interactive Explainer</a>
 
 ## Who is CESMII?
 
@@ -21,6 +21,8 @@ Learn more about CESMII at [cesmii.org](https://www.cesmii.org)
 This repo is focused on the development of a specification for the API, including issues, PRs and tasks for the Working Group. This effort is open and collaborative, all are welcome to read and participate -- but this is not the best place to learn the high level details.
 
 For general information about i3X, please visit [https://www.i3x.dev](https://www.i3x.dev)
+
+For implementation information for Client and Server developers, please visit [https://www.i3x.dev/docs](https://www.i3x.dev/docs)
 
 ## Problem Statement
 The manufacturing information ecosystem benefits from the contributions of many players, over multiple decades of technology evolution. While this diversity creates a lot of platform choice for manufacturers, it has the opposite effect on the creation of app value. Application developers must choose which platforms to build against, and therefore are forced to develop against proprietary, or open but competing, API implementations with no hope of portability between them. Apps create information value by consuming and producing the data available in a platform, and rendering it in ways that are helpful to end users -- analytics, visualization, notification, machine learning... all of these need contextualized data, and all end up abstracted by an underlying platform (be it an Historian, MES, MOM, EMI, or broker or server).
