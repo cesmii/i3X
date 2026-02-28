@@ -3,25 +3,25 @@
 SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 
 # Create config file if it doesn't exist
-if [ ! -e $SCRIPT_DIR/config.json ]; then
+if [ ! -e "$SCRIPT_DIR/config.json" ]; then
 	echo Creating default config...
-	cp config-example.json config.json
+	cp "$SCRIPT_DIR/config-example.json" "$SCRIPT_DIR/config.json"
 fi
 
 # Create virtual environment if it doesn't exist
-if [ ! -d $SCRIPT_DIR/venv ]; then
+if [ ! -d "$SCRIPT_DIR/venv" ]; then
 	echo Creating virtual environment...
-	python3 -m venv venv
+	python3 -m venv "$SCRIPT_DIR/venv"
 fi
 
 # Activate virtual environment
 echo Activating virtual environment...
-source ./venv/bin/activate
+source "$SCRIPT_DIR/venv/bin/activate"
 
 # Install requirements
 echo Install dependencies...
-./venv/bin/pip3 install -r requirements.txt
+"$SCRIPT_DIR/venv/bin/pip3" install -r "$SCRIPT_DIR/requirements.txt"
 
 # Run the server
 echo Starting server...
-./venv/bin/python3 app.py
+"$SCRIPT_DIR/venv/bin/python3" "$SCRIPT_DIR/app.py"
