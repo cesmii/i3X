@@ -31,7 +31,7 @@ The manufacturing information ecosystem benefits from the contributions of many 
 This initial proposal recommends the [creation of a common API](https://github.com/cesmii/API/blob/main/RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md), consisting of a base set of server primitives that a wide array of platforms can implement to commoditize this access to data. Such a common API does not prevent platform vendors from differentiating on their capabilities, but it will encourage a proliferation of portable apps to help spur adoption of such platforms, and enable a vibrant marketplace of apps bringing value to end-users. The analogies in other industries should be obvious: Apple and Android users benefit from common APIs for access to device and platform capabilities exposed to app developers that have led to App Stores full of creative, useful, and enjoyable app experiences. Those platform vendors have benefited, but more importantly, the user has benefited.
 
 ## Trying it Out
-A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v0//](https://api.i3x.dev/v0//) with a Swagger page at [https://api.i3x.dev/v0//docs](https://api.i3x.dev/v0//docs).
+A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v0/](https://api.i3x.dev/v0/) with a Swagger page at [https://api.i3x.dev/v0/docs](https://api.i3x.dev/v0/docs).
 
 <img src="https://www.acetechnologies.net/i3X/screenshots/subscriptions.png" height=200 style="height:200px">
 
