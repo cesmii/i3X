@@ -9,7 +9,8 @@ if [ ! -e "$SCRIPT_DIR/config.json" ]; then
 fi
 
 # Create virtual environment if it doesn't exist or is broken
-if [ ! -f "$SCRIPT_DIR/venv/bin/activate" ]; then
+# Also check the interpreter is still valid (e.g. Python was upgraded/removed)
+if [ ! -f "$SCRIPT_DIR/venv/bin/activate" ] || ! "$SCRIPT_DIR/venv/bin/python3" --version &>/dev/null; then
 	echo Creating virtual environment...
 	rm -rf "$SCRIPT_DIR/venv"
 	if ! python3 -m venv "$SCRIPT_DIR/venv"; then
