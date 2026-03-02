@@ -26,9 +26,21 @@ fi
 echo Activating virtual environment...
 source "$SCRIPT_DIR/venv/bin/activate"
 
+# Upgrade pip to ensure binary wheels are recognized (e.g. pydantic-core on Apple Silicon)
+echo Upgrading pip...
+"$SCRIPT_DIR/venv/bin/pip3" install --upgrade pip
+
 # Install requirements
 echo Install dependencies...
-"$SCRIPT_DIR/venv/bin/pip3" install -r "$SCRIPT_DIR/requirements.txt"
+if ! "$SCRIPT_DIR/venv/bin/pip3" install -r "$SCRIPT_DIR/requirements.txt"; then
+	echo ""
+	echo "ERROR: Failed to install dependencies."
+	echo "If the error mentions 'pydantic-core' or 'failed building wheel',"
+	echo "ensure you have a recent Python (3.11+) and try again."
+	echo "On Apple Silicon Macs, upgrading pip (done above) usually resolves this."
+	echo ""
+	exit 1
+fi
 
 # Run the server
 echo Starting server...

@@ -16,6 +16,10 @@ if (-not (Test-Path -Path "venv")) {
 Write-Host "Activating virtual environment..." -ForegroundColor Green
 .\venv\Scripts\Activate
 
+# Upgrade pip to ensure binary wheels are recognized (e.g. pydantic-core on Apple Silicon)
+Write-Host "Upgrading pip..." -ForegroundColor Green
+pip install --upgrade pip
+
 # Install requirements
 Write-Host "Installing dependencies..." -ForegroundColor Green
 pip install -r requirements.txt
