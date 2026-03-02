@@ -908,16 +908,26 @@ Clients must first create a subscription in the server. Subscriptions have the f
 
 Create a subscription.
 
-**Parameters:** None
+**Body:**
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `timeToLiveMS` | integer | No | The client requested TTL for the subscription in milliseconds. |
 
-**Response:**
+**Response Body:**
 
 ```json
 {
   "subscriptionId": "0",
-  "message": "Subscription created successfully."
+  "timeToLiveMS": 30000,
+  "created": "2026-01-29T19:56:06Z",
 }
 ```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `subscriptionId` | string | Yes | The unique ID of the subscription. |
+| `timeToLiveMS` | number | Yes | The time to live assigned to the subscription. This could be different from the client requested value. |
+| `created` | string, ISO 8601 | Yes | Time the subscription was created. |
 
 ---
 
@@ -926,18 +936,18 @@ Create a subscription.
 List all subscriptions that the client has created.
 [TODO] - how does a server know which subscriptions a client created, especially after a disconnect/connect event? Should we specify clientID as a parameter for `POST` /subscriptions and `GET` /subscriptions?
 
-**Parameters:** None
+This returns the basic configuration and state of all subscriptions, but excludes the registered objects, as a single subscription may have many registered objects.
 
 **Response:**
 
 ```json
 {
-  "subscriptionIds": [
+  "subscriptions": [
     {
-      "subscriptionId": "0",
-      "created": "2026-01-29T19:56:06Z"
-    }
-  ]
+    "subscriptionId": 0,
+    "created": "2026-01-29T19:56:06Z",
+    "timeToLiveMS": 30000,
+  }]
 }
 ```
 
@@ -955,20 +965,22 @@ Return the details of a subscription, including the registered objects.
 
 **Response:**
 
-[TODO] - created, isStreaming, queuedUpdates were added but never discussed. Do we need these?
-
 ```json
 {
   "subscriptionId": 0,
-  "created": "2026-01-29T19:56:06Z",
-  "isStreaming": false,
-  "queuedUpdates": 20,
-  "objects": [
+   "registeredObjects": [
     "object-elementid-1",
     "object-elementid-2"
-  ]
+  ],
+  "created": "2026-01-29T19:56:06Z",
+  "timeToLiveMS": 30000,
 }
 ```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `registeredObjects` | array, string | Yes | All the ElementIds of the objects|
+
 
 ---
 
@@ -986,17 +998,7 @@ Delete a Subscription.
 
 **Response:**
 
-[TODO] is this the response format we want? You can only delete one at a time
-
-```json
-{
-  "message": "Unsubscribe processed.",
-  "unsubscribed": [
-    0
-  ],
-  "not_found": []
-}
-```
+No body. Returns HTTP 200 on success, failure otherwise.
 
 ---
 
@@ -1043,6 +1045,7 @@ Register one or more Objects with a Subscription.
 **Response:**
 
 [TODO] - is this the response we want?
+[TODO] - do we allow partial success?
 
 ```json
 {
@@ -1103,7 +1106,7 @@ Streaming sends values on the subscription to the client as they occur using SSE
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/{id}/register`
-   - The server starts queuing value changes for Objects
+  - The server starts queuing value changes for Objects
 3. Client opens SSE stream via `GET /subscriptions/{id}/stream`
    - The server sends any values queued while the stream was closed
 4. Server sends values as they occur
@@ -1176,6 +1179,18 @@ Syncs the queue of Object value changes with the client.
 
 ---
 
+### Subscription Life Cycle
+
+Once a Subscription has been created and one or more Objects have been registered, the Server SHALL begin queuing data change events for those Objects.
+
+If neither an active SSE stream nor a call to /sync is received within the configured Time-To-Live (TTL) interval, the Server MUST delete the Subscription. Deletion MUST include:
+
+- All queued Object values associated with the Subscription
+- Any internal resources allocated to maintain the Subscription
+
+This requirement prevents abandoned Subscriptions from consuming Server resources.
+
+Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUST be re-created by the Client. Subsequent calls to /sync or /stream for a deleted or non-existent Subscription MUST return 404 Not Found
 
 ## Appendix (for now)
 
