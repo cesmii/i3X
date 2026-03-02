@@ -16,8 +16,8 @@ if [ ! -f "$SCRIPT_DIR/venv/bin/activate" ] || ! "$SCRIPT_DIR/venv/bin/python3" 
 	if ! python3 -m venv "$SCRIPT_DIR/venv"; then
 		echo ""
 		echo "ERROR: Failed to create virtual environment."
-		echo "On Debian/Ubuntu, install the venv module with:"
-		echo "  sudo apt-get install python3-venv"
+		echo "On Debian/Ubuntu, install the required packages with:"
+		echo "  sudo apt-get install python3-venv python3-pip"
 		echo ""
 		exit 1
 	fi
@@ -28,17 +28,24 @@ echo Activating virtual environment...
 source "$SCRIPT_DIR/venv/bin/activate"
 
 # Upgrade pip to ensure binary wheels are recognized (e.g. pydantic-core on Apple Silicon)
+# Use 'python -m pip' directly in case pip3 wasn't installed into the venv (e.g. minimal Ubuntu)
 echo Upgrading pip...
-"$SCRIPT_DIR/venv/bin/pip3" install --upgrade pip
+if ! "$SCRIPT_DIR/venv/bin/python3" -m pip install --upgrade pip; then
+	echo ""
+	echo "ERROR: pip is not available in the virtual environment."
+	echo "On Debian/Ubuntu, install the required packages with:"
+	echo "  sudo apt-get install python3-venv python3-pip"
+	echo ""
+	exit 1
+fi
 
 # Install requirements
 echo Install dependencies...
-if ! "$SCRIPT_DIR/venv/bin/pip3" install -r "$SCRIPT_DIR/requirements.txt"; then
+if ! "$SCRIPT_DIR/venv/bin/python3" -m pip install -r "$SCRIPT_DIR/requirements.txt"; then
 	echo ""
 	echo "ERROR: Failed to install dependencies."
 	echo "If the error mentions 'pydantic-core' or 'failed building wheel',"
 	echo "ensure you have a recent Python (3.11+) and try again."
-	echo "On Apple Silicon Macs, upgrading pip (done above) usually resolves this."
 	echo ""
 	exit 1
 fi
