@@ -18,6 +18,7 @@ class ObjectType(BaseModel):
     elementId: str = Field(..., description="Unique string identifier for the type")
     displayName: str = Field(..., description="Type name")
     namespaceUri: str = Field(..., description="Namespace URI")
+    version: Optional[str] = Field(None, description="Optional type version in Semantic Versioning format (e.g. '1.0.0')")
     schema: Dict[str, Any] = Field(
         ..., description="JSON Schema definition for this object type"
     )
