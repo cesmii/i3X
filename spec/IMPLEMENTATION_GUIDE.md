@@ -770,29 +770,27 @@ Returns the last known value for one or more Objects.
 
 Returns the historical values for one or more Objects between a start and end time.
 
-[TODO] - Sync reponse with v0.1.2
-
 **Request Body:**
+
+```json
+{
+  "elementIds": [
+    "object-elementid-1"
+  ],
+  "startTime": "2026-03-03T13:00:00Z",
+  "endTime": "2026-03-03T12:00:00Z",
+  "maxDepth": 1
+}
+```
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `elementId` | string | No | Single elementId to query |
 | `elementIds` | string[] | No | One or more elementIds to query |
 | `startTime` | string | Yes | RFC 3339 timestamp for range start |
 | `endTime` | string | Yes | RFC 3339 timestamp for range end |
 | `maxDepth` | integer | No | Controls recursion depth |
 
-```json
-{
-  "elementId": "string",
-  "elementIds": [
-    "string"
-  ],
-  "startTime": "string",
-  "endTime": "string",
-  "maxDepth": 1
-}
-```
+- The startTime MUST be more recent than the endTime and the results MUST be returned in descending order (most recent value first).
 
 **Response:**
 
@@ -800,26 +798,35 @@ Returns the historical values for one or more Objects between a start and end ti
 {
     "results": [
         {
-            "elementId": "string",
+            "elementId": "object-elementid-1",
             "success": true,
             "data": [
                 {
-                "elementId": "string",
                 "isComposition": false,
                 "value": {
                     "temperature": 1,
                     "inletPressure": "2",
-                    "outletPressure": 0.11139064
+                    "outletPressure": 0.11
                 },
                 "quality": "GOOD",
-                "timestamp": "2026-01-29T16:37:41Z"
+                "timestamp": "2026-01-29T16:00:00Z"
+              },
+              {
+                "isComposition": false,
+                "value": {
+                  "temperature": 3,
+                  "inletPressure": "4",
+                  "outletPressure": 0.22
+                },
+                "quality": "GOOD",
+                "timestamp": "2026-01-29T15:00:00Z"
               }
             ]
         }
     ],
     "totalRequested": 1,
     "totalSuccess": 1,
-    "totalFailed": 0,
+    "totalFailed": 0
 }
 ```
 
