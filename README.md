@@ -52,5 +52,5 @@ The block diagram below shows where the i3X API is most applicable, namely withi
 ![API Block Diagram](images/api-block-diagram.PNG)
 
 ## API tech stack within the Data Access Model
-The image below shows the tech stack for a general Web Browser compared to the i3X API, from the perspective of the Data Access Model.  Refer to the article ["How all protocols fail at data access interoperabilty"](https://iebmedia.com/technology/iiot/how-all-protocols-fail-at-data-access-interoperability/) for more information regarding The Data Access Model.
+The image below shows the tech stack for a general Web Browser compared to the i3X API, from the perspective of the Data Access Model.
 ![API Data Access Model](images/data-access-model.PNG)
