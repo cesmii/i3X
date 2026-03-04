@@ -221,7 +221,7 @@ When updating Historical data, the CMIP SHOULD implement auditing or tracking of
 
 #### 4.2.3 Subscription Methods
 
-The contributors to this RFC, and the broader community, have communicated clearly that the minimum requirements for a modern industrial information API must include the ability to publish data on-change to subscribing clients. The proposed implementaiton attempts to harmonize strengths from both MQTT and OPC/UA's REST interface, while supporting a wide variety of network scenarios.
+The contributors to this RFC, and the broader community, have communicated clearly that the minimum requirements for a modern industrial information API must include the ability to publish data on-change to subscribing clients. The proposed implementation attempts to harmonize strengths from both MQTT and OPC/UA's REST interface, while supporting a wide variety of network scenarios.
 
 ##### 4.2.3.1 Create Subscription
 
@@ -337,4 +337,5 @@ Implementations of this API MUST be able to return Historical Value responses wi
 ## 6. Acknowledgements
 
 Unless requested otherwise, contributor names and organizations from private previews of this document will be acknowledged in the public release.
+
 
