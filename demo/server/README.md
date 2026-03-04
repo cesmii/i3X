@@ -41,7 +41,7 @@ This is a FastAPI-based HTTP server that implements the RFC 001 compliant I3X (I
 ## Setting Up the Virtual Environment
 
 ### Prerequisites
-- Python 3 versions between 3.7 and 3.12 have been tested to work (pydantic has a known issue with > 3.13)
+- Python 3 versions between 3.7 and 3.14 have been tested to work
 - pip
 
 ### Setup Instructions
@@ -230,9 +230,6 @@ If you encounter the error `ModuleNotFoundError: No module named 'flask'`, make 
 
 1. Have activated the virtual environment
 2. Have installed the dependencies with `pip install -r requirements.txt`
-
-
-If you encounter the error `TypeError: ForwardRef._evaluate() missing 1 required keyword-only argument: 'recursive_guard'` while running the pip install of fastapi (the first item in requirements.txt), downgrade Python to version 3.12.3 or below. See Github comment https://github.com/pydantic/pydantic/issues/9609#issuecomment-2155832461. The version of fastapi we are using has issues with Python 3.13.
 
 ## Advanced Usage
 
