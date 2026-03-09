@@ -89,8 +89,13 @@ i3X relies on HTTP security best practices to secure communication between the c
 
 ### Versioning
 
-[TODO] define an endpoint clients can use to discover version and capabilities
-[TODO] define a versioning approach used if/when we need evolve features
+The i3X specification uses **semantic versioning** (`MAJOR.MINOR`):
+
+All servers MUST implement a `GET /info` endpoint that returns information about the server's capabilities. This endpoint can also be used for health checks, as it is assumed the server will respond to this request when running. See the [Server Capabilities Endpoints](#server-capabilities-endpoints) section for details.
+
+Clients SHOULD use `GET /info` to discover the `specVersion` and `capabilities` supported by a server before making other API calls.
+
+[TODO] define a versioning approach used if/when we need evolve features. Should we add v1/ (future v2, etc) to the endpoint URLs?
 
 ## Address Space
 The i3X server address space consists of the following elements.
@@ -273,6 +278,49 @@ When an Object is read via the `/objects/value` API it returns the value of the 
 ## Exploratory Methods
 
 i3X Servers exposes exploratory methods to browse the i3X address space. This includes the ability to browse Namespaces, Types, Objects, and Object relationships. This section covers the API calls included in Exploratory methods.
+
+### Server Capabilities Endpoints
+
+#### `GET` /info
+
+Returns the server version and capabilities. Clients SHOULD call this endpoint before making other API calls to confirm the server supports the features they require. This endpoint also serves as a health check.
+
+- This endpoint MUST NOT require authentication
+
+**Parameters:** None
+
+**Response:**
+
+```json
+{
+  "specVersion": "1.0",
+  "serverVersion": "2.3.1",
+  "serverName": "myi3XServer",
+  "capabilities": {
+    "query": {
+      "history": true
+    },
+    "update": {
+      "current": true,
+      "history": false
+    },
+    "subscribe": true
+  }
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `specVersion` | string | Yes | The i3X specification version implemented, e.g., `"1.0"` |
+| `serverVersion` | string | No | The server implementation's own version. Format is vendor-defined. |
+| `serverName` | string | No | Human-readable name for this server or deployment |
+| `capabilities` | object | Yes | Declares which optional features this server supports |
+| `capabilities.query.history` | boolean | Yes | True if `POST /objects/history` is supported |
+| `capabilities.update.current` | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported |
+| `capabilities.update.history` | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported |
+| `capabilities.subscribe` | boolean | Yes | True if subscription endpoints are supported |
+
+[TODO] what are the minimum capabilities? What is optional?
 
 ### Namespace Endpoints
 
