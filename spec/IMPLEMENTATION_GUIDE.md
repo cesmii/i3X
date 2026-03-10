@@ -1169,7 +1169,7 @@ This approach ensures updates are not lost if the client crashes between receivi
 
 #### `POST` /subscriptions/{subscriptionId}/sync
 
-Returns all pending updates, optionally acknowledging a previously received batch in the same call.
+Returns all pending updates, acknowledging a previously received batch in the same call.
 
 - Each queued update includes a `sequenceNumber`
 - If `through` is provided, the server removes all updates with sequenceNumber ≤ `through` before returning the remaining queue
