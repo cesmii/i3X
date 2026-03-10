@@ -897,8 +897,8 @@ Subscriptions allow clients to receive value changes in real-time for objects th
 
 | Mode | Description |
 |------|-------------|
-| **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
-| **sync** | Value changes are queued and delivered when the client calls the sync API. |
+| **streaming** | A low QoS approach where value changes are sent as fast as possible using SSE (Server Sent Events). |
+| **sync** | A high QoS approach where value changes are queued and delivered when the client calls the sync API. |
 
 Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered. The following sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
 
@@ -1105,7 +1105,7 @@ Unregister one or more Objects from a Subscription.
 
 ### Streaming
 
-Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events).
+Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events) for a low Quality of Service.
 
 **How it works:**
 
@@ -1114,7 +1114,7 @@ Streaming sends values on the subscription to the client as they occur using SSE
    - The server starts queuing value changes for Objects
 3. Client opens SSE stream via `GET /subscriptions/{id}/stream`
    - The server sends any values queued while the stream was closed
-4. Server sends values as they occur
+4. Server sends values as they occur, with "at most once" delivery. If a client misses a message, it cannot be retreived.
 
 If the SSE connection is lost, the client can call the /stream endpoint again to re-open it.
 
@@ -1149,7 +1149,7 @@ The response includes value updates over SSE in the following format:
 
 ### Sync
 
-Sync allows the client to control when value changes are received, and to explicitly acknowledge receipt.
+Sync allows the client to control when value changes are received, and to explicitly acknowledge receipt for a high Quality of Service.
 
 **How it works:**
 
@@ -1169,12 +1169,13 @@ This approach ensures updates are not lost if the client crashes between receivi
 
 #### `POST` /subscriptions/{subscriptionId}/sync
 
-Acknowledges previously received updates (optional) and returns all pending updates in a single call.
+Returns all pending updates, optionally acknowledging a previously received batch in the same call.
 
 - Each queued update includes a `sequenceNumber`
 - If `through` is provided, the server removes all updates with sequenceNumber ≤ `through` before returning the remaining queue
 - Server MUST NOT clear the queue if `through` is omitted
-- On the first call, omit `through` (or send an empty body) to receive all pending updates
+- Clients SHOULD omit `through` only on the first call, when there is nothing yet to acknowledge
+- Clients SHOULD provide `through` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
 
 **Path Parameters:**
 
@@ -1186,14 +1187,14 @@ Acknowledges previously received updates (optional) and returns all pending upda
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `through` | integer | No | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
+| `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
 
-First call (no prior ack):
+First call (nothing to acknowledge yet):
 ```json
 {}
 ```
 
-Subsequent calls (ack + fetch in one):
+All subsequent calls (ack previous batch, fetch new):
 ```json
 {"through": 2}
 ```
