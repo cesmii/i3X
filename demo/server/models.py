@@ -139,17 +139,41 @@ class HistoricalUpdateResult(BaseModel):
 
 
 class CreateSubscriptionRequest(BaseModel):
-    pass  # No fields needed - subscription starts monitoring on /register
+    displayName: Optional[str] = Field(None, description="Optional friendly name for the subscription")
 
 
 class CreateSubscriptionResponse(BaseModel):
     subscriptionId: str
-    message: str
+    displayName: Optional[str] = None
+
+
+class ListSubscriptionsRequest(BaseModel):
+    subscriptionIds: List[str] = Field(..., description="List of subscription IDs to retrieve")
+
+
+class SubscriptionDetail(BaseModel):
+    subscriptionId: str
+    displayName: Optional[str] = None
+    elementIds: List[str] = []
 
 
 class RegisterMonitoredItemsRequest(BaseModel):
+    subscriptionId: str = Field(..., description="The subscription to register items with")
     elementIds: List[str]
     maxDepth: Optional[int] = 1  # 0 means infinite recursion, 1 means no recursion, >1 recurses to that depth
+
+
+class StreamRequest(BaseModel):
+    subscriptionId: str = Field(..., description="The subscription to open a stream for")
+
+
+class SyncRequest(BaseModel):
+    subscriptionId: str = Field(..., description="The subscription to sync")
+    through: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
+
+
+class DeleteSubscriptionsRequest(BaseModel):
+    subscriptionIds: List[str] = Field(..., description="List of subscription IDs to delete")
 
 
 class SyncResponseItem(BaseModel):
@@ -159,23 +183,6 @@ class SyncResponseItem(BaseModel):
     value: Any
     timestamp: Optional[str] = None
     quality: Optional[str] = None
-
-
-class SyncRequest(BaseModel):
-    through: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
-
-
-class UnsubscribeRequest(BaseModel):
-    subscriptionIds: List[str]
-
-
-class SubscriptionSummary(BaseModel):
-    subscriptionId: int
-    created: str
-
-
-class GetSubscriptionsResponse(BaseModel):
-    subscriptionIds: List[SubscriptionSummary]
 
 
 # Request models for POST endpoints (GET to POST refactor)

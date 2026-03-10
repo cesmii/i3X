@@ -771,27 +771,29 @@ Returns the last known value for one or more Objects.
 
 Returns the historical values for one or more Objects between a start and end time.
 
-**Request Body:**
+[TODO] - Sync reponse with v0.1.2
 
-```json
-{
-  "elementIds": [
-    "object-elementid-1"
-  ],
-  "startTime": "2026-03-03T13:00:00Z",
-  "endTime": "2026-03-03T12:00:00Z",
-  "maxDepth": 1
-}
-```
+**Request Body:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `elementId` | string | No | Single elementId to query |
 | `elementIds` | string[] | No | One or more elementIds to query |
 | `startTime` | string | Yes | RFC 3339 timestamp for range start |
 | `endTime` | string | Yes | RFC 3339 timestamp for range end |
 | `maxDepth` | integer | No | Controls recursion depth |
 
-- The startTime MUST be more recent than the endTime and the results MUST be returned in descending order (most recent value first).
+```json
+{
+  "elementId": "string",
+  "elementIds": [
+    "string"
+  ],
+  "startTime": "string",
+  "endTime": "string",
+  "maxDepth": 1
+}
+```
 
 **Response:**
 
@@ -799,35 +801,26 @@ Returns the historical values for one or more Objects between a start and end ti
 {
     "results": [
         {
-            "elementId": "object-elementid-1",
+            "elementId": "string",
             "success": true,
             "data": [
                 {
+                "elementId": "string",
                 "isComposition": false,
                 "value": {
                     "temperature": 1,
                     "inletPressure": "2",
-                    "outletPressure": 0.11
+                    "outletPressure": 0.11139064
                 },
                 "quality": "GOOD",
-                "timestamp": "2026-01-29T16:00:00Z"
-              },
-              {
-                "isComposition": false,
-                "value": {
-                  "temperature": 3,
-                  "inletPressure": "4",
-                  "outletPressure": 0.22
-                },
-                "quality": "GOOD",
-                "timestamp": "2026-01-29T15:00:00Z"
+                "timestamp": "2026-01-29T16:37:41Z"
               }
             ]
         }
     ],
     "totalRequested": 1,
     "totalSuccess": 1,
-    "totalFailed": 0
+    "totalFailed": 0,
 }
 ```
 
@@ -897,8 +890,8 @@ Subscriptions allow clients to receive value changes in real-time for objects th
 
 | Mode | Description |
 |------|-------------|
-| **streaming** | A low QoS approach where value changes are sent as fast as possible using SSE (Server Sent Events). |
-| **sync** | A high QoS approach where value changes are queued and delivered when the client calls the sync API. |
+| **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
+| **sync** | Value changes are queued and delivered when the client calls the sync API. |
 
 Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered. The following sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
 
@@ -907,90 +900,99 @@ Streaming provides data as fast as possible, where Sync allows the client to con
 Clients must first create a subscription in the server. Subscriptions have the following requirements:
 
 - The server MUST provide a unique subscriptionId to the client
-- [TODO] it would probably be useful for the client to be able to provide a name or some client id for the subscription to be returned in GET?
-- Servers SHOULD NOT share subscriptions across clients  [TODO] MGP - how will an i3X server know this?  Plus, I propose the technology/API should allow sharing subscriptions between clients, if the desire is to have a setup similar to multicast (any client can subscribe to this ID for all the data it needs to know)
+- Servers SHOULD NOT make subscriptions shareable across clients, but the standard doesn't enforce that
+- Servers SHOULD make the subscriptionId unique enough that the server can reasonably assume other clients cannot guess the subscriptionId
 
 ---
 
 #### `POST` /subscriptions
 
-Create a subscription.
+Creates a subscription and returns a unique subscription ID. The client is responsible for caching the subscriptionId to make future
+calls on the subscription. There is no way to list all subscriptions the client has created.
 
-**Parameters:** None
+The client can optionally pass in a friendly name for the subscription. This is intended to assist clients and servers and logging and tracking
+subscriptions.
 
-**Response:**
-
+**Parameters:**
 ```json
 {
-  "subscriptionId": "0",
-  "message": "Subscription created successfully."
+"displayName": "mySubscription"
 }
 ```
 
----
-
-#### `GET` /subscriptions
-
-List all subscriptions that the client has created.
-[TODO] - how does a server know which subscriptions a client created, especially after a disconnect/connect event? Should we specify clientID as a parameter for `POST` /subscriptions and `GET` /subscriptions?
-
-**Parameters:** None
+| Name | Type | Required | Description                                                 |
+|------|------|----------|-------------------------------------------------------------|
+| `displayName` | string | No       | Optional name to associate with the subscription.|
 
 **Response:**
 
 ```json
 {
-  "subscriptionIds": [
-    {
-      "subscriptionId": "0",
-      "created": "2026-01-29T19:56:06Z"
-    }
-  ]
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "displayName": "mySubscription"
+}
+```
+| Name | Type | Required | Description                                       |
+|------|------|----------|---------------------------------------------------|
+| `subscriptionId` | string | Yes      | Unique ID for the subscription                    |
+| `displayName` | string | Yes      | Friendly name for the subscription                |
+
+---
+
+#### `POST` /subscriptions/list
+
+Return the details of one or more subscriptions, including the registered objects.
+
+**Body Parameters:**
+```json
+{
+  "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
 }
 ```
 
----
-
-#### `GET` /subscriptions/{subscriptionId}
-
-Return the details of a subscription, including the registered objects.
-
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to get |
+| Name | Type         | Required | Description                                  |
+|------|--------------|----------|----------------------------------------------|
+| `subscriptionIds` | string array | Yes | List of subscription IDs |
 
 **Response:**
 
-[TODO] - created, isStreaming, queuedUpdates were added but never discussed. Do we need these?
-
 ```json
-{
-  "subscriptionId": 0,
-  "created": "2026-01-29T19:56:06Z",
-  "isStreaming": false,
-  "queuedUpdates": 20,
-  "objects": [
+[{
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "displayName": "mySubscription",
+  "elementIds": [
     "object-elementid-1",
     "object-elementid-2"
   ]
-}
+}]
 ```
+[TODO] - Removed created, isStreaming, queuedUpdates which is more status of the subscription. If we want this we should probably put it under a "status" attribute and maybe even add a switch like includeMetadata to return it, but leaving it out for now
 
+| Name | Type         | Required | Description                                                           |
+|------|--------------|----------|-----------------------------------------------------------------------|
+| `subscriptionId` | string array | Yes | Unique ID of the subscription                                         |
+| `displayName` | string array | Yes | Friendly name of thr subscription                                     |
+| `elementIds` | string array | Yes | Array of elementIds for all objects registered to the subscription |
+
+[TODO] - objects probably needs to be an [{}] because right now a subscription can have an elementid + maxdepth
 ---
 
-#### `DELETE` /subscriptions/{subscriptionId}
+#### `POST` /subscriptions/delete
 
-Delete a Subscription.
+Delete one or more subscriptions.
 
 - Servers SHOULD stop collecting data for Objects being monitored by the Subscription when it's deleted.
 
-**Path Parameters:**
+**Body Parameters:**
+```json
+{
+  "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
+}
+```
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to delete |
+| Name | Type         | Required | Description                                  |
+|------|--------------|----------|----------------------------------------------|
+| `subscriptionIds` | string array | Yes | List of subscription IDs |
 
 **Response:**
 
@@ -1020,33 +1022,30 @@ Once a Subscription is created, a client can add and remove Objects to the Subsc
 
 ---
 
-#### `POST` /subscriptions/{subscriptionId}/register
+#### `POST` /subscriptions/register
 
 Register one or more Objects with a Subscription.
 
 - If an Object is registered more than once this MUST be ignored by the Server
 
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to register items with |
-
 **Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `elementIds` | string[] | Yes | One or more elementIds to register |
-| `maxDepth` | integer | No | Controls recursion depth | [TODO] - MGP explain how maxDepth works.  Similar to values, where it only follows hasComponent relationships?
 
 ```json
 {
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
   "elementIds": [
-    "elementId1"
+    "object-elementid-1",
+    "object-elementid-2"
   ],
   "maxDepth": 1
 }
 ```
+
+| Field            | Type | Required | Description |
+|------------------|------|----------|-------------|
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to register items with |
+| `elementIds`        | string[] | Yes | One or more elementIds to register |
+| `maxDepth`       | integer | No | Controls recursion depth | [TODO] - MGP explain how maxDepth works.  Similar to values, where it only follows hasComponent relationships?
 
 **Response:**
 
@@ -1061,7 +1060,7 @@ Register one or more Objects with a Subscription.
 
 ---
 
-#### `POST` /subscriptions/{subscriptionId}/unregister
+#### `POST` /subscriptions/unregister
 
 Unregister one or more Objects from a Subscription.
 
@@ -1069,27 +1068,25 @@ Unregister one or more Objects from a Subscription.
 - Once an Object is unregistered the server SHOULD stop queuing new values for the Object on the Subscription
 - The server SHOULD NOT delete any prior queued values for the Object
 
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to unregister items from |
-
 **Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `elementIds` | string[] | Yes | One or more elementIds to unregister |
-| `maxDepth` | integer | No | Controls recursion depth |
 
 ```json
 {
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
   "elementIds": [
-    "elementId1"
+    "object-elementid-1",
+    "object-elementid-2"
   ],
   "maxDepth": 1
 }
 ```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to unregister items from |
+| `elementIds` | string[] | Yes | One or more elementIds to unregister |
+| `maxDepth` | integer | No | Controls recursion depth |
+
 
 **Response:**
 
@@ -1110,28 +1107,33 @@ Streaming sends values on the subscription to the client as they occur using SSE
 **How it works:**
 
 1. Client creates subscription via `POST /subscriptions`
-2. Client registers items via `POST /subscriptions/{id}/register`
+2. Client registers items via `POST /subscriptions/register`
    - The server starts queuing value changes for Objects
-3. Client opens SSE stream via `GET /subscriptions/{id}/stream`
+3. Client opens SSE stream via `POST /subscriptions/stream`
    - The server sends any values queued while the stream was closed
-4. Server sends values as they occur, with "at most once" delivery. If a client misses a message, it cannot be retreived.
+4. Server sends values as they occur, with "at most once" delivery. If a client misses a message, it cannot be retrieved.
 
 If the SSE connection is lost, the client can call the /stream endpoint again to re-open it.
 
 ---
 
-#### `GET` /subscriptions/{subscriptionId}/stream
+#### `POST` /subscriptions/stream
 
 Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
   - [TODO] is this enough or should we spec what happens if you spam the /stream endpoint? Ignore? Close the old and open new?
-  - MGP - should multiple clients be allowed to connect in a multcast-type pattern?
+  - MGP - should multiple clients be allowed to connect in a multicast-type pattern?
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
   - [TODO] should register require queuing the current value of the Object?
 
-**Path Parameters:**
+**Body Parameters:**
+```json
+{
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
+}
+```
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
@@ -1154,12 +1156,12 @@ Sync allows the client to control when value changes are received, and to explic
 **How it works:**
 
 1. Client creates subscription via `POST /subscriptions`
-2. Client registers items via `POST /subscriptions/{id}/register`
+2. Client registers items via `POST /subscriptions/register`
 3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
-4. Client polls via `POST /subscriptions/{id}/sync` (no body on first call)
+4. Client polls via `POST /subscriptions/sync` (no `through` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
-7. Client calls `POST /subscriptions/{id}/sync` again with `{"through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
+7. Client calls `POST /subscriptions/sync` again with `{"subscriptionId": "...", "through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
 8. Server removes acknowledged updates (sequenceNumber ≤ `through`) then returns the remaining queue
 9. Continue this process
 
@@ -1167,7 +1169,7 @@ This approach ensures updates are not lost if the client crashes between receivi
 
 ---
 
-#### `POST` /subscriptions/{subscriptionId}/sync
+#### `POST` /subscriptions/sync
 
 Returns all pending updates, acknowledging a previously received batch in the same call.
 
@@ -1177,26 +1179,26 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 - Clients SHOULD omit `through` only on the first call, when there is nothing yet to acknowledge
 - Clients SHOULD provide `through` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
 
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync |
-
-**Request Body:**
+**Body Parameters:**
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync |
 | `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
 
 First call (nothing to acknowledge yet):
 ```json
-{}
+{
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
+}
 ```
 
 All subsequent calls (ack previous batch, fetch new):
 ```json
-{"through": 2}
+{
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "through": 2
+}
 ```
 
 **Response:**
