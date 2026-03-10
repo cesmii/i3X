@@ -3,9 +3,10 @@ import json
 import threading
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_redoc_html
 from routers.namespaces import ns
@@ -154,6 +155,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"success": False, "error": {"message": exc.detail}}
+    )
+
 
 # Setup app state (data source will be set after config is loaded)
 app.state.I3X_DATA_SUBSCRIPTIONS = []  # List[Subscription]

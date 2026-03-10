@@ -2,8 +2,6 @@
 
 This document provides guidance for implementing i3X (Industrial Information Interface eXchange), and is intended to be used by developers creating i3X servers and clients.
 
-The guide supplements the OpenAPI specification (`openapi.yaml`), which defines the API in detail.
-
 ## Status of This Document
 
 This document is a working draft, and should not be considered complete or normative. This guide is derived from RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to change.
@@ -286,12 +284,15 @@ Returns all the Namespaces for the server.
 **Response:**
 
 ```json
-[
-  {
-    "uri": "string",
-    "displayName": "string"
-  }
-]
+{
+  "success": true,
+  "result": [
+    {
+      "uri": "string",
+      "displayName": "string"
+    }
+  ]
+}
 ```
 
 ---
@@ -313,14 +314,17 @@ Returns a list of all Object Types, optionally filtered by Namespace.
 Note the JSON Schema definition for the Object Type is placed under the `schema` attribute.
 
 ```json
-[
-  {
-    "elementId": "string",
-    "displayName": "string",
-    "namespaceUri": "string",
-    "schema": {...}
-  }
-]
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "namespaceUri": "string",
+      "schema": {...}
+    }
+  ]
+}
 ```
 
 ---
@@ -345,26 +349,28 @@ Returns one or more Object Types given a collection of elementIds.
 
 **Response:**
 
-[TODO] is this the response format we want? So we want to support partial success here?
-MGP: Status for each element discussed here: https://github.com/cesmii/i3X/issues/26 Also, can totalSuccess be removed, since primary interest is totalFailed and Success can be derived from totalRequested-totalFailed
-
 ```json
 {
-  "results": [
-    {
-      "elementId": "string",
-      "success": true,
-      "data":   {
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
         "elementId": "string",
-        "displayName": "string",
-        "namespaceUri": "string",
-        "schema": {}
+        "result": {
+          "elementId": "string",
+          "displayName": "string",
+          "namespaceUri": "string",
+          "schema": {}
+        }
       }
-    }
-  ],
-  "totalRequested": 1,
-  "totalSuccess": 1,
-  "totalFailed": 0
+    ],
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Object type not found: string" }
+      }
+    ]
+  }
 }
 ```
 
@@ -385,19 +391,22 @@ Returns a list of all Relationship Types, optionally filtered by Namespace.
 **Response:**
 
 ```json
-[
-  {
-    "elementId": "string",
-    "displayName": "string",
-    "namespaceUri": "string",
-    "reverseOf": "string"
-  }
-]
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "namespaceUri": "string",
+      "reverseOf": "string"
+    }
+  ]
+}
 ```
 
 ---
 
-#### `POST` /relationshiptype/query
+#### `POST` /relationshiptypes/query
 
 Returns one or more Relationship Types given a collection of elementIds.
 
@@ -419,21 +428,26 @@ Returns one or more Relationship Types given a collection of elementIds.
 
 ```json
 {
-  "results": [
-    {
-      "elementId": "string",
-      "success": true,
-      "data":   {
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
         "elementId": "string",
-        "displayName": "string",
-        "namespaceUri": "string",
-        "reverseOf": "string"
+        "result": {
+          "elementId": "string",
+          "displayName": "string",
+          "namespaceUri": "string",
+          "reverseOf": "string"
+        }
       }
-    }
-  ],
-  "totalRequested": 1,
-  "totalSuccess": 1,
-  "totalFailed": 0
+    ],
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Relationship type not found: string" }
+      }
+    ]
+  }
 }
 ```
 
@@ -456,35 +470,41 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
 
 ```json
 // No metadata
-[
-  {
-    "elementId": "string",
-    "displayName": "string",
-    "typeId": "string",
-    "parentId": "",
-    "isComposition": false,
-    "namespaceUri": "string"
-  }
-]
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "typeId": "string",
+      "parentId": "",
+      "isComposition": false,
+      "namespaceUri": "string"
+    }
+  ]
+}
 
 // With metadata
-[
-  {
-    "elementId": "string",
-    "displayName": "string",
-    "typeId": "string",
-    "parentId": "",
-    "isComposition": false,
-    "namespaceUri": "string",
-    "relationships": {
-      "HasParent": "/",
-      "HasChildren": [
-        "child1",
-        "child2"
-      ]
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "typeId": "string",
+      "parentId": "",
+      "isComposition": false,
+      "namespaceUri": "string",
+      "relationships": {
+        "HasParent": "/",
+        "HasChildren": [
+          "child1",
+          "child2"
+        ]
+      }
     }
-  }
-]
+  ]
+}
 ```
 
 [TODO] - Why do we have both parentId and relationships metadata? Doesn't this overlap with /objects/related?
@@ -517,53 +537,58 @@ Returns one or more Objects without data/values given a collection of elementIds
 **Response:**
 
 ```json
-/// No metadata
+// No metadata
 {
-  "results": [
-    {
-      "elementId": "string",
-      "success": true,
-      "data":   {
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
         "elementId": "string",
-        "displayName": "string",
-        "typeId": "string",
-        "parentId": "",
-        "isComposition": false,
-        "namespaceUri": "string"
+        "result": {
+          "elementId": "string",
+          "displayName": "string",
+          "typeId": "string",
+          "parentId": "",
+          "isComposition": false,
+          "namespaceUri": "string"
+        }
       }
-    }
-  ],
-  "totalRequested": 1,
-  "totalSuccess": 1,
-  "totalFailed": 0
+    ],
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
 }
 
 // With metadata
 {
-  "results": [
-    {
-      "elementId": "string",
-      "success": true,
-      "data":   {
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
         "elementId": "string",
-        "displayName": "string",
-        "typeId": "string",
-        "parentId": "",
-        "isComposition": false,
-        "namespaceUri": "string"
-        "relationships": {
-          "HasParent": "/",
-          "HasChildren": [
-            "child1",
-            "child2"
-          ]
+        "result": {
+          "elementId": "string",
+          "displayName": "string",
+          "typeId": "string",
+          "parentId": "",
+          "isComposition": false,
+          "namespaceUri": "string",
+          "relationships": {
+            "HasParent": "/",
+            "HasChildren": [
+              "child1",
+              "child2"
+            ]
+          }
         }
       }
-    }
-  ],
-  "totalRequested": 1,
-  "totalSuccess": 1,
-  "totalFailed": 0
+    ],
+    "failed": []
+  }
 }
 ```
 
@@ -578,71 +603,49 @@ Returns related Objects, with the option to filter on a Relationship Type.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | List of elementIds to browse for relationships |
-| `relationshiptype` | string | No | The elementId of the Relationship Type to filter on. Leave out or set to null to get all related Objects. |
-| `includeMetadata` | boolean | No | [TODO] need to define/describe what this flag does in the response?  MGP - it should respond similar to /objects/list.  Added to response |
+| `relationshipType` | string | No | The elementId of the Relationship Type to filter on. Leave out or set to null to get all related Objects. |
+| `includeMetadata` | boolean | No | Optionally include relationship metadata in the response. |
 
 ```json
 {
   "elementIds": [
     "string"
   ],
-  "relationshiptype": "string",
+  "relationshipType": "string",
   "includeMetadata": false
 }
 ```
 
 **Response:**
 
-Returns an array of related Object definitions for each related Object.
+Returns a bulk response with the related Objects for each queried elementId.
 
 ```json
-/// No metadata
 {
-  "results": [
-    {
-      "elementId": "string",
-      "success": true,
-      "data":   [{
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
         "elementId": "string",
-        "displayName": "string",
-        "typeId": "string",
-        "parentId": "",
-        "isComposition": false,
-        "namespaceUri": "string"
-      }]
-    }
-  ],
-  "totalRequested": 1,
-  "totalSuccess": 1,
-  "totalFailed": 0
-}
-
-/// With Metadata
-{
-  "results": [
-    {
-      "elementId": "string",
-      "success": true,
-      "data":   [{
+        "result": [
+          {
+            "elementId": "string",
+            "displayName": "string",
+            "typeId": "string",
+            "parentId": "",
+            "isComposition": false,
+            "namespaceUri": "string"
+          }
+        ]
+      }
+    ],
+    "failed": [
+      {
         "elementId": "string",
-        "displayName": "string",
-        "typeId": "string",
-        "parentId": "",
-        "isComposition": false,
-        "namespaceUri": "string"
-        "relationships": {
-          "HasParent": "/",
-          "HasChildren": [
-            "child1",
-            "child2"
-          ]
-        }
-      }]
-    }
-  ],
-  "totalRequested": 1,
-  "totalSuccess": 1,
-  "totalFailed": 0
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
 }
 ```
 
@@ -738,30 +741,32 @@ Returns the last known value for one or more Objects.
 
 **Response:**
 
-[TODO] we need to review this payload structure, elementId is duplicated.  MGP- sync up reponse with v0.1.2
-
 ```json
 {
-    "results": [
-        {
-            "elementId": "string",
-            "success": true,
-            "data": {
-                "elementId": "string",
-                "isComposition": false,
-                "value": {
-                    "temperature": 1,
-                    "inletPressure": "2",
-                    "outletPressure": 0.11139064
-                },
-                "quality": "GOOD",
-                "timestamp": "2026-01-29T16:37:41Z"
-            }
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "string",
+        "result": {
+          "isComposition": false,
+          "value": {
+            "temperature": 1,
+            "inletPressure": "2",
+            "outletPressure": 0.11
+          },
+          "quality": "Good",
+          "timestamp": "2026-01-29T16:37:41Z"
         }
+      }
     ],
-    "totalRequested": 1,
-    "totalSuccess": 1,
-    "totalFailed": 0,
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
 }
 ```
 
@@ -799,28 +804,42 @@ Returns the historical values for one or more Objects between a start and end ti
 
 ```json
 {
-    "results": [
-        {
-            "elementId": "string",
-            "success": true,
-            "data": [
-                {
-                "elementId": "string",
-                "isComposition": false,
-                "value": {
-                    "temperature": 1,
-                    "inletPressure": "2",
-                    "outletPressure": 0.11139064
-                },
-                "quality": "GOOD",
-                "timestamp": "2026-01-29T16:37:41Z"
-              }
-            ]
-        }
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "object-elementid-1",
+        "result": [
+          {
+            "isComposition": false,
+            "value": {
+              "temperature": 1,
+              "inletPressure": "2",
+              "outletPressure": 0.11
+            },
+            "quality": "Good",
+            "timestamp": "2026-01-29T16:00:00Z"
+          },
+          {
+            "isComposition": false,
+            "value": {
+              "temperature": 3,
+              "inletPressure": "4",
+              "outletPressure": 0.22
+            },
+            "quality": "Good",
+            "timestamp": "2026-01-29T15:00:00Z"
+          }
+        ]
+      }
     ],
-    "totalRequested": 1,
-    "totalSuccess": 1,
-    "totalFailed": 0,
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
 }
 ```
 
@@ -852,9 +871,8 @@ The JSON value to write to the Object. The value will replace the current Object
 
 ```json
 {
-  "elementId": "string",
   "success": true,
-  "message": "Updated successfully"
+  "result": null
 }
 ```
 
@@ -916,7 +934,7 @@ subscriptions.
 **Parameters:**
 ```json
 {
-"displayName": "mySubscription"
+  "displayName": "mySubscription"
 }
 ```
 
@@ -928,8 +946,11 @@ subscriptions.
 
 ```json
 {
-  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-  "displayName": "mySubscription"
+  "success": true,
+  "result": {
+    "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+    "displayName": "mySubscription"
+  }
 }
 ```
 | Name | Type | Required | Description                                       |
@@ -957,14 +978,19 @@ Return the details of one or more subscriptions, including the registered object
 **Response:**
 
 ```json
-[{
-  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-  "displayName": "mySubscription",
-  "elementIds": [
-    "object-elementid-1",
-    "object-elementid-2"
+{
+  "success": true,
+  "result": [
+    {
+      "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+      "displayName": "mySubscription",
+      "elementIds": [
+        "object-elementid-1",
+        "object-elementid-2"
+      ]
+    }
   ]
-}]
+}
 ```
 [TODO] - Removed created, isStreaming, queuedUpdates which is more status of the subscription. If we want this we should probably put it under a "status" attribute and maybe even add a switch like includeMetadata to return it, but leaving it out for now
 
@@ -996,15 +1022,14 @@ Delete one or more subscriptions.
 
 **Response:**
 
-[TODO] is this the response format we want? You can only delete one at a time
-
 ```json
 {
-  "message": "Unsubscribe processed.",
-  "unsubscribed": [
-    0
-  ],
-  "not_found": []
+  "success": true,
+  "result": {
+    "message": "Unsubscribe processed.",
+    "unsubscribed": ["0"],
+    "notFound": []
+  }
 }
 ```
 
@@ -1049,12 +1074,13 @@ Register one or more Objects with a Subscription.
 
 **Response:**
 
-[TODO] - is this the response we want?
-
 ```json
 {
-  "message": "Registered 1 objects to subscription.",
-  "totalObjects": 1
+  "success": true,
+  "result": {
+    "message": "Registered 1 objects to subscription.",
+    "totalObjects": 1
+  }
 }
 ```
 
@@ -1090,11 +1116,12 @@ Unregister one or more Objects from a Subscription.
 
 **Response:**
 
-[TODO] - is this the response we want?
-
 ```json
 {
-  "message": "Unregistered 1 objects from subscription."
+  "success": true,
+  "result": {
+    "message": "Unregistered 1 objects from subscription."
+  }
 }
 ```
 
@@ -1337,7 +1364,8 @@ When `maxDepth > 1` and the element has components:
 
 ```json
 {
-  "detail": "Human-readable error message"
+  "success": false,
+  "error": { "message": "Human-readable error message" }
 }
 ```
 

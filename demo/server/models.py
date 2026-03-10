@@ -210,7 +210,7 @@ class GetObjectsRequest(ElementIdRequest):
 
 class GetRelatedObjectsRequest(ElementIdRequest):
     """Request model for POST /objects/related"""
-    relationshiptype: Optional[str] = Field(default=None, description="Filter by relationship type")
+    relationshipType: Optional[str] = Field(default=None, description="Filter by relationship type")
     includeMetadata: bool = Field(default=False, description="Include full metadata in response")
 
 
