@@ -323,18 +323,24 @@ class MockDataSource(I3XDataSource):
 
         # If no relationship_type specified, return all related instances
         if relationship_type is None:
-            # Collect all related IDs from all relationships
-            all_related_ids = set()
+            # Iterate per type to preserve relationship context per object
+            seen_ids = set()
             for rel_type, related_ids in relationships_metadata.items():
+                if isinstance(related_ids, str):
+                    related_ids = [related_ids]
                 if isinstance(related_ids, list):
-                    all_related_ids.update(related_ids)
-                elif isinstance(related_ids, str):
-                    all_related_ids.add(related_ids)
-
-            # Get all related instances
-            related_objects = [
-                i for i in self.data["instances"] if i["elementId"] in all_related_ids
-            ]
+                    for rid in related_ids:
+                        if rid in seen_ids:
+                            continue
+                        for instance in self.data["instances"]:
+                            if instance["elementId"] == rid:
+                                filtered = {k: v for k, v in instance.items() if k != "records"}
+                                filtered["subject"] = element_id
+                                filtered["relationshipType"] = rel_type
+                                filtered["relationshipTypeInverse"] = self._get_inverse_relationship(rel_type)
+                                related_objects.append(filtered)
+                                seen_ids.add(rid)
+                                break
         else:
             # Look for the specific relationship type (case-insensitive match)
             matching_key = None
@@ -344,32 +350,30 @@ class MockDataSource(I3XDataSource):
                     break
 
             if matching_key:
-                # Return instances based on explicit relationship declarations
                 related_ids = relationships_metadata[matching_key]
-                if isinstance(related_ids, list):
-                    # Get instances directly from data for list of IDs
-                    related_objects = [
-                        i for i in self.data["instances"] if i["elementId"] in related_ids
-                    ]
-                else:
-                    # Handle single ID case - get directly from data
-                    for instance in self.data["instances"]:
-                        if instance["elementId"] == related_ids:
-                            related_objects = [instance]
-                            break
+                if isinstance(related_ids, str):
+                    related_ids = [related_ids]
+                for instance in self.data["instances"]:
+                    if instance["elementId"] in related_ids:
+                        filtered = {k: v for k, v in instance.items() if k != "records"}
+                        filtered["subject"] = element_id
+                        filtered["relationshipType"] = matching_key
+                        filtered["relationshipTypeInverse"] = self._get_inverse_relationship(matching_key)
+                        related_objects.append(filtered)
             # Fallback: Handle non-hierarchical relationships dynamically
             else:
                 related_objects = self._process_non_hierarchical_relations(
                     element_id, relationship_type.lower()
                 )
 
-        # Filter out records member from each instance before returning (unique to mock data)
-        filtered_results = []
-        for instance in related_objects:
-            filtered_instance = {k: v for k, v in instance.items() if k != "records"}
-            filtered_results.append(filtered_instance)
+        return related_objects
 
-        return filtered_results
+    def _get_inverse_relationship(self, relationship_type: str) -> Optional[str]:
+        """Look up the inverse/reverse relationship type name"""
+        for rel_type in self.data["relationshipTypes"]:
+            if rel_type["elementId"].lower() == relationship_type.lower():
+                return rel_type.get("reverseOf")
+        return None
 
     def _process_non_hierarchical_relations(
         self, element_id: str, relationship_type: str
