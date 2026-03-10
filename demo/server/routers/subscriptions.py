@@ -1,23 +1,27 @@
-from fastapi import APIRouter, HTTPException, Request, Path
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from typing import List, Optional, Any, Callable
 from datetime import datetime, timezone
 import asyncio
 import json
 import time
+import uuid
 from pydantic import BaseModel, Field, ConfigDict
-from models import CreateSubscriptionRequest, CreateSubscriptionResponse
-from models import RegisterMonitoredItemsRequest
-from models import GetSubscriptionsResponse, SubscriptionSummary
-from models import SyncRequest
-from fastapi import Body
+from models import (
+    CreateSubscriptionRequest, CreateSubscriptionResponse,
+    ListSubscriptionsRequest, SubscriptionDetail,
+    RegisterMonitoredItemsRequest,
+    StreamRequest, SyncRequest,
+    DeleteSubscriptionsRequest,
+)
 from data_sources.data_interface import I3XDataSource
 from .utils import getSubscriptionValue
 
 
 # Not required, but showing what information is stored for simulated subscriptions
 class Subscription(BaseModel):
-    subscriptionId: int
+    subscriptionId: str
+    displayName: Optional[str] = None
     created: str
     maxDepth: int = 1  # Depth to follow HasComponent relationships (0=infinite, 1=no recursion, N=recurse N levels)
     monitoredItems: List[str] = []
@@ -45,54 +49,12 @@ def get_data_source(request: Request) -> I3XDataSource:
     return request.app.state.data_source
 
 
-# GET /subscriptions - List all subscriptions
-@subs.get(
-    "/subscriptions",
-    summary="List Subscriptions",
-    response_model=GetSubscriptionsResponse,
-    operation_id="listSubscriptions",
-)
-def get_subscriptions(request: Request):
-    """List all subscriptions including their ID and settings (does not include registered objects)"""
-    subscriptions = []
-    for sub in request.app.state.I3X_DATA_SUBSCRIPTIONS:
-        subscriptions.append(
-            SubscriptionSummary(
-                subscriptionId=sub.subscriptionId,
-                created=sub.created
-            )
-        )
-    return GetSubscriptionsResponse(subscriptionIds=subscriptions)
-
-
-# GET /subscriptions/{id} - Get a single subscription with full details
-@subs.get(
-    "/subscriptions/{subscriptionId}",
-    summary="Get Subscription",
-    operation_id="getSubscription",
-)
-def get_subscription(request: Request, subscriptionId: str):
-    """Get a single subscription including settings and registered objects"""
-    sub = next(
-        (
-            s
-            for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
+def _find_sub(request: Request, subscription_id: str) -> Optional[Subscription]:
+    """Locate a subscription by ID"""
+    return next(
+        (s for s in request.app.state.I3X_DATA_SUBSCRIPTIONS if s.subscriptionId == subscription_id),
         None,
     )
-    if not sub:
-        raise HTTPException(status_code=404, detail="Subscription not found")
-
-    return {
-        "subscriptionId": sub.subscriptionId,
-        "created": sub.created,
-        "isStreaming": sub.is_streaming,
-        "queuedUpdates": len(sub.pendingUpdates),
-        "nextSequence": sub.nextSequence,
-        "lastAckedSequence": sub.lastAckedSequence,
-        "objects": sub.monitoredItems
-    }
 
 
 # RFC 4.2.3.1 - Create Subscription
@@ -103,14 +65,15 @@ def get_subscription(request: Request, subscriptionId: str):
     operation_id="createSubscription",
 )
 def create_subscription(request: Request, subscription: CreateSubscriptionRequest):
-    """Create a new subscription. Monitoring starts when objects are registered via /register"""
+    """Create a new subscription. Returns a unique subscriptionId the client must cache.
+    There is no way to list all subscriptions; the client must track the returned ID."""
 
-    # For now make the subscription ID a simple index to make manual testing easy, but should be a UUID
-    subscriptionId = str(len(request.app.state.I3X_DATA_SUBSCRIPTIONS))
+    subscription_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ttl = getattr(request.app.state, "subscription_ttl_seconds", 300)
     new_sub = Subscription(
-        subscriptionId=subscriptionId,
+        subscriptionId=subscription_id,
+        displayName=subscription.displayName,
         created=now,
         last_activity=now,
         ttl_seconds=ttl,
@@ -118,28 +81,40 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
     request.app.state.I3X_DATA_SUBSCRIPTIONS.append(new_sub)
 
     return CreateSubscriptionResponse(
-        subscriptionId=subscriptionId, message="Subscription created successfully."
+        subscriptionId=subscription_id,
+        displayName=subscription.displayName,
     )
+
+
+# POST /subscriptions/list - Retrieve details for one or more subscriptions
+@subs.post(
+    "/subscriptions/list",
+    summary="List Subscriptions",
+    operation_id="listSubscriptions",
+)
+def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
+    """Return details for the specified subscriptions, including registered elementIds."""
+    result = []
+    for sub_id in req.subscriptionIds:
+        sub = _find_sub(request, sub_id)
+        if sub:
+            result.append(SubscriptionDetail(
+                subscriptionId=sub.subscriptionId,
+                displayName=sub.displayName,
+                elementIds=sub.monitoredItems,
+            ))
+    return result
 
 
 # RFC 4.2.3.2 - Register Monitored Items
 @subs.post(
-    "/subscriptions/{subscriptionId}/register",
+    "/subscriptions/register",
     summary="Register Monitored Items",
     operation_id="registerMonitoredItems",
 )
-def register_objects(
-    request: Request, subscriptionId: str, req: RegisterMonitoredItemsRequest
-):
-    """Add a list of object to the subscription"""
-    sub = next(
-        (
-            s
-            for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
-        None,
-    )
+def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
+    """Add objects to the subscription. subscriptionId is passed in the request body."""
+    sub = _find_sub(request, req.subscriptionId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -173,24 +148,16 @@ def register_objects(
         "totalObjects": len(sub.monitoredItems)
     }
 
+
 # RFC 4.2.3.2 - Unregister Monitored Items
 @subs.post(
-    "/subscriptions/{subscriptionId}/unregister",
+    "/subscriptions/unregister",
     summary="Remove Monitored Items",
     operation_id="removeMonitoredItems",
 )
-def unregister_objects(
-    request: Request, subscriptionId: str, req: RegisterMonitoredItemsRequest
-):
-    """Remove a list of objects from the subscription"""
-    sub = next(
-        (
-            s
-            for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
-        None,
-    )
+def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
+    """Remove objects from the subscription. subscriptionId is passed in the request body."""
+    sub = _find_sub(request, req.subscriptionId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -218,22 +185,16 @@ def unregister_objects(
         "message": f"Unregistered {removed_count} objects from subscription."
     }
 
-# GET /subscriptions/{id}/stream - Open SSE stream
-@subs.get(
-    "/subscriptions/{subscriptionId}/stream",
+
+# POST /subscriptions/stream - Open SSE stream
+@subs.post(
+    "/subscriptions/stream",
     summary="Stream Values (SSE)",
     operation_id="streamSubscription",
 )
-async def stream_subscription(request: Request, subscriptionId: str):
-    """Open a Server-Sent Events (SSE) stream. Switches from queue mode to streaming mode."""
-    sub = next(
-        (
-            s
-            for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
-        None,
-    )
+async def stream_subscription(request: Request, req: StreamRequest):
+    """Open a Server-Sent Events (SSE) stream. subscriptionId is passed in the request body."""
+    sub = _find_sub(request, req.subscriptionId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -258,7 +219,7 @@ async def stream_subscription(request: Request, subscriptionId: str):
             sub.handler = None
             sub.event_loop = None
             sub.streaming_response = None
-            print(f"[SSE] Subscription {subscriptionId} switched back to queue mode")
+            print(f"[SSE] Subscription {req.subscriptionId} switched back to queue mode")
 
     def push_update_to_client(update):
         asyncio.run_coroutine_threadsafe(queue.put(update), loop)
@@ -277,27 +238,20 @@ async def stream_subscription(request: Request, subscriptionId: str):
 
     return sub.streaming_response
 
-# RFC 4.2.3.3 Sync
+
+# RFC 4.2.3.3 - Sync
 @subs.post(
-    "/subscriptions/{subscriptionId}/sync",
+    "/subscriptions/sync",
     summary="Sync Values",
     operation_id="syncSubscription",
 )
-def sync_subscription(request: Request, subscriptionId: str, req: SyncRequest = Body(default=SyncRequest())):
-    """Acknowledge previously received updates (optional) and return all pending updates in one call.
+def sync_subscription(request: Request, req: SyncRequest):
+    """Acknowledge previously received updates and return all pending updates in one call.
 
     If `through` is provided, all queued updates with sequenceNumber <= through are removed first,
-    then the remaining (newer) updates are returned.
+    then the remaining (newer) updates are returned. subscriptionId is passed in the request body.
     """
-
-    sub = next(
-        (
-            s
-            for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
-        None,
-    )
+    sub = _find_sub(request, req.subscriptionId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -309,33 +263,35 @@ def sync_subscription(request: Request, subscriptionId: str, req: SyncRequest = 
     return {"success": True, "result": list(sub.pendingUpdates)}
 
 
-# 4.2.3.4 Unsubscribe by SubscriptionId
-@subs.delete(
-    "/subscriptions/{subscriptionId}",
-    summary="Delete Subscription",
-    operation_id="deleteSubscription",
+# POST /subscriptions/delete - Delete one or more subscriptions
+@subs.post(
+    "/subscriptions/delete",
+    summary="Delete Subscriptions",
+    operation_id="deleteSubscriptions",
 )
-def delete_subscription(request: Request, subscriptionId: str):
+def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
+    """Delete one or more subscriptions by ID. subscriptionIds are passed in the request body."""
     removed = []
     not_found = []
 
-    index = next(
-        (
-            i
-            for i, s in enumerate(request.app.state.I3X_DATA_SUBSCRIPTIONS)
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
-        None,
-    )
-    if index is not None:
-        removed.append(request.app.state.I3X_DATA_SUBSCRIPTIONS[index].subscriptionId)
-        request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
-    else:
-        not_found.append(subscriptionId)
+    for sub_id in req.subscriptionIds:
+        index = next(
+            (
+                i
+                for i, s in enumerate(request.app.state.I3X_DATA_SUBSCRIPTIONS)
+                if s.subscriptionId == sub_id
+            ),
+            None,
+        )
+        if index is not None:
+            removed.append(request.app.state.I3X_DATA_SUBSCRIPTIONS[index].subscriptionId)
+            request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
+        else:
+            not_found.append(sub_id)
 
     return {
-        "message": "Unsubscribe processed.",
-        "unsubscribed": removed,
+        "message": "Delete processed.",
+        "deleted": removed,
         "not_found": not_found,
     }
 

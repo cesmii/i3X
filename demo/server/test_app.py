@@ -182,19 +182,16 @@ class TestI3XEndpoints(unittest.TestCase):
         self.assertIsNotNone(subscription_id)
 
         # Step 2: Register monitored items
-        register_url = f"/subscriptions/{subscription_id}/register"
-        payload = {"elementIds": ["sensor-001"]}
-        response = self.client.post(register_url, json=payload)
+        payload = {"subscriptionId": subscription_id, "elementIds": ["sensor-001"]}
+        response = self.client.post("/subscriptions/register", json=payload)
         self.assertEqual(response.status_code, 200)
 
         # Step 3: Start streaming
-        stream_url = f"/subscriptions/{subscription_id}/stream"
-
         # We will run the streaming request in a separate thread to allow timeout
         results = []
 
         def stream_reader():
-            with self.client.stream("GET", stream_url) as stream_resp:
+            with self.client.stream("POST", "/subscriptions/stream", json={"subscriptionId": subscription_id}) as stream_resp:
                 self.assertEqual(stream_resp.status_code, 200)
                 count = 0
                 for line in stream_resp.iter_lines():
