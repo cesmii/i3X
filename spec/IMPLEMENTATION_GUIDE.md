@@ -942,7 +942,7 @@ This returns the basic configuration and state of all subscriptions, but exclude
 
 ```json
 {
-  "subscriptions": [
+  "subscriptionIds": [
     {
     "subscriptionId": 0,
     "created": "2026-01-29T19:56:06Z",
