@@ -1156,29 +1156,47 @@ Sync allows the client to control when value changes are received, and to explic
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/{id}/register`
 3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
-4. Client polls via `POST /subscriptions/{id}/sync`
-5. Server returns queued updates without clearing the queue
+4. Client polls via `POST /subscriptions/{id}/sync` (no body on first call)
+5. Server returns all pending updates
 6. Client processes the updates
-7. Client acknowledges receipt via `POST /subscriptions/{id}/ack` with `{"through": <sequenceNumber>}`
-8. Server removes all updates with sequence number ≤ the acknowledged value
+7. Client calls `POST /subscriptions/{id}/sync` again with `{"through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
+8. Server removes acknowledged updates (sequenceNumber ≤ `through`) then returns the remaining queue
 9. Continue this process
 
-This approach ensures updates are not lost if the client crashes between receiving and processing data.
+This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
 
 ---
 
 #### `POST` /subscriptions/{subscriptionId}/sync
 
-Returns queued Object value changes without clearing the queue. The client MUST call `/ack` after successfully processing updates to remove them from the queue.
+Acknowledges previously received updates (optional) and returns all pending updates in a single call.
 
-- Server MUST NOT clear the values queue after sync
-- Each update includes a `sequenceNumber` to support acknowledgement
+- Each queued update includes a `sequenceNumber`
+- If `through` is provided, the server removes all updates with sequenceNumber ≤ `through` before returning the remaining queue
+- Server MUST NOT clear the queue if `through` is omitted
+- On the first call, omit `through` (or send an empty body) to receive all pending updates
 
 **Path Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
 | `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync |
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `through` | integer | No | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
+
+First call (no prior ack):
+```json
+{}
+```
+
+Subsequent calls (ack + fetch in one):
+```json
+{"through": 2}
+```
 
 **Response:**
 
@@ -1190,34 +1208,6 @@ Returns queued Object value changes without clearing the queue. The client MUST 
     {"sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
   ]
 }
-```
-
----
-
-#### `POST` /subscriptions/{subscriptionId}/ack
-
-Acknowledges receipt of updates through a given sequence number. The server removes all updates with a sequence number less than or equal to `through` from the queue.
-
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to acknowledge |
-
-**Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `through` | integer | Yes | Acknowledge all updates with sequenceNumber ≤ this value |
-
-```json
-{"through": 2}
-```
-
-**Response:**
-
-```json
-{"success": true}
 ```
 
 ---

@@ -161,8 +161,8 @@ class SyncResponseItem(BaseModel):
     quality: Optional[str] = None
 
 
-class AckRequest(BaseModel):
-    through: int = Field(..., description="Acknowledge all updates through this sequence number")
+class SyncRequest(BaseModel):
+    through: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
 
 
 class UnsubscribeRequest(BaseModel):

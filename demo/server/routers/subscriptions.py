@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from models import CreateSubscriptionRequest, CreateSubscriptionResponse
 from models import RegisterMonitoredItemsRequest
 from models import GetSubscriptionsResponse, SubscriptionSummary
-from models import AckRequest
+from models import SyncRequest
+from fastapi import Body
 from data_sources.data_interface import I3XDataSource
 from .utils import getSubscriptionValue
 
@@ -282,8 +283,12 @@ async def stream_subscription(request: Request, subscriptionId: str):
     summary="Sync Values",
     operation_id="syncSubscription",
 )
-def sync_subscription(request: Request, subscriptionId: str):
-    """Return queued updates without clearing the queue. Client must call /ack to confirm receipt."""
+def sync_subscription(request: Request, subscriptionId: str, req: SyncRequest = Body(default=SyncRequest())):
+    """Acknowledge previously received updates (optional) and return all pending updates in one call.
+
+    If `through` is provided, all queued updates with sequenceNumber <= through are removed first,
+    then the remaining (newer) updates are returned.
+    """
 
     sub = next(
         (
@@ -296,36 +301,12 @@ def sync_subscription(request: Request, subscriptionId: str):
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
+    if req.through is not None:
+        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.through]
+        sub.lastAckedSequence = max(sub.lastAckedSequence, req.through)
+
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    # Return pending updates without clearing - client must /ack to remove them
     return {"success": True, "result": list(sub.pendingUpdates)}
-
-
-# RFC 4.2.3.3 Ack
-@subs.post(
-    "/subscriptions/{subscriptionId}/ack",
-    summary="Acknowledge Synced Values",
-    operation_id="ackSubscription",
-)
-def ack_subscription(request: Request, subscriptionId: str, req: AckRequest):
-    """Acknowledge receipt of updates through a given sequence number, removing them from the queue."""
-
-    sub = next(
-        (
-            s
-            for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if str(s.subscriptionId) == str(subscriptionId)
-        ),
-        None,
-    )
-    if not sub:
-        raise HTTPException(status_code=404, detail="Subscription not found")
-
-    sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.through]
-    sub.lastAckedSequence = max(sub.lastAckedSequence, req.through)
-    sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-
-    return {"success": True}
 
 
 # 4.2.3.4 Unsubscribe by SubscriptionId
