@@ -8,14 +8,14 @@ import time
 import uuid
 from pydantic import BaseModel, Field, ConfigDict
 from models import (
-    CreateSubscriptionRequest, CreateSubscriptionResponse,
+    CreateSubscriptionRequest,
     ListSubscriptionsRequest, SubscriptionDetail,
     RegisterMonitoredItemsRequest,
     StreamRequest, SyncRequest,
     DeleteSubscriptionsRequest,
 )
 from data_sources.data_interface import I3XDataSource
-from .utils import getSubscriptionValue
+from .utils import getSubscriptionValue, success_response
 
 
 # Not required, but showing what information is stored for simulated subscriptions
@@ -61,7 +61,6 @@ def _find_sub(request: Request, subscription_id: str) -> Optional[Subscription]:
 @subs.post(
     "/subscriptions",
     summary="Create Subscription",
-    response_model=CreateSubscriptionResponse,
     operation_id="createSubscription",
 )
 def create_subscription(request: Request, subscription: CreateSubscriptionRequest):
@@ -80,10 +79,7 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
     )
     request.app.state.I3X_DATA_SUBSCRIPTIONS.append(new_sub)
 
-    return CreateSubscriptionResponse(
-        subscriptionId=subscription_id,
-        displayName=subscription.displayName,
-    )
+    return success_response({"subscriptionId": subscription_id, "displayName": subscription.displayName})
 
 
 # POST /subscriptions/list - Retrieve details for one or more subscriptions
@@ -103,7 +99,7 @@ def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
                 displayName=sub.displayName,
                 elementIds=sub.monitoredItems,
             ))
-    return result
+    return success_response([r.model_dump() for r in result])
 
 
 # RFC 4.2.3.2 - Register Monitored Items
@@ -143,10 +139,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
             sub.monitoredItems.append(eid)
             added_count += 1
 
-    return {
-        "message": f"Registered {added_count} objects to subscription.",
-        "totalObjects": len(sub.monitoredItems)
-    }
+    return success_response({"message": f"Registered {added_count} objects to subscription.", "totalObjects": len(sub.monitoredItems)})
 
 
 # RFC 4.2.3.2 - Unregister Monitored Items
@@ -181,9 +174,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
             sub.monitoredItems.remove(eid)
             removed_count += 1
 
-    return {
-        "message": f"Unregistered {removed_count} objects from subscription."
-    }
+    return success_response({"message": f"Unregistered {removed_count} objects from subscription."})
 
 
 # POST /subscriptions/stream - Open SSE stream
@@ -260,7 +251,7 @@ def sync_subscription(request: Request, req: SyncRequest):
         sub.lastAckedSequence = max(sub.lastAckedSequence, req.through)
 
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return {"success": True, "result": list(sub.pendingUpdates)}
+    return success_response(list(sub.pendingUpdates))
 
 
 # POST /subscriptions/delete - Delete one or more subscriptions
@@ -289,11 +280,7 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
         else:
             not_found.append(sub_id)
 
-    return {
-        "message": "Delete processed.",
-        "deleted": removed,
-        "not_found": not_found,
-    }
+    return success_response({"message": "Delete processed.", "deleted": removed, "notFound": not_found})
 
 
 # Subscription thread responsible for creating updates for items being monitored.

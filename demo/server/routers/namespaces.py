@@ -1,22 +1,19 @@
-from urllib.parse import unquote
-from fastapi import APIRouter, Path, Query, HTTPException, Request, Depends
-from typing import List, Optional
-from urllib.parse import unquote
-from models import Namespace
+from fastapi import APIRouter, Request, Depends
 from data_sources.data_interface import I3XDataSource
+from .utils import success_response
 import logging
 
-logger = logging.getLogger("uvicorn.error")  # or your module logger
+logger = logging.getLogger("uvicorn.error")
 ns = APIRouter(prefix="", tags=["Explore"])
+
 
 def get_data_source(request: Request) -> I3XDataSource:
     """Dependency to inject data source"""
     return request.app.state.data_source
 
+
 # RFC 4.1.1 - Namespaces
-@ns.get("/namespaces", response_model=List[Namespace], summary="Get Namespaces", operation_id="getNamespaces")
+@ns.get("/namespaces", summary="Get Namespaces", operation_id="getNamespaces")
 def get_namespaces(data_source: I3XDataSource = Depends(get_data_source)):
     """Get all Namespaces"""
-    return data_source.get_namespaces()
-
-from fastapi import HTTPException, status  
+    return success_response(data_source.get_namespaces())
