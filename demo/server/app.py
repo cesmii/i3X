@@ -92,6 +92,7 @@ app = FastAPI(
         "Industrial Information Interface eXchange API - RFC 001 Compliant",
     ),
     version=app_config.get("version", "1.0.0"),
+    root_path=app_config.get("root_path", ""),
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
@@ -185,6 +186,8 @@ if __name__ == "__main__":
     debug = config.get("debug", False)
     host = config.get("host", "0.0.0.0")
 
+    root_path = app_config.get("root_path", "")
+
     print(f"Starting server on {host}:{port} (debug: {debug})")
-    print(f"Swagger page at http://localhost:{port}/docs")
-    uvicorn.run("app:app", host=host, port=port, reload=debug)
+    print(f"Swagger page at http://localhost:{port}{root_path}/docs")
+    uvicorn.run("app:app", host=host, port=port, reload=debug, root_path=root_path)
