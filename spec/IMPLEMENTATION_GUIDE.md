@@ -174,6 +174,7 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
   "elementId": "TemperatureSensorType",
   "displayName": "Temperature Sensor",
   "namespaceUri": "https://example.com/ns/sensors",
+  "version": "1.0.0",
   "schema": {
     "type": "object",
     "properties": {
@@ -187,6 +188,9 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 **Requirements**
 - An Object Type MUST have a JSON Schema definition
 - An Object Type MUST belong to one Namespace
+- An Object Type SHOULD have a version in Semantic Versioning format (e.g. `"1.0.0"`)
+
+The standard creates the necessary hooks to identify the version of an object type, but it is up to implementations to manage multiple versions if necessary.
 
 ### Relationship Types
 
@@ -321,11 +325,20 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
+      "version": "1.0.0",
       "schema": {...}
     }
   ]
 }
 ```
+
+| Field          | Type        | Required | Description                                                                    |
+|----------------|-------------|----------|--------------------------------------------------------------------------------|
+| `elementId`    | string      | Yes      | Unique identifier                                                              |
+| `displayName`  | string      | Yes      | Friendly name                                                                  |
+| `namespaceUri` | string      | Yes      | Namespace that the type is associated with                                     |
+| `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)          |
+| `schema`       | json schema | Yes      | The JSON Schema definition for the type                                        |
 
 ---
 
