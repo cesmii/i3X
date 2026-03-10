@@ -43,6 +43,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
+  - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
@@ -896,8 +897,8 @@ Subscriptions allow clients to receive value changes in real-time for objects th
 
 | Mode | Description |
 |------|-------------|
-| **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
-| **sync** | Value changes are queued and delivered when the client calls the sync API. |
+| **streaming** | A low QoS approach where value changes are sent as fast as possible using SSE (Server Sent Events). |
+| **sync** | A high QoS approach where value changes are queued and delivered when the client calls the sync API. |
 
 Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered. The following sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
 
@@ -1104,7 +1105,7 @@ Unregister one or more Objects from a Subscription.
 
 ### Streaming
 
-Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events).
+Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events) for a low Quality of Service.
 
 **How it works:**
 
@@ -1113,7 +1114,7 @@ Streaming sends values on the subscription to the client as they occur using SSE
    - The server starts queuing value changes for Objects
 3. Client opens SSE stream via `GET /subscriptions/{id}/stream`
    - The server sends any values queued while the stream was closed
-4. Server sends values as they occur
+4. Server sends values as they occur, with "at most once" delivery. If a client misses a message, it cannot be retreived.
 
 If the SSE connection is lost, the client can call the /stream endpoint again to re-open it.
 
@@ -1148,26 +1149,33 @@ The response includes value updates over SSE in the following format:
 
 ### Sync
 
-Sync allows the client to control when value changes are received, and to acknowledge value changes.
+Sync allows the client to control when value changes are received, and to explicitly acknowledge receipt for a high Quality of Service.
 
 **How it works:**
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/{id}/register`
-3. Server queues updates as they occur
-4. Client polls via `POST /subscriptions/{id}/sync`
-5. Server returns queued updates and clears the queue
-6. Continue this process
+3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
+4. Client polls via `POST /subscriptions/{id}/sync` (no body on first call)
+5. Server returns all pending updates
+6. Client processes the updates
+7. Client calls `POST /subscriptions/{id}/sync` again with `{"through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
+8. Server removes acknowledged updates (sequenceNumber ≤ `through`) then returns the remaining queue
+9. Continue this process
 
-[TODO] - need to add support for acknowledgement
+This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
 
 ---
 
 #### `POST` /subscriptions/{subscriptionId}/sync
 
-Syncs the queue of Object value changes with the client.
+Returns all pending updates, acknowledging a previously received batch in the same call.
 
-- Server MUST clear the values queue for the subscription after the client calls sync
+- Each queued update includes a `sequenceNumber`
+- If `through` is provided, the server removes all updates with sequenceNumber ≤ `through` before returning the remaining queue
+- Server MUST NOT clear the queue if `through` is omitted
+- Clients SHOULD omit `through` only on the first call, when there is nothing yet to acknowledge
+- Clients SHOULD provide `through` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
 
 **Path Parameters:**
 
@@ -1175,11 +1183,48 @@ Syncs the queue of Object value changes with the client.
 |------|------|----------|-------------|
 | `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync |
 
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
+
+First call (nothing to acknowledge yet):
+```json
+{}
+```
+
+All subsequent calls (ack previous batch, fetch new):
+```json
+{"through": 2}
+```
+
 **Response:**
 
 ```json
-[{"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"}]
+{
+  "success": true,
+  "result": [
+    {"sequenceNumber": 1, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+    {"sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+  ]
+}
 ```
+
+---
+
+### Subscription Life Cycle
+
+Once a Subscription has been created and one or more Objects have been registered, the Server SHALL begin queuing data change events for those Objects.
+
+If neither an active SSE stream nor a call to `/sync` is received within the configured Time-To-Live (TTL) interval, the Server MUST delete the Subscription. Deletion MUST include:
+
+- All queued Object values associated with the Subscription
+- Any internal resources allocated to maintain the Subscription
+
+This requirement prevents abandoned Subscriptions from consuming Server resources.
+
+Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUST be re-created by the Client. Subsequent calls to `/sync` or `/stream` for a deleted or non-existent Subscription MUST return 404 Not Found.
 
 ---
 

@@ -161,6 +161,10 @@ class SyncResponseItem(BaseModel):
     quality: Optional[str] = None
 
 
+class SyncRequest(BaseModel):
+    through: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
+
+
 class UnsubscribeRequest(BaseModel):
     subscriptionIds: List[str]
 

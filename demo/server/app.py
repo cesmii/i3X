@@ -157,6 +157,7 @@ app.add_middleware(
 
 # Setup app state (data source will be set after config is loaded)
 app.state.I3X_DATA_SUBSCRIPTIONS = []  # List[Subscription]
+app.state.subscription_ttl_seconds = config.get("subscriptions", {}).get("ttl_seconds", 300)
 
 # Include namespaces
 app.include_router(ns)

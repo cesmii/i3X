@@ -9,6 +9,8 @@ from pydantic import BaseModel, Field, ConfigDict
 from models import CreateSubscriptionRequest, CreateSubscriptionResponse
 from models import RegisterMonitoredItemsRequest
 from models import GetSubscriptionsResponse, SubscriptionSummary
+from models import SyncRequest
+from fastapi import Body
 from data_sources.data_interface import I3XDataSource
 from .utils import getSubscriptionValue
 
@@ -19,8 +21,12 @@ class Subscription(BaseModel):
     created: str
     maxDepth: int = 1  # Depth to follow HasComponent relationships (0=infinite, 1=no recursion, N=recurse N levels)
     monitoredItems: List[str] = []
-    pendingUpdates: List[Any] = []  # Queue for updates (max 1000, FIFO)
+    pendingUpdates: List[Any] = []  # Queue for updates (max 1000, FIFO). Each item: {sequenceNumber, elementId, value, quality, timestamp}
     max_queue_size: int = 1000
+    nextSequence: int = 1           # Sequence number for the next queued update
+    lastAckedSequence: int = 0      # Highest sequence number acknowledged by the client
+    ttl_seconds: int = 300          # Idle TTL: subscription auto-deleted if no /sync or active stream within this window
+    last_activity: str = ""         # ISO timestamp of last /sync, /ack, or stream open
     is_streaming: bool = False  # True when SSE connection is active
     # Exclude these fields from JSON serialization/schema
     handler: Callable[[Any], None] | None = Field(exclude=True, default=None)
@@ -83,6 +89,8 @@ def get_subscription(request: Request, subscriptionId: str):
         "created": sub.created,
         "isStreaming": sub.is_streaming,
         "queuedUpdates": len(sub.pendingUpdates),
+        "nextSequence": sub.nextSequence,
+        "lastAckedSequence": sub.lastAckedSequence,
         "objects": sub.monitoredItems
     }
 
@@ -99,9 +107,13 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
 
     # For now make the subscription ID a simple index to make manual testing easy, but should be a UUID
     subscriptionId = str(len(request.app.state.I3X_DATA_SUBSCRIPTIONS))
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    ttl = getattr(request.app.state, "subscription_ttl_seconds", 300)
     new_sub = Subscription(
         subscriptionId=subscriptionId,
-        created=datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        created=now,
+        last_activity=now,
+        ttl_seconds=ttl,
     )
     request.app.state.I3X_DATA_SUBSCRIPTIONS.append(new_sub)
 
@@ -252,6 +264,7 @@ async def stream_subscription(request: Request, subscriptionId: str):
         asyncio.run_coroutine_threadsafe(queue.put(update), loop)
 
     # Switch to streaming mode
+    sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sub.is_streaming = True
     sub.handler = push_update_to_client
     sub.event_loop = loop
@@ -270,13 +283,13 @@ async def stream_subscription(request: Request, subscriptionId: str):
     summary="Sync Values",
     operation_id="syncSubscription",
 )
-def sync_subscription(request: Request, subscriptionId: str):
-    """Return and clear queued updates. Works when SSE stream is not active.
+def sync_subscription(request: Request, subscriptionId: str, req: SyncRequest = Body(default=SyncRequest())):
+    """Acknowledge previously received updates (optional) and return all pending updates in one call.
 
-    Returns array of value updates in format: [{elementId: {data: [VQT]}}]
+    If `through` is provided, all queued updates with sequenceNumber <= through are removed first,
+    then the remaining (newer) updates are returned.
     """
 
-    # Locate the subscription
     sub = next(
         (
             s
@@ -288,10 +301,12 @@ def sync_subscription(request: Request, subscriptionId: str):
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # Return and clear the queue
-    response = sub.pendingUpdates.copy()
-    sub.pendingUpdates.clear()
-    return response
+    if req.through is not None:
+        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.through]
+        sub.lastAckedSequence = max(sub.lastAckedSequence, req.through)
+
+    sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    return {"success": True, "result": list(sub.pendingUpdates)}
 
 
 # 4.2.3.4 Unsubscribe by SubscriptionId
@@ -340,11 +355,9 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
             element_id = instance.get("elementId")
             if element_id and element_id in sub.monitoredItems:
 
-                # Get the payload using the subscription's maxDepth preference
-                updateValue = getSubscriptionValue(instance, value, maxDepth=sub.maxDepth, data_source=data_source)
-
                 if sub.is_streaming and sub.handler:
                     # Stream mode: immediate delivery via SSE handler
+                    updateValue = getSubscriptionValue(instance, value, maxDepth=sub.maxDepth, data_source=data_source)
                     try:
                         sub.handler(updateValue)
                     except Exception as e:
@@ -353,22 +366,47 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
                         sub.is_streaming = False
                         sub.handler = None
                 else:
-                    # Queue mode: store for later /sync retrieval
+                    # Queue mode: store for later /sync retrieval in flat format with sequence number
+                    actual_value = value.get("value") if isinstance(value, dict) else value
+                    quality = value.get("quality", "Good") if isinstance(value, dict) else "Good"
+                    timestamp = value.get("timestamp") if isinstance(value, dict) else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    queued_item = {
+                        "sequenceNumber": sub.nextSequence,
+                        "elementId": element_id,
+                        "value": actual_value,
+                        "quality": quality,
+                        "timestamp": timestamp,
+                    }
+                    sub.nextSequence += 1
                     # Enforce FIFO with max queue size
                     if len(sub.pendingUpdates) >= sub.max_queue_size:
-                        # Remove oldest item (FIFO)
                         sub.pendingUpdates.pop(0)
-                    sub.pendingUpdates.append(updateValue)
+                    sub.pendingUpdates.append(queued_item)
     except Exception as e:
         import traceback
         print(f"Error routing data source update: {e}\n{traceback.format_exc()}")
 
 
 def subscription_worker(I3X_DATA_SUBSCRIPTIONS, running_flag):
-    """Subscription worker thread - now just keeps the thread alive for streaming mode"""
+    """Subscription worker thread - handles TTL cleanup of abandoned subscriptions"""
+    TTL_CHECK_INTERVAL = 60  # seconds between cleanup passes
+    elapsed = 0
     while running_flag["running"]:
-        # Just sleep - updates now come via callback from data sources
         time.sleep(1)
+        elapsed += 1
+        if elapsed < TTL_CHECK_INTERVAL:
+            continue
+        elapsed = 0
+
+        now = datetime.now(timezone.utc)
+        expired = [
+            s for s in I3X_DATA_SUBSCRIPTIONS
+            if not s.is_streaming and s.last_activity and
+            (now - datetime.fromisoformat(s.last_activity)).total_seconds() > s.ttl_seconds
+        ]
+        for sub in expired:
+            I3X_DATA_SUBSCRIPTIONS.remove(sub)
+            print(f"[TTL] Subscription {sub.subscriptionId} expired and was deleted")
 
 
 # Recursively collect an instance tree starting from root_id
