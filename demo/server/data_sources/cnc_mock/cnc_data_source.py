@@ -242,7 +242,6 @@ class CNCDataSource(I3XDataSource):
                         for instance in self.data["instances"]:
                             if instance["elementId"] == rid:
                                 filtered = {k: v for k, v in instance.items() if k != "records"}
-                                filtered["subject"] = element_id
                                 filtered["relationshipType"] = rel_type
                                 filtered["relationshipTypeInverse"] = self._get_inverse_relationship(rel_type)
                                 related_objects.append(filtered)
@@ -262,7 +261,6 @@ class CNCDataSource(I3XDataSource):
                 for instance in self.data["instances"]:
                     if instance["elementId"] in related_ids:
                         filtered = {k: v for k, v in instance.items() if k != "records"}
-                        filtered["subject"] = element_id
                         filtered["relationshipType"] = matching_key
                         filtered["relationshipTypeInverse"] = self._get_inverse_relationship(matching_key)
                         related_objects.append(filtered)
