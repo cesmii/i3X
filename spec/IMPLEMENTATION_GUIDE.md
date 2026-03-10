@@ -43,6 +43,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
+  - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
@@ -1148,26 +1149,30 @@ The response includes value updates over SSE in the following format:
 
 ### Sync
 
-Sync allows the client to control when value changes are received, and to acknowledge value changes.
+Sync allows the client to control when value changes are received, and to explicitly acknowledge receipt.
 
 **How it works:**
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/{id}/register`
-3. Server queues updates as they occur
+3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
 4. Client polls via `POST /subscriptions/{id}/sync`
-5. Server returns queued updates and clears the queue
-6. Continue this process
+5. Server returns queued updates without clearing the queue
+6. Client processes the updates
+7. Client acknowledges receipt via `POST /subscriptions/{id}/ack` with `{"through": <sequenceNumber>}`
+8. Server removes all updates with sequence number ≤ the acknowledged value
+9. Continue this process
 
-[TODO] - need to add support for acknowledgement
+This approach ensures updates are not lost if the client crashes between receiving and processing data.
 
 ---
 
 #### `POST` /subscriptions/{subscriptionId}/sync
 
-Syncs the queue of Object value changes with the client.
+Returns queued Object value changes without clearing the queue. The client MUST call `/ack` after successfully processing updates to remove them from the queue.
 
-- Server MUST clear the values queue for the subscription after the client calls sync
+- Server MUST NOT clear the values queue after sync
+- Each update includes a `sequenceNumber` to support acknowledgement
 
 **Path Parameters:**
 
@@ -1178,8 +1183,57 @@ Syncs the queue of Object value changes with the client.
 **Response:**
 
 ```json
-[{"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"}]
+{
+  "success": true,
+  "result": [
+    {"sequenceNumber": 1, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+    {"sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+  ]
+}
 ```
+
+---
+
+#### `POST` /subscriptions/{subscriptionId}/ack
+
+Acknowledges receipt of updates through a given sequence number. The server removes all updates with a sequence number less than or equal to `through` from the queue.
+
+**Path Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to acknowledge |
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `through` | integer | Yes | Acknowledge all updates with sequenceNumber ≤ this value |
+
+```json
+{"through": 2}
+```
+
+**Response:**
+
+```json
+{"success": true}
+```
+
+---
+
+### Subscription Life Cycle
+
+Once a Subscription has been created and one or more Objects have been registered, the Server SHALL begin queuing data change events for those Objects.
+
+If neither an active SSE stream nor a call to `/sync` is received within the configured Time-To-Live (TTL) interval, the Server MUST delete the Subscription. Deletion MUST include:
+
+- All queued Object values associated with the Subscription
+- Any internal resources allocated to maintain the Subscription
+
+This requirement prevents abandoned Subscriptions from consuming Server resources.
+
+Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUST be re-created by the Client. Subsequent calls to `/sync` or `/stream` for a deleted or non-existent Subscription MUST return 404 Not Found.
 
 ---
 

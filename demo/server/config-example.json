@@ -32,6 +32,9 @@
             "config": {}
         }
     },
+    "subscriptions": {
+        "ttl_seconds": 300
+    },
     "data_source_routing": {
         "primary": "exploratory",
         "get_namespaces": "exploratory",
