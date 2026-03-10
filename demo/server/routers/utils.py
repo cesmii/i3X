@@ -98,7 +98,12 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             else:
                 value_dict[child_key] = child_data
 
-        return {"isComposition": True, "value": value_dict}
+        return {
+            "isComposition": True,
+            "value": value_dict,
+            "quality": parent_vqt.get("quality"),
+            "timestamp": parent_vqt.get("timestamp")
+        }
     else:
         # Simple (no children): flat VQT
         data_list = element_data.get("data", [{}])
