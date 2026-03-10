@@ -836,7 +836,7 @@ Returns related Objects, with the option to filter on a Relationship Type.
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | List of elementIds to browse for relationships |
 | `relationshipType` | string | No | The elementId of the Relationship Type to filter on. Leave out or set to null to get all related Objects. |
-| `includeMetadata` | boolean | No | Optionally include relationship metadata in the response. |
+| `includeMetadata` | boolean | No | When true, includes all extended metadata fields on each returned Object. |
 
 ```json
 {
@@ -852,6 +852,12 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
+Each returned Object always includes `relationships`, `relationshipType`, and `relationshipTypeInverse` to support graph traversal without additional API calls:
+
+- `relationships` — the returned Object's own outgoing edges (same as on the Object definition), enabling clients to plan the next traversal step
+- `relationshipType` — the relationship type of the edge **from the queried element to this Object** (e.g. `HasParent`)
+- `relationshipTypeInverse` — the relationship type of the edge **from this Object back to the queried element** (e.g. `HasChildren`)
+
 ```json
 {
   "success": true,
@@ -866,7 +872,13 @@ Returns a bulk response with the related Objects for each queried elementId.
             "typeId": "string",
             "parentId": "",
             "isComposition": false,
-            "namespaceUri": "string"
+            "namespaceUri": "string",
+            "relationships": {
+              "HasParent": "string",
+              "HasChildren": ["string"]
+            },
+            "relationshipType": "HasParent",
+            "relationshipTypeInverse": "HasChildren"
           }
         ]
       }
@@ -880,6 +892,8 @@ Returns a bulk response with the related Objects for each queried elementId.
   }
 }
 ```
+
+> **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
 ---
 

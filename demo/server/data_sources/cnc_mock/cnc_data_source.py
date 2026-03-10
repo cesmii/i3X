@@ -231,16 +231,22 @@ class CNCDataSource(I3XDataSource):
         relationships_metadata = source_instance.get("relationships", {})
 
         if relationship_type is None:
-            all_related_ids = set()
+            seen_ids = set()
             for rel_type, related_ids in relationships_metadata.items():
+                if isinstance(related_ids, str):
+                    related_ids = [related_ids]
                 if isinstance(related_ids, list):
-                    all_related_ids.update(related_ids)
-                elif isinstance(related_ids, str):
-                    all_related_ids.add(related_ids)
-
-            related_objects = [
-                i for i in self.data["instances"] if i["elementId"] in all_related_ids
-            ]
+                    for rid in related_ids:
+                        if rid in seen_ids:
+                            continue
+                        for instance in self.data["instances"]:
+                            if instance["elementId"] == rid:
+                                filtered = {k: v for k, v in instance.items() if k != "records"}
+                                filtered["relationshipType"] = rel_type
+                                filtered["relationshipTypeInverse"] = self._get_inverse_relationship(rel_type)
+                                related_objects.append(filtered)
+                                seen_ids.add(rid)
+                                break
         else:
             matching_key = None
             for key in relationships_metadata.keys():
@@ -250,23 +256,23 @@ class CNCDataSource(I3XDataSource):
 
             if matching_key:
                 related_ids = relationships_metadata[matching_key]
-                if isinstance(related_ids, list):
-                    related_objects = [
-                        i for i in self.data["instances"] if i["elementId"] in related_ids
-                    ]
-                else:
-                    for instance in self.data["instances"]:
-                        if instance["elementId"] == related_ids:
-                            related_objects = [instance]
-                            break
+                if isinstance(related_ids, str):
+                    related_ids = [related_ids]
+                for instance in self.data["instances"]:
+                    if instance["elementId"] in related_ids:
+                        filtered = {k: v for k, v in instance.items() if k != "records"}
+                        filtered["relationshipType"] = matching_key
+                        filtered["relationshipTypeInverse"] = self._get_inverse_relationship(matching_key)
+                        related_objects.append(filtered)
 
-        # Filter out records
-        filtered_results = []
-        for instance in related_objects:
-            filtered_instance = {k: v for k, v in instance.items() if k != "records"}
-            filtered_results.append(filtered_instance)
+        return related_objects
 
-        return filtered_results
+    def _get_inverse_relationship(self, relationship_type: str) -> Optional[str]:
+        """Look up the inverse/reverse relationship type name"""
+        for rel_type in self.data["relationshipTypes"]:
+            if rel_type["elementId"].lower() == relationship_type.lower():
+                return rel_type.get("reverseOf")
+        return None
 
     def update_instance_value(
         self, element_id: str, value: Any

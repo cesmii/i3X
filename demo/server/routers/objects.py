@@ -86,10 +86,15 @@ def query_related_objects(
                 eid_decoded,
                 request_body.relationshipType
             )
-            succeeded.append({
-                "elementId": eid_decoded,
-                "result": [getObject(obj, request_body.includeMetadata) for obj in related_objects]
-            })
+            result = []
+            for obj in related_objects:
+                obj_data = getObject(obj, request_body.includeMetadata)
+                # Always include relationship fields to support graph traversal
+                for field in ("relationships", "relationshipType", "relationshipTypeInverse"):
+                    if field in obj:
+                        obj_data[field] = obj[field]
+                result.append(obj_data)
+            succeeded.append({"elementId": eid_decoded, "result": result})
         else:
             failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
