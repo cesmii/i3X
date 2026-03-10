@@ -23,6 +23,12 @@ This document is a working draft, and should not be considered complete or norma
 - [Transport & Encoding](#transport--encoding)
   - [Security & Authentication](#security--authentication)
   - [Versioning](#versioning)
+- [Response Format](#response-format)
+  - [Success Response](#success-response)
+  - [Bulk Response](#bulk-response)
+  - [Error Response](#error-response)
+  - [SSE Stream Events](#sse-stream-events)
+  - [Sync Response](#sync-response)
 - [Address Space](#address-space)
   - [ElementId and DisplayName](#elementid-and-displayname)
   - [Namespaces](#namespaces)
@@ -95,6 +101,171 @@ All servers MUST implement a `GET /info` endpoint that returns information about
 Clients SHOULD use `GET /info` to discover the `specVersion` and `capabilities` supported by a server before making other API calls.
 
 [TODO] define a versioning approach used if/when we need evolve features. Should we add v1/ (future v2, etc) to the endpoint URLs?
+
+## Response Format
+
+All i3X responses follow a consistent envelope shape. Every response body contains a `success` boolean so clients can check the outcome without inspecting HTTP status codes or response structure first.
+
+### Response Shape Summary
+
+```
+┌──────────────────┬──────────────────────────────────────────┬──────────────────────────────────────────────────┐
+│      Format      │                 Endpoints                │                     Structure                    │
+├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ Success (single) │ GET /namespaces                          │ {"success": true, "result": <data>}              │
+│                  │ GET /objecttypes                         │                                                  │
+│                  │ GET /relationshiptypes                   │                                                  │
+│                  │ GET /objects                             │                                                  │
+│                  │ POST /subscriptions                      │                                                  │
+│                  │ POST /subscriptions/register             │                                                  │
+│                  │ POST /subscriptions/unregister           │                                                  │
+│                  │ POST /subscriptions/sync                 │                                                  │
+│                  │ POST /subscriptions/delete               │                                                  │
+│                  │ PUT /objects/{elementId}/value           │                                                  │
+├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ Bulk             │ POST /objecttypes/query                  │ {"success": bool,                                │
+│                  │ POST /relationshiptypes/query            │  "result": {                                     │
+│                  │ POST /objects/list                       │    "succeeded": [{"elementId","result"}],        │
+│                  │ POST /objects/related                    │    "failed":    [{"elementId","error"}]          │
+│                  │ POST /objects/value                      │  }}                                              │
+│                  │ POST /objects/history                    │ success=false if any item failed                 │
+├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ Error            │ Any endpoint (HTTP 4xx/5xx)              │ {"success": false,                               │
+│                  │                                          │  "error": {"message": "..."}}                    │
+├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
+│ SSE Stream       │ POST /subscriptions/stream               │ data: [{"elementId","value","quality",           │
+│                  │                                          │         "timestamp"}]                            │
+└──────────────────┴──────────────────────────────────────────┴──────────────────────────────────────────────────┘
+```
+
+### Success Response
+
+All GET endpoints and most action endpoints return:
+
+```json
+{
+  "success": true,
+  "result": <data>
+}
+```
+
+Examples:
+
+```json
+// GET /namespaces
+{ "success": true, "result": [{ "uri": "https://cesmii.org/i3x", "displayName": "I3X" }] }
+
+// POST /subscriptions
+{ "success": true, "result": { "subscriptionId": "Xf9q8wL1...", "displayName": "mySubscription" } }
+
+// PUT /objects/{elementId}/value (write succeeded)
+{ "success": true, "result": null }
+```
+
+### Bulk Response
+
+POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed.
+
+```json
+{
+  "success": false,
+  "result": {
+    "succeeded": [
+      { "elementId": "pump-101", "result": { ... } }
+    ],
+    "failed": [
+      { "elementId": "non-existent", "error": { "message": "Element not found: non-existent" } }
+    ]
+  }
+}
+```
+
+#### Value result shape (`POST /objects/value`)
+
+Simple (leaf) element:
+```json
+{ "elementId": "sensor-001", "result": { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" } }
+```
+
+Composition element (when `maxDepth > 1`):
+```json
+{
+  "elementId": "pump-101-measurements",
+  "result": {
+    "isComposition": true,
+    "value": {
+      "_value": { "value": null, "quality": "GoodNoData", "timestamp": "..." },
+      "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
+    }
+  }
+}
+```
+
+- `_value` contains the parent element's own VQT
+- Other keys are child `elementId`s (HasComponent children)
+
+#### History result shape (`POST /objects/history`)
+
+```json
+{
+  "elementId": "sensor-001",
+  "result": [
+    { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" },
+    { "isComposition": false, "value": 54.9, "quality": "Good", "timestamp": "2025-10-27T10:15:30Z" }
+  ]
+}
+```
+
+### Error Response
+
+Returned for HTTP 4xx/5xx responses. See [Error Handling](#error-handling) for HTTP status code reference.
+
+```json
+{
+  "success": false,
+  "error": { "message": "Human-readable error message" }
+}
+```
+
+### SSE Stream Events
+
+Each event from `POST /subscriptions/stream` is a JSON array of flat value updates:
+
+```
+data: [{"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"}]
+```
+
+### Sync Response
+
+`POST /subscriptions/sync` returns all pending queued updates, each with a sequence number for acknowledgement:
+
+```json
+{
+  "success": true,
+  "result": [
+    { "sequenceNumber": 1, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z" },
+    { "sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z" }
+  ]
+}
+```
+
+### Design Rationale
+
+**Why a consistent `{success, result}` envelope?**
+- Clients can always check `success` before reading `result`
+- Error shape is predictable regardless of which endpoint failed
+- Bulk operations surface partial failures without using HTTP error codes
+
+**Why `succeeded`/`failed` instead of a flat array?**
+- Clearly separates items that worked from items that didn't
+- Clients can process successes independently without inspecting each item for a status flag
+- `success: false` at the top level signals that action is needed without forcing clients to iterate all items first
+
+**Why VQT for subscription updates?**
+- Consistent with query value format — same parsing logic for polling and streaming
+- `sequenceNumber` on sync items enables reliable at-least-once acknowledgement
+
+---
 
 ## Address Space
 The i3X server address space consists of the following elements.
@@ -1378,14 +1549,7 @@ When `maxDepth > 1` and the element has components:
 | 500 | Internal Server Error | Server-side error |
 | 501 | Not Implemented | Optional feature not supported |
 
-**Error Response Format:**
-
-```json
-{
-  "success": false,
-  "error": { "message": "Human-readable error message" }
-}
-```
+See [Error Response](#error-response) for the error response body format.
 
 ---
 
