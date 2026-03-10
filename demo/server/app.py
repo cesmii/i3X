@@ -112,12 +112,13 @@ async def favicon():
 @app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui():
     """Custom Swagger UI with icon in header."""
+    root_path = app_config.get("root_path", "")
     html = f"""
     <!DOCTYPE html>
     <html>
     <head>
         <title>{app.title} - Docs</title>
-        <link rel="icon" type="image/png" href="/static/favicon.png">
+        <link rel="icon" type="image/png" href="{root_path}/static/favicon.png">
         <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui.css">
     </head>
     <body>
@@ -125,14 +126,14 @@ async def custom_swagger_ui():
         <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
         <script>
             SwaggerUIBundle({{
-                url: "{app.openapi_url}",
+                url: "{root_path}{app.openapi_url}",
                 dom_id: '#swagger-ui',
                 presets: [SwaggerUIBundle.presets.apis, SwaggerUIBundle.SwaggerUIStandalonePreset],
                 layout: "BaseLayout",
                 defaultModelsExpandDepth: -1
             }});
         </script>
-        <script src="/static/swagger-custom.js"></script>
+        <script src="{root_path}/static/swagger-custom.js"></script>
     </body>
     </html>
     """
@@ -142,8 +143,9 @@ async def custom_swagger_ui():
 @app.get("/redoc", include_in_schema=False)
 async def custom_redoc():
     """Custom ReDoc with icon in header."""
+    root_path = app_config.get("root_path", "")
     return get_redoc_html(
-        openapi_url=app.openapi_url,
+        openapi_url=f"{root_path}{app.openapi_url}",
         title=app.title + " - ReDoc",
     )
 
