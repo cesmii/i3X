@@ -1021,49 +1021,6 @@ subscriptions.
 
 ---
 
-#### `POST` /subscriptions/list
-
-Return the details of one or more subscriptions, including the registered objects.
-
-**Body Parameters:**
-```json
-{
-  "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
-}
-```
-
-| Name | Type         | Required | Description                                  |
-|------|--------------|----------|----------------------------------------------|
-| `subscriptionIds` | string array | Yes | List of subscription IDs |
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "result": [
-    {
-      "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-      "displayName": "mySubscription",
-      "elementIds": [
-        "object-elementid-1",
-        "object-elementid-2"
-      ]
-    }
-  ]
-}
-```
-[TODO] - Removed created, isStreaming, queuedUpdates which is more status of the subscription. If we want this we should probably put it under a "status" attribute and maybe even add a switch like includeMetadata to return it, but leaving it out for now
-
-| Name | Type         | Required | Description                                                           |
-|------|--------------|----------|-----------------------------------------------------------------------|
-| `subscriptionId` | string array | Yes | Unique ID of the subscription                                         |
-| `displayName` | string array | Yes | Friendly name of thr subscription                                     |
-| `elementIds` | string array | Yes | Array of elementIds for all objects registered to the subscription |
-
-[TODO] - objects probably needs to be an [{}] because right now a subscription can have an elementid + maxdepth
----
-
 #### `POST` /subscriptions/delete
 
 Delete one or more subscriptions.

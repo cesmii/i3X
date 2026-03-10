@@ -9,7 +9,7 @@ import uuid
 from pydantic import BaseModel, Field, ConfigDict
 from models import (
     CreateSubscriptionRequest,
-    ListSubscriptionsRequest, SubscriptionDetail,
+
     RegisterMonitoredItemsRequest,
     StreamRequest, SyncRequest,
     DeleteSubscriptionsRequest,
@@ -81,25 +81,6 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
 
     return success_response({"subscriptionId": subscription_id, "displayName": subscription.displayName})
 
-
-# POST /subscriptions/list - Retrieve details for one or more subscriptions
-@subs.post(
-    "/subscriptions/list",
-    summary="List Subscriptions",
-    operation_id="listSubscriptions",
-)
-def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
-    """Return details for the specified subscriptions, including registered elementIds."""
-    result = []
-    for sub_id in req.subscriptionIds:
-        sub = _find_sub(request, sub_id)
-        if sub:
-            result.append(SubscriptionDetail(
-                subscriptionId=sub.subscriptionId,
-                displayName=sub.displayName,
-                elementIds=sub.monitoredItems,
-            ))
-    return success_response([r.model_dump() for r in result])
 
 
 # RFC 4.2.3.2 - Register Monitored Items

@@ -148,15 +148,6 @@ class CreateSubscriptionResponse(BaseModel):
     displayName: Optional[str] = None
 
 
-class ListSubscriptionsRequest(BaseModel):
-    subscriptionIds: List[str] = Field(..., description="List of subscription IDs to retrieve")
-
-
-class SubscriptionDetail(BaseModel):
-    subscriptionId: str
-    displayName: Optional[str] = None
-    elementIds: List[str] = []
-
 
 class RegisterMonitoredItemsRequest(BaseModel):
     subscriptionId: str = Field(..., description="The subscription to register items with")
