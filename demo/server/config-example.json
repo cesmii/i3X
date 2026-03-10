@@ -5,7 +5,8 @@
     "app": {
         "title": "I3X API Prototype",
         "description": "Industrial Information Interface eXchange API - RFC 001 Compliant",
-        "version": "0.0.1"
+        "version": "0.0.1",
+        "root_path": ""
     },
     "_comment_single_source_examples": [
         "Single data source configuration examples:",
