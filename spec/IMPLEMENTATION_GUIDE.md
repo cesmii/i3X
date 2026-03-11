@@ -852,11 +852,10 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
-Each returned Object always includes `relationships`, `relationshipType`, and `relationshipTypeInverse` to support graph traversal without additional API calls:
+Each returned Object always includes `relationships` and `sourceRelationship` to support graph traversal without additional API calls:
 
 - `relationships` — the returned Object's own outgoing edges (same as on the Object definition), enabling clients to plan the next traversal step
-- `relationshipType` — the relationship type of the edge **from the queried element to this Object** (e.g. `HasParent`)
-- `relationshipTypeInverse` — the relationship type of the edge **from this Object back to the queried element** (e.g. `HasChildren`)
+- `sourceRelationship` — the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
 
 ```json
 {
@@ -877,8 +876,7 @@ Each returned Object always includes `relationships`, `relationshipType`, and `r
               "HasParent": "string",
               "HasChildren": ["string"]
             },
-            "relationshipType": "HasParent",
-            "relationshipTypeInverse": "HasChildren"
+            "sourceRelationship": "HasParent"
           }
         ]
       }

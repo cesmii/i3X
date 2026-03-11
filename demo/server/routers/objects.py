@@ -90,7 +90,7 @@ def query_related_objects(
             for obj in related_objects:
                 obj_data = getObject(obj, request_body.includeMetadata)
                 # Always include relationship fields to support graph traversal
-                for field in ("relationships", "relationshipType", "relationshipTypeInverse"):
+                for field in ("relationships", "sourceRelationship"):
                     if field in obj:
                         obj_data[field] = obj[field]
                 result.append(obj_data)

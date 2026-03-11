@@ -335,8 +335,7 @@ class MockDataSource(I3XDataSource):
                         for instance in self.data["instances"]:
                             if instance["elementId"] == rid:
                                 filtered = {k: v for k, v in instance.items() if k != "records"}
-                                filtered["relationshipType"] = rel_type
-                                filtered["relationshipTypeInverse"] = self._get_inverse_relationship(rel_type)
+                                filtered["sourceRelationship"] = rel_type
                                 related_objects.append(filtered)
                                 seen_ids.add(rid)
                                 break
@@ -355,8 +354,7 @@ class MockDataSource(I3XDataSource):
                 for instance in self.data["instances"]:
                     if instance["elementId"] in related_ids:
                         filtered = {k: v for k, v in instance.items() if k != "records"}
-                        filtered["relationshipType"] = matching_key
-                        filtered["relationshipTypeInverse"] = self._get_inverse_relationship(matching_key)
+                        filtered["sourceRelationship"] = matching_key
                         related_objects.append(filtered)
             # Fallback: Handle non-hierarchical relationships dynamically
             else:
@@ -365,13 +363,6 @@ class MockDataSource(I3XDataSource):
                 )
 
         return related_objects
-
-    def _get_inverse_relationship(self, relationship_type: str) -> Optional[str]:
-        """Look up the inverse/reverse relationship type name"""
-        for rel_type in self.data["relationshipTypes"]:
-            if rel_type["elementId"].lower() == relationship_type.lower():
-                return rel_type.get("reverseOf")
-        return None
 
     def _process_non_hierarchical_relations(
         self, element_id: str, relationship_type: str
