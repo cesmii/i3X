@@ -74,3 +74,4 @@ ehthumbs.db
 *.db
 *.sqlite3
 prototypes/python3/server/.claude/settings.local.json
+/.vs
