@@ -6,7 +6,7 @@ i3X is in a _pre-release_ Alpha state. While the API signature is largely stable
 
 ## What is i3X?
 
-i3X is a Common API for time-series and data analytics applications focused on the manufacturing industry. It aims to provide a common interface for a wide array of back-end data sources with a unified namespace.
+i3X is a Common API for Contextual Manufacturing Information Platforms (i.e. time-series and data analytics applications focused on the manufacturing industry). It aims to provide a common interface for a wide array of back-end data sources with a unified namespace.
 
 <a href="https://i3x.dev/viz"><img src="https://i3x.dev/images/i3XHero.png?1"><br>Click to View Interactive Explainer</a>
 
@@ -45,7 +45,7 @@ The authors of this specification seek your feedback on how to move toward commo
 If you are unable to contribute code, but want to help identify issues or future enhancements, the preferred feedback mechanism is to use [GitHub issues](https://github.com/cesmii/API/issues), where input can be tracked, discussed, and categorized as an improvement or a feature request. If you desire to provide feedback, but cannot use GitHub issues, please email us: rfc@cesmii.org
 
 ## Background
-This proposal has been created by industry participants with experience developing or using manufacturing information platforms such as those provided by Rockwell Automation, OSI Pi, ThinkIQ, Inductive Automation, ThingWorx and HighByte, are deep users and often contributors to existing manufacturing ecosystems, and have more than 50 years of combined experience in designing, developing, implementing and using manufacturing information software. 
+This proposal has been created by industry participants with experience developing or using manufacturing information platforms such as those provided by Rockwell Automation, OSI Pi, ThinkIQ, Inductive Automation, ThingWorx and HighByte, are deep users and often contributors to related technology and standards efforts, and have more than 50 years of combined experience in designing, developing, implementing and using manufacturing information software. 
 
 ## API Usage
 The block diagram below shows where the i3X API is most applicable, namely within the realm of software applications running on top of operating systems on PCs or servers. Information being accessed through the API are assumed to have already been processed by contexualization functions to make it ready for consumption by other applications.
