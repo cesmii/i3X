@@ -140,32 +140,42 @@ class HistoricalUpdateResult(BaseModel):
 
 
 class CreateSubscriptionRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="Unique identifier for the client scoping this subscription")
     displayName: Optional[str] = Field(None, description="Optional friendly name for the subscription")
 
 
 class CreateSubscriptionResponse(BaseModel):
+    clientId: Optional[str] = None
     subscriptionId: str
     displayName: Optional[str] = None
 
 
-
 class RegisterMonitoredItemsRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to register items with")
     elementIds: List[str]
     maxDepth: Optional[int] = 1  # 0 means infinite recursion, 1 means no recursion, >1 recurses to that depth
 
 
 class StreamRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to open a stream for")
 
 
 class SyncRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to sync")
     through: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
 
 
 class DeleteSubscriptionsRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping these subscriptions")
     subscriptionIds: List[str] = Field(..., description="List of subscription IDs to delete")
+
+
+class ListSubscriptionsRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping these subscriptions")
+    subscriptionIds: List[str] = Field(..., description="List of subscription IDs to retrieve")
 
 
 class SyncResponseItem(BaseModel):

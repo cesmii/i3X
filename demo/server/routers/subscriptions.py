@@ -9,17 +9,18 @@ import uuid
 from pydantic import BaseModel, Field, ConfigDict
 from models import (
     CreateSubscriptionRequest,
-
     RegisterMonitoredItemsRequest,
     StreamRequest, SyncRequest,
     DeleteSubscriptionsRequest,
+    ListSubscriptionsRequest,
 )
 from data_sources.data_interface import I3XDataSource
-from .utils import getSubscriptionValue, success_response
+from .utils import getSubscriptionValue, success_response, bulk_response
 
 
 # Not required, but showing what information is stored for simulated subscriptions
 class Subscription(BaseModel):
+    clientId: Optional[str] = None
     subscriptionId: str
     displayName: Optional[str] = None
     created: str
@@ -49,10 +50,14 @@ def get_data_source(request: Request) -> I3XDataSource:
     return request.app.state.data_source
 
 
-def _find_sub(request: Request, subscription_id: str) -> Optional[Subscription]:
-    """Locate a subscription by ID"""
+def _find_sub(request: Request, subscription_id: str, client_id: Optional[str] = None) -> Optional[Subscription]:
+    """Locate a subscription by ID, optionally validating clientId scoping."""
     return next(
-        (s for s in request.app.state.I3X_DATA_SUBSCRIPTIONS if s.subscriptionId == subscription_id),
+        (
+            s for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
+            if s.subscriptionId == subscription_id
+            and (client_id is None or s.clientId is None or s.clientId == client_id)
+        ),
         None,
     )
 
@@ -71,6 +76,7 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     ttl = getattr(request.app.state, "subscription_ttl_seconds", 300)
     new_sub = Subscription(
+        clientId=subscription.clientId,
         subscriptionId=subscription_id,
         displayName=subscription.displayName,
         created=now,
@@ -79,7 +85,7 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
     )
     request.app.state.I3X_DATA_SUBSCRIPTIONS.append(new_sub)
 
-    return success_response({"subscriptionId": subscription_id, "displayName": subscription.displayName})
+    return success_response({"clientId": subscription.clientId, "subscriptionId": subscription_id, "displayName": subscription.displayName})
 
 
 
@@ -91,36 +97,26 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
 )
 def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     """Add objects to the subscription. subscriptionId is passed in the request body."""
-    sub = _find_sub(request, req.subscriptionId)
+    sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # Get data source
     data_source = request.app.state.data_source
+    succeeded = []
+    failed = []
 
-    # Validate that root elementIds exist
-    invalid = [eid for eid in req.elementIds if not data_source.get_instance_by_id(eid)]
-    if invalid:
-        raise HTTPException(
-            status_code=404, detail=f"Invalid elementIds: {', '.join(invalid)}"
-        )
-
-    # Collect all monitored elementIds including descendants
-    all_element_ids = set()
     for eid in req.elementIds:
-        tree = collect_instance_tree(
-            eid, req.maxDepth, 0, data_source.get_all_instances()
-        )
-        all_element_ids.update([i["elementId"] for i in tree])
+        if not data_source.get_instance_by_id(eid):
+            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            continue
+        tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
+        for item in tree:
+            item_id = item["elementId"]
+            if item_id not in sub.monitoredItems:
+                sub.monitoredItems.append(item_id)
+        succeeded.append({"elementId": eid, "result": None})
 
-    # Update the subscription (additive - adds to existing monitored items)
-    added_count = 0
-    for eid in all_element_ids:
-        if eid not in sub.monitoredItems:
-            sub.monitoredItems.append(eid)
-            added_count += 1
-
-    return success_response({"message": f"Registered {added_count} objects to subscription.", "totalObjects": len(sub.monitoredItems)})
+    return bulk_response(succeeded, failed)
 
 
 # RFC 4.2.3.2 - Unregister Monitored Items
@@ -131,31 +127,26 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
 )
 def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
     """Remove objects from the subscription. subscriptionId is passed in the request body."""
-    sub = _find_sub(request, req.subscriptionId)
+    sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # Get data source
     data_source = request.app.state.data_source
+    succeeded = []
+    failed = []
 
-    # Collect all elementIds including descendants (same logic as register)
-    all_element_ids = set()
     for eid in req.elementIds:
-        # Only process IDs that exist
-        if data_source.get_instance_by_id(eid):
-            tree = collect_instance_tree(
-                eid, req.maxDepth, 0, data_source.get_all_instances()
-            )
-            all_element_ids.update([i["elementId"] for i in tree])
+        if not data_source.get_instance_by_id(eid):
+            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            continue
+        tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
+        for item in tree:
+            item_id = item["elementId"]
+            if item_id in sub.monitoredItems:
+                sub.monitoredItems.remove(item_id)
+        succeeded.append({"elementId": eid, "result": None})
 
-    # Remove from subscription (silently ignore IDs that aren't registered)
-    removed_count = 0
-    for eid in all_element_ids:
-        if eid in sub.monitoredItems:
-            sub.monitoredItems.remove(eid)
-            removed_count += 1
-
-    return success_response({"message": f"Unregistered {removed_count} objects from subscription."})
+    return bulk_response(succeeded, failed)
 
 
 # POST /subscriptions/stream - Open SSE stream
@@ -166,7 +157,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
 )
 async def stream_subscription(request: Request, req: StreamRequest):
     """Open a Server-Sent Events (SSE) stream. subscriptionId is passed in the request body."""
-    sub = _find_sub(request, req.subscriptionId)
+    sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -223,7 +214,7 @@ def sync_subscription(request: Request, req: SyncRequest):
     If `through` is provided, all queued updates with sequenceNumber <= through are removed first,
     then the remaining (newer) updates are returned. subscriptionId is passed in the request body.
     """
-    sub = _find_sub(request, req.subscriptionId)
+    sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
@@ -243,8 +234,8 @@ def sync_subscription(request: Request, req: SyncRequest):
 )
 def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     """Delete one or more subscriptions by ID. subscriptionIds are passed in the request body."""
-    removed = []
-    not_found = []
+    succeeded = []
+    failed = []
 
     for sub_id in req.subscriptionIds:
         index = next(
@@ -252,16 +243,48 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
                 i
                 for i, s in enumerate(request.app.state.I3X_DATA_SUBSCRIPTIONS)
                 if s.subscriptionId == sub_id
+                and (req.clientId is None or s.clientId is None or s.clientId == req.clientId)
             ),
             None,
         )
         if index is not None:
-            removed.append(request.app.state.I3X_DATA_SUBSCRIPTIONS[index].subscriptionId)
             request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
+            succeeded.append({"elementId": sub_id, "result": None})
         else:
-            not_found.append(sub_id)
+            failed.append({"elementId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
-    return success_response({"message": "Delete processed.", "deleted": removed, "notFound": not_found})
+    return bulk_response(succeeded, failed)
+
+
+# POST /subscriptions/list - Get one or more subscriptions by ID
+@subs.post(
+    "/subscriptions/list",
+    summary="List Subscriptions",
+    operation_id="listSubscriptions",
+)
+def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
+    """Get one or more subscriptions by ID to check their existence and current configuration."""
+    succeeded = []
+    failed = []
+
+    for sub_id in req.subscriptionIds:
+        sub = _find_sub(request, sub_id, req.clientId)
+        if sub:
+            succeeded.append({
+                "elementId": sub_id,
+                "result": {
+                    "subscriptionId": sub.subscriptionId,
+                    "displayName": sub.displayName,
+                    "monitoredItems": [
+                        {"elementId": eid, "maxDepth": sub.maxDepth}
+                        for eid in sub.monitoredItems
+                    ],
+                },
+            })
+        else:
+            failed.append({"elementId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+
+    return bulk_response(succeeded, failed)
 
 
 # Subscription thread responsible for creating updates for items being monitored.
