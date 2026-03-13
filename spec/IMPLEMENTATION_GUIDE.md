@@ -637,6 +637,7 @@ Returns a list of all Relationship Types, optionally filtered by Namespace.
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
+      "relationshipId": "string",
       "reverseOf": "string"
     }
   ]
@@ -648,6 +649,7 @@ Returns a list of all Relationship Types, optionally filtered by Namespace.
 | `elementId`      | string      | Yes      | Unique identifier                                                              |
 | `displayName`    | string      | Yes      | Friendly name                                                                  |
 | `namespaceUri`   | string      | Yes      | Namespace that the type is associated with                                     |
+| `relationshipId` | string      | Yes      | Class or member of the Namespace that defines this relationshipType            |
 | `reverseOf `     | string      | Yes      | The elementId of the reverse relationship. All relationships MUST have a reverse |
 
 ---
