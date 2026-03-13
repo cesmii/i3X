@@ -54,11 +54,8 @@ class ObjectInstanceMinimal(BaseModel):
 
 class ObjectLinkedByRelationshipType(BaseModel):
     subject: Optional[str] = Field(None, description="")
-    relationshipType: Optional[str] = Field(
-        None, description="Relationship type from source to this instance"
-    )
-    relationshipTypeInverse: Optional[str] = Field(
-        None, description="Inverse relationship type from this instance to source"
+    sourceRelationship: Optional[str] = Field(
+        None, description="Relationship type traversed from the queried element to reach this instance"
     )
     elementId: str = Field(..., description="Unique string identifier for the element")
     displayName: str = Field(..., description="Object name")

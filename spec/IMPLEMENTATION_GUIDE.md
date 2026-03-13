@@ -1298,7 +1298,6 @@ Get one or more subscriptions by ID. Used to check if subscriptions exist and in
   }
 }
 ```
-
 ---
 
 #### `POST` /subscriptions/delete
@@ -1397,7 +1396,6 @@ Register one or more Objects with a Subscription.
 
 Unregister one or more Objects from a Subscription.
 
-- If an Object is not registered with the subscription the server MUST ignore it
 - Once an Object is unregistered the server SHOULD stop queuing new values for the Object on the Subscription
 - The server SHOULD NOT delete any prior queued values for the Object
 - The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
