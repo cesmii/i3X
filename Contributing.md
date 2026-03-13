@@ -6,11 +6,10 @@ In the spirit of collaboration and consensus-driven evolution, changes to the pr
 1. [Read the RFC](https://github.com/cesmii/API/blob/main/RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md) in detail to ensure your proposed changes are within the spirit and intent of this effort.
 2. [Review existing Issues](https://github.com/cesmii/API/issues), both open and closed, to ensure your ideas have not already been addressed or discussed.
 3. [Create a New Issue](https://github.com/cesmii/API/issues/new/choose) describing your proposed changes. The Working Group triages issues twice a month.
-4. Once triaged, the Working Group will move your issue to the **Todo** column in the [Project Board](https://github.com/orgs/cesmii/projects/1) as a signal to begin work.
-5. Fork the [main](https://github.com/cesmii/API/tree/main) branch to your GitHub account, and make any proposed changes related to the issue in your own fork.
-6. When you are ready, submit a Pull Request back to the [1.0](https://github.com/cesmii/API/tree/1.0) branch, and update your issue indicating readiness for Review.
-7. The Working Group will review your PR during a regular meeting, and provide feedback or merge your change, as appropriate.
-8. The Working Group may chose, at its discretion, to invite you or your team to an occurence of the regular meeting to represent your changes. 
+4. Fork the [1.0](https://github.com/cesmii/API/tree/1.0) branch to your GitHub account, and make any proposed changes related to the issue in your own fork.
+5. When you are ready, submit a Pull Request back to the [1.0](https://github.com/cesmii/API/tree/1.0) branch, and update your issue indicating readiness for Review.
+6. The Working Group will review your PR during a regular meeting, and provide feedback or merge your change, as appropriate.
+7. The Working Group may chose, at its discretion, to invite you or your team to an occurence of the regular meeting to represent your changes. 
 If you want to be a part of that review, please indicate your preference in your issue.
 
 Please note we have a charter and code of conduct, please follow it in all your interactions with the project.
