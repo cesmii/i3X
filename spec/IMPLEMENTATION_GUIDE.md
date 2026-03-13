@@ -423,10 +423,9 @@ The definition of an Object looks as follows.
  {
     "elementId": "string",
     "displayName": "string",
-    "typeId": "string",
+    "typeElementId": "string",
     "parentId": "string",
     "isComposition": false,
-    "namespaceUri": "string"
   }
 ```
 
@@ -434,20 +433,20 @@ The definition of an Object looks as follows.
 |-------|------|-------------|
 | `elementId` | string | Unique identifier |
 | `displayName` | string | Human-friendly name |
-| `typeId` | string | ElementId of the Object Type |
+| `typeElementId` | string | ElementId of the Object Type |
 | `parentId` | string? | ElementId of parent (null if root) |
 | `isComposition` | boolean | True if the element encapsulates its children |
-| `namespaceUri` | string | Namespace URI |
 
 [TODO] - i'm still not clear on isComposition, may need an example
+JW: This is a key concept for i3X relationships that MUST be understood by all involved. See [here for an explanation](https://github.com/cesmii/i3X/tree/main/demo#relationship-types-in-brief)
 
 When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
 
 **Requirements:**
 
-- An Object SHOULD have a `typeId`
-- When the `typeId` is set, the Object's value MUST conform to the Object Type schema.
-- Objects MAY not have a backing Object Type. In this case the `typeId` is left as an empty string ""
+- An Object SHOULD have a `typeElementId`
+- When the `typeElementId` is set, the Object's value MUST conform to the Object Type schema.
+- Objects MAY not have a backing Object Type. In this case the `typeId` is left as an empty string "" [JW: Why would we allow this?]
 
 ## Exploratory Methods
 
@@ -544,6 +543,7 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
+      "typeId": "string",
       "version": "1.0.0",
       "schema": {...}
     }
@@ -556,7 +556,8 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
 | `elementId`    | string      | Yes      | Unique identifier                                                              |
 | `displayName`  | string      | Yes      | Friendly name                                                                  |
 | `namespaceUri` | string      | Yes      | Namespace that the type is associated with                                     |
-| `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)          |
+| `typeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
+| `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
 | `schema`       | json schema | Yes      | The JSON Schema definition for the type                                        |
 
 ---
@@ -592,6 +593,8 @@ Returns one or more Object Types given a collection of elementIds.
           "elementId": "string",
           "displayName": "string",
           "namespaceUri": "string",
+          "typeId": "string",
+          "version": "1.0.0",
           "schema": {}
         }
       }
@@ -630,11 +633,21 @@ Returns a list of all Relationship Types, optionally filtered by Namespace.
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
+      "relationshipId": "string",
       "reverseOf": "string"
     }
   ]
 }
 ```
+
+| Field            | Type        | Required | Description                                                                    |
+|------------------|-------------|----------|--------------------------------------------------------------------------------|
+| `elementId`      | string      | Yes      | Unique identifier                                                              |
+| `displayName`    | string      | Yes      | Friendly name                                                                  |
+| `namespaceUri`   | string      | Yes      | Namespace that the type is associated with                                     |
+| `relationshipId` | string      | Yes      | Class or member of the Namespace that defines this relationshipType            |
+| `version`        | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
+| `schema`         | json schema | Yes      | The JSON Schema definition for the type                                        |
 
 ---
 
@@ -669,6 +682,7 @@ Returns one or more Relationship Types given a collection of elementIds.
           "elementId": "string",
           "displayName": "string",
           "namespaceUri": "string",
+          "relationshipId": "string",
           "reverseOf": "string"
         }
       }
@@ -689,13 +703,13 @@ Returns one or more Relationship Types given a collection of elementIds.
 
 #### `GET` /objects
 
-Returns a list of all Objects, optionally filtered by `typeId`. This allows a client to ask for all Objects of a given type.
+Returns a list of all Objects, optionally filtered by `typeElementId`. This allows a client to ask for all Objects of a given type.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `typeId` | string | No | When set, returns Objects of the given typeId. If not set, all Objects are returned. |
+| `typeElementId` | string | No | When set, returns Objects of the given typeElementId. If not set, all Objects are returned. |
 | `includeMetadata` | boolean | No | Optionally include metadata in the response. |
 
 **Response:**
@@ -708,7 +722,7 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
     {
       "elementId": "string",
       "displayName": "string",
-      "typeId": "string",
+      "typeElementId": "string",
       "parentId": "",
       "isComposition": false,
       "namespaceUri": "string"
@@ -723,10 +737,11 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
     {
       "elementId": "string",
       "displayName": "string",
-      "typeId": "string",
+      "typeElementId": "string",
       "parentId": "",
       "isComposition": false,
-      "namespaceUri": "string",
+      "typeNamespaceUri": "string",
+      "typeId":"string",
       "relationships": {
         "HasParent": "/",
         "HasChildren": [
@@ -741,6 +756,7 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
 
 [TODO] - Why do we have both parentId and relationships metadata? Doesn't this overlap with /objects/related?
   MGP: /objects/related returns the actual objects that are related.  The relationships identifies what is related without returning the related objects.
+  JW: parentId must always travel with the object so a tree can be constructed. relationships may optionally travel with the object so a graph can be traveresed.
 [TODO] - should we package metadata under 'required'/spec section and a place for custom server metadata?
   MGP: The demo puts custom server metadata along side the object metadata, such as "operationStartDate" in the pump-101 element.
 
@@ -779,10 +795,9 @@ Returns one or more Objects without data/values given a collection of elementIds
         "result": {
           "elementId": "string",
           "displayName": "string",
-          "typeId": "string",
+          "typeElementId": "string",
           "parentId": "",
-          "isComposition": false,
-          "namespaceUri": "string"
+          "isComposition": false
         }
       }
     ],
@@ -805,10 +820,11 @@ Returns one or more Objects without data/values given a collection of elementIds
         "result": {
           "elementId": "string",
           "displayName": "string",
-          "typeId": "string",
+          "typeElementId": "string",
           "parentId": "",
           "isComposition": false,
           "namespaceUri": "string",
+          "typeId": "string",
           "relationships": {
             "HasParent": "/",
             "HasChildren": [
@@ -863,10 +879,9 @@ Returns a bulk response with the related Objects for each queried elementId.
           {
             "elementId": "string",
             "displayName": "string",
-            "typeId": "string",
+            "typeElementId": "string",
             "parentId": "",
             "isComposition": false,
-            "namespaceUri": "string"
           }
         ]
       }
@@ -913,7 +928,7 @@ Values in i3X have the following definition.
 | `Bad` | Value is invalid or connection failed | Communication failure, sensor malfunction |
 | `Uncertain` | Value quality cannot be determined | Sensor in calibration, stale data |
 
-Below is an example of a temperature sensor value return, along with the Object and Object Type Definition for context.
+Below is an example of a temperature sensor value return.
 
 ```json
 // Object Value read for tempSensor1
@@ -924,30 +939,6 @@ Below is an example of a temperature sensor value return, along with the Object 
   },
   "quality": "Good",
   "timestamp": "2025-01-08T10:30:00Z"
-}
-
-// Object definition for tempSensor1
-{
-  "elementId": "tempSensor1",
-  "displayName": "Temperature Sensor 1",
-  "typeId": "TemperatureSensorType",
-  "parentId": "",
-  "isComposition": false,
-  "namespaceUri": "https://example.com/ns/sensors"
-}
-
-// Object Type definition
-{
-  "elementId": "TemperatureSensorType",
-  "displayName": "Temperature Sensor",
-  "namespaceUri": "https://example.com/ns/sensors",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "temperature": { "type": "number" },
-      "unit": { "type": "string", "enum": ["C", "F", "K"] }
-    }
-  }
 }
 ```
 

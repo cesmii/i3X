@@ -10,63 +10,73 @@ I3X_DATA = {
     ],
     "objectTypes": [
         {
-            "elementId": "work-center-type",
-            "displayName": "WorkCenterType",
-            "namespaceUri": "https://isa.org/isa95",
-            "schema": "Namespaces/isa95.json#types/work-center-type",
+            "elementId": "work-center-type",    # A unique ID within the implementation's address space
+            "displayName": "WorkCenterType",    # A human readable name the implementation may wish to localize
+            "namespaceUri": "https://isa.org/isa95",    # A reference to a source of the namespace, which may be external to the implementation
+            "typeId": "WorkCenterType",                 # A reference to the member of the source namespace being used (or projected) for this type
+            "schema": "Namespaces/isa95.json#types/work-center-type",   # A demo-implementation-specific pointer to the location of the type's schema
         },
         {
             "elementId": "work-unit-type",
             "displayName": "WorkUnitType",
             "namespaceUri": "https://isa.org/isa95",
+            "typeId": "WorkUnitType",
             "schema": "Namespaces/isa95.json#types/work-unit-type",
         },
         {
             "elementId": "state-type",
             "displayName": "StateType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "StateType",
             "schema": "Namespaces/abelara.json#types/state-type",
         },
         {
             "elementId": "product-type",
             "displayName": "ProductType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "ProductType",
             "schema": "Namespaces/abelara.json#types/product-type",
         },
         {
             "elementId": "production-type",
             "displayName": "ProductionType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "ProductionType",
             "schema": "Namespaces/abelara.json#types/production-type",
         },
         {
             "elementId": "measurements-type",
             "displayName": "MeasurementsType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "MeasurementsType",
             "schema": "Namespaces/abelara.json#types/measurements-type"
         },
         {
             "elementId": "measurement-type",
             "displayName": "MeasurementType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "MeasurementType",
             "schema": "Namespaces/abelara.json#types/measurement-type"
         },
         {
             "elementId": "measurement-value-type",
             "displayName": "MeasurementValueType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "MeasurementValueType",
             "schema": "Namespaces/abelara.json#types/measurement-value-type"
         },
         {
             "elementId": "measurement-health-type",
             "displayName": "MeasurementHealthType",
             "namespaceUri": "https://abelara.com/equipment",
+            "typeId": "MeasurementHealthType",
             "schema": "Namespaces/abelara.json#types/measurement-health-type"
         },
         {
             "elementId": "sensor-type",
             "displayName": "SensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
+            "typeId": "SensorType",
             "schema": "Namespaces/thinkiq.json#types/sensor-type"
         },
     ],
@@ -74,8 +84,7 @@ I3X_DATA = {
         {
             "elementId": "pump-station",
             "displayName": "pump-station",
-            "namespaceUri": "https://isa.org/isa95",
-            "typeId": "work-center-type",
+            "typeElementId": "work-center-type",
             # A "/" is unsed to indicate this object is attached to the root
             "parentId": "/",
             # A platform implementation would read its graph in order to populate these required response fields.
@@ -98,8 +107,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101",
             "displayName": "pump-101",
-            "namespaceUri": "https://isa.org/isa95",
-            "typeId": "work-unit-type",
+            "typeElementId": "work-unit-type",
             "parentId": "pump-station",
             # This element's data is made up of the data of other elements, so this element IS complex
             #   We would expect a client would want to recurse a complex structure by default
@@ -121,8 +129,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-state",
             "displayName": "pump-101 State",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "state-type",
+            "typeElementId": "state-type",
             "parentId": "pump-101",
             "isComposition": False,
             "relationships": {
@@ -202,8 +209,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-production",
             "displayName": "pump-101 Production",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "production-type",
+            "typeElementId": "production-type",
             "parentId": "pump-101",
             # This element has related data, but that data is not a part of the definition of this data, so it is not complex
             "isComposition": False,
@@ -218,8 +224,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-production-product",
             "displayName": "pump-101 Product",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "product-type",
+            "typeElementId": "product-type",
             "parentId": "pump-101-production",
             "isComposition": False,
             "relationships": {
@@ -241,8 +246,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-measurements",
             "displayName": "pump-101 Measurements",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "measurements-type",
+            "typeElementId": "measurements-type",
             "parentId": "pump-101",
             # This element has related data, and that data IS a part of the definition of this data, so it IS complex
             "isComposition": True,
@@ -256,8 +260,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-bearing-temperature",
             "displayName": "pump-101 Bearing Temperature",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "measurement-type",
+            "typeElementId": "measurement-type",
             "parentId": "pump-101-measurements",
             # This element has related data, and that data IS a part of the definition of this data, so it IS complex
             "isComposition": True,
@@ -287,8 +290,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-measurements-bearing-temperature-value",
             "displayName": "Pump 101 Bearing Temperature Value",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "measurement-value-type",
+            "typeElementId": "measurement-value-type",
             "parentId": "pump-101-bearing-temperature",
             "isComposition": False,
             "relationships": {
@@ -313,8 +315,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101-measurements-bearing-temperature-health",
             "displayName": "Pump 101 Bearing Health",
-            "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "measurement-health-type",
+            "typeElementId": "measurement-health-type",
             "parentId": "pump-101-bearing-temperature",
             "isComposition": False,
             "relationships": {
@@ -336,8 +337,7 @@ I3X_DATA = {
         {
             "elementId": "tank-201",
             "displayName": "tank-201",
-            "namespaceUri": "https://isa.org/isa95",
-            "typeId": "work-unit-type",
+            "typeElementId": "work-unit-type",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
@@ -348,8 +348,7 @@ I3X_DATA = {
         {
             "elementId": "sensor-001",
             "displayName": "TempSensor-101",
-            "namespaceUri": "https://thinkiq.com/equipment",
-            "typeId": "sensor-type",
+            "typeElementId": "sensor-type",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
@@ -389,12 +388,14 @@ I3X_DATA = {
             "elementId": "HasParent",
             "displayName": "HasParent",
             "namespaceUri": "https://cesmii.org/i3x",
+            "relationshipId": "HasParent",  # included in order to reference an external definition. for example, if the relationshipType is defined by a UA nodeset. 
             "reverseOf": "HasChildren",
         },
         {
             "elementId": "HasChildren",
             "displayName": "HasChildren",
             "namespaceUri": "https://cesmii.org/i3x",
+            "relationshipId": "HasParent",
             "reverseOf": "HasParent"
         },
         # Used for OOP relationships
@@ -403,24 +404,28 @@ I3X_DATA = {
             "elementId": "HasComponent",
             "displayName": "HasComponent",
             "namespaceUri": "https://cesmii.org/i3x",
+            "relationshipId": "HasComponent",
             "reverseOf": "ComponentOf"
         },
         {
             "elementId": "ComponentOf",
             "displayName": "ComponentOf",
             "namespaceUri": "https://cesmii.org/i3x",
+            "relationshipId": "ComponentOf",
             "reverseOf": "HasComponent"
         },
         {
             "elementId": "InheritedBy",
             "displayName": "InheritedBy",
             "namespaceUri": "https://cesmii.org/i3x",
+            "relationshipId": "InheritedBy",
             "reverseOf": "InheritsFrom"
         },
         {
             "elementId": "InheritsFrom",
             "displayName": "InheritsFrom",
             "namespaceUri": "https://cesmii.org/i3x",
+            "relationshipId": "InheritsFrom",
             "reverseOf": "InheritedBy"
         },
         # Used for Graph relationships
@@ -428,24 +433,28 @@ I3X_DATA = {
             "elementId": "Monitors",
             "displayName": "Monitors",
             "namespaceUri": "https://thinkiq.com/equipment",
+            "relationshipId": "Monitors",
             "reverseOf": "MonitoredBy"
         },
         {
             "elementId": "MonitoredBy",
             "displayName": "MonitoredBy",
             "namespaceUri": "https://thinkiq.com/equipment",
+            "relationshipId": "MonitoredBy",
             "reverseOf": "Monitors"
         },
         {
             "elementId": "SuppliesTo",
             "displayName": "SuppliesTo",
             "namespaceUri": "https://thinkiq.com/equipment",
+            "relationshipId": "SuppliesTo",
             "reverseOf": "SuppliedBy"
         },
         {
             "elementId": "SuppliedBy",
             "displayName": "SuppliedBy",
             "namespaceUri": "https://thinkiq.com/equipment",
+            "relationshipId": "SuppliedBy",
             "reverseOf": "SuppliesTo"
         },
     ],
