@@ -317,11 +317,11 @@ The DisplayName the human readable name often used when displaying the Namespace
 
 ### Namespaces
 
-A Namespace provides a logical grouping of elements within the i3X address space. When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the publication.
+A Namespace provides a logical grouping of elements within the i3X address space. When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the external Namespace.
 
 When an implementation of an external Namespace is in-exact, by convention, the Namespace URI SHOULD be suffixed with a `projection` query string indicating the source of the adaption.
 
-For example: http://opcfoundation.org/UA/Robotics/?projection=i3x 
+For example, by default the project MAY be called i3X: http://opcfoundation.org/UA/Robotics/?projection=i3X
 
 The following is an example of a Namespace definition.
 
@@ -329,7 +329,7 @@ The following is an example of a Namespace definition.
 
 ```json
   {
-    "uri": "https://cesmii.org/i3x",
+    "uri": "https://cesmii.org/i3X",
     "displayName": "I3X"
   }
 ```
@@ -379,7 +379,7 @@ The standard creates the necessary hooks to identify the version of an object ty
 ### Relationship Types
 
 Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types can can include composition, inheritance, graph, etc.
-Every Relationship Type MUST define a `reverseOf` that is also registered in the address space
+Every Relationship Type MUST define a `reverseOf` that is also registered in the address space.
 
 Below is an example of two Relationship Type definitions.
 
@@ -443,9 +443,6 @@ The definition of an Object looks as follows.
 | `typeElementId` | string | ElementId of the Object Type |
 | `parentId` | string? | ElementId of parent (null if root) |
 | `isComposition` | boolean | True if the element encapsulates its children |
-
-[TODO] - i'm still not clear on isComposition, may need an example
-JW: This is a key concept for i3X relationships that MUST be understood by all involved. See [here for an explanation](https://github.com/cesmii/i3X/tree/main/demo#relationship-types-in-brief)
 
 When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
 
