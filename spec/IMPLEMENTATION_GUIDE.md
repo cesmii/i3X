@@ -403,7 +403,11 @@ Below is an example of two Relationship Type definitions.
 ]
 ```
 
-[TODO] is reverseOf required? What if there is no reverse?
+**Requirements:**
+
+- Every Relationship Type MUST define a `reverseOf` — the elementId of the Relationship Type that represents the inverse direction
+- The inverse Relationship Type MUST also be registered (e.g. if `HasParent` defines `reverseOf: HasChildren`, then `HasChildren` must also exist with `reverseOf: HasParent`)
+- If object A has relationship type X to object B, then B MUST store the inverse relationship to A. This bidirectionality ensures the graph is fully traversable from any node via `POST /objects/related`
 
 ### Objects
 
@@ -836,7 +840,7 @@ Returns related Objects, with the option to filter on a Relationship Type.
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | List of elementIds to browse for relationships |
 | `relationshipType` | string | No | The elementId of the Relationship Type to filter on. Leave out or set to null to get all related Objects. |
-| `includeMetadata` | boolean | No | Optionally include relationship metadata in the response. |
+| `includeMetadata` | boolean | No | When true, includes all extended metadata fields on each returned Object. |
 
 ```json
 {
@@ -852,6 +856,11 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
+Each returned Object always includes `relationships` and `sourceRelationship` to support graph traversal without additional API calls:
+
+- `relationships` — the returned Object's own outgoing edges (same as on the Object definition), enabling clients to plan the next traversal step
+- `sourceRelationship` — the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
+
 ```json
 {
   "success": true,
@@ -866,7 +875,12 @@ Returns a bulk response with the related Objects for each queried elementId.
             "typeId": "string",
             "parentId": "",
             "isComposition": false,
-            "namespaceUri": "string"
+            "namespaceUri": "string",
+            "relationships": {
+              "HasParent": "string",
+              "HasChildren": ["string"]
+            },
+            "sourceRelationship": "HasParent"
           }
         ]
       }
@@ -880,6 +894,8 @@ Returns a bulk response with the related Objects for each queried elementId.
   }
 }
 ```
+
+> **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
 ---
 
@@ -1526,6 +1542,8 @@ Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUS
 [TODO] This is useful stuff that I can't figure out yet whereto put
 
 ### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
 
 #### HasParent / HasChildren
 
