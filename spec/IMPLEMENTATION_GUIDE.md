@@ -110,34 +110,34 @@ All i3X responses follow a consistent envelope shape. Every response body contai
 ### Response Shape Summary
 
 ```
-┌──────────────────┬──────────────────────────────────────────┬──────────────────────────────────────────────────┐
-│      Format      │                 Endpoints                │                     Structure                    │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ Success (single) │ GET /namespaces                          │ {"success": true, "result": <data>}              │
-│                  │ GET /objecttypes                         │                                                  │
-│                  │ GET /relationshiptypes                   │                                                  │
-│                  │ GET /objects                             │                                                  │
-│                  │ POST /subscriptions                      │                                                  │
-│                  │ POST /subscriptions/sync                 │                                                  │
-│                  │ PUT /objects/{elementId}/value           │                                                  │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ Bulk             │ POST /objecttypes/query                  │ {"success": bool,                                │
-│                  │ POST /relationshiptypes/query            │  "result": {                                     │
-│                  │ POST /objects/list                       │    "succeeded": [{"elementId","result"}],        │
-│                  │ POST /objects/related                    │    "failed":    [{"elementId","error"}]          │
-│                  │ POST /objects/value                      │  }}                                              │
-│                  │ POST /objects/history                    │ success=false if any item failed                 │
-│                  │ POST /subscriptions/list                 │                                                  │
-│                  │ POST /subscriptions/delete               │                                                  │
-│                  │ POST /subscriptions/register             │                                                  │
-│                  │ POST /subscriptions/unregister           │                                                  │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ Error            │ Any endpoint (HTTP 4xx/5xx)              │ {"success": false,                               │
-│                  │                                          │  "error": {"message": "..."}}                    │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ SSE Stream       │ POST /subscriptions/stream               │ data: [{"elementId","value","quality",           │
-│                  │                                          │         "timestamp"}]                            │
-└──────────────────┴──────────────────────────────────────────┴──────────────────────────────────────────────────┘
+┌──────────────────┬──────────────────────────────────────────┐
+│      Format      │                 Endpoints                │ 
+├──────────────────┼──────────────────────────────────────────┤
+│ Success (single) │ GET /namespaces                          │
+│                  │ GET /objecttypes                         │
+│                  │ GET /relationshiptypes                   │
+│                  │ GET /objects                             │
+│                  │ POST /subscriptions                      │
+│                  │ POST /subscriptions/sync                 │
+│                  │ PUT /objects/{elementId}/value           │
+├──────────────────┼──────────────────────────────────────────┤
+│ Bulk             │ POST /objecttypes/query                  │
+│                  │ POST /relationshiptypes/query            │
+│                  │ POST /objects/list                       │
+│                  │ POST /objects/related                    │
+│                  │ POST /objects/value                      │
+│                  │ POST /objects/history                    │
+│                  │ POST /subscriptions/list                 │
+│                  │ POST /subscriptions/delete               │
+│                  │ POST /subscriptions/register             │
+│                  │ POST /subscriptions/unregister           │
+├──────────────────┼──────────────────────────────────────────┤
+│ Error            │ Any endpoint (HTTP 4xx/5xx)              │
+│                  │                                          │
+├──────────────────┼──────────────────────────────────────────┤
+│ SSE Stream       │ POST /subscriptions/stream               │
+│                  │                                          │
+└──────────────────┴──────────────────────────────────────────┘
 ```
 
 ### Success Response
