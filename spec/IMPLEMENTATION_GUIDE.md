@@ -317,7 +317,13 @@ The DisplayName the human readable name often used when displaying the Namespace
 
 ### Namespaces
 
-A Namespace provides a logical grouping of elements within the i3X address space. The following is an example of a Namespace definition.
+A Namespace provides a logical grouping of elements within the i3X address space. When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the publication.
+
+When an implementation of an external Namespace is in-exact, by convention, the Namespace URI SHOULD be suffixed with a `projection` query string indicating the source of the adaption.
+
+For example: http://opcfoundation.org/UA/Robotics/?projection=i3x 
+
+The following is an example of a Namespace definition.
 
 [TODO] - should a namespace also have an elementId to make it consistent with everything else? What if we add a GET /namesapce/{id} route?
 
