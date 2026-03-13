@@ -156,9 +156,9 @@ I3X_DATA = {
                         },
                     },
                     #Values need metadata too, in fact some of the RFC 3.1.2 Object Metadata really belongs at the Value level
-                    "quality": "GOOD",
+                    "quality": "Good",
                     #Our mock platform implementation was smart enough to lift this metadata from the payload. 
-                    "timestamp": "2025-10-29T18:20:44.779036+00:00",
+                    "timestamp": "2025-10-29T18:20:44Z",
                 },
                 {
                     "value": {
@@ -179,8 +179,8 @@ I3X_DATA = {
                             },
                         },
                     },
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T18:20:44.779036+00:00",
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T18:20:44Z",
                 },
                 {
                     "value": {
@@ -201,8 +201,8 @@ I3X_DATA = {
                             },
                         },
                     },
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-27T18:20:44.779036+00:00",
+                    "quality": "Good",
+                    "timestamp": "2025-10-27T18:20:44Z",
                 },
             ],
         },
@@ -233,13 +233,13 @@ I3X_DATA = {
             "records": [
                 {
                     "value": "Product A",
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T18:20:44.779036+00:00",
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T18:20:44Z",
                 },
                 {
                     "value": "Product B",
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T18:20:44.779036+00:00",
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T18:20:44Z",
                 },
             ]
         },
@@ -274,16 +274,16 @@ I3X_DATA = {
                         "inTolerance": True,
                         "tolerance": 5.0,
                     },
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T18:20:44.779036+00:00",
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T18:20:44Z",
                 },
                 {
                     "value": {
                         "inTolerance": True,
                         "tolerance": 5.1,
                     },
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-27T18:20:44.779036+00:00",
+                    "quality": "Good",
+                    "timestamp": "2025-10-27T18:20:44Z",
                 }
             ]
         },
@@ -299,13 +299,13 @@ I3X_DATA = {
             "records": [
                 {
                     "value": 70.34,
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T18:32:47.673157+00:00"
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T18:32:47Z"
                 },
                 {
                     "value": 71.79,
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-27T18:32:47.673157+00:00"
+                    "quality": "Good",
+                    "timestamp": "2025-10-27T18:32:47Z"
                 }
             ],
              # Optional Object Metadata (RFC 3.1.2)
@@ -324,13 +324,13 @@ I3X_DATA = {
             "records": [
                 {
                     "value": 12,
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T18:32:47.673157+00:00"
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T18:32:47Z"
                 },
                 {
                     "value": 13,
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-27T18:32:47.673157+00:00"
+                    "quality": "Good",
+                    "timestamp": "2025-10-27T18:32:47Z"
                 }
             ]
         },
@@ -358,20 +358,20 @@ I3X_DATA = {
                 {
                     "value": 67.1,
                     # Should these be specified (at least as optional)?
-                    "quality": "GOOD",
+                    "quality": "Good",
                     "timestamp": "2025-10-28T10:15:30Z",
                     # Extra value-specific metadata may originate in the publisher's payload and is allowable
                     "localTimestamp": "2025-01-28T07:15:30-03:00",
                 },
                 {
                     "value": 54.9,
-                    "quality": "GOOD",
+                    "quality": "Good",
                     "timestamp": "2025-10-27T10:15:30Z",
                     "localTimestamp": "2025-01-27T07:15:30-03:00",
                 },
                 {
                     "value": 68.2,
-                    "quality": "GOOD",
+                    "quality": "Good",
                     "timestamp": "2025-10-26T10:15:30Z",
                     "localTimestamp": "2025-01-26T07:15:30-03:00",
                 },
@@ -395,7 +395,7 @@ I3X_DATA = {
             "elementId": "HasChildren",
             "displayName": "HasChildren",
             "namespaceUri": "https://cesmii.org/i3x",
-            "relationshipId": "HasParent",
+            "relationshipId": "HasChildren",
             "reverseOf": "HasParent"
         },
         # Used for OOP relationships

@@ -25,13 +25,16 @@ def get_data_source(request: Request) -> I3XDataSource:
 # RFC 4.1.5 - Instances of an Object Type
 @explore.get("/objects", summary="Get Objects", operation_id="getObjects")
 def get_objects(
-    typeId: Optional[str] = Query(default=None),
+    typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
     data_source: I3XDataSource = Depends(get_data_source),
 ):
-    """Return all Objects. Optionally filter by TypeId"""
-    instances = [getObject(i, includeMetadata) for i in data_source.get_instances(typeId)]
-    return success_response(instances)
+    """Return all Objects. Optionally filter by typeElementId"""
+    result = []
+    for i in data_source.get_instances(typeElementId):
+        type_info = data_source.get_object_type_by_id(i["typeElementId"]) if includeMetadata and i.get("typeElementId") else None
+        result.append(getObject(i, includeMetadata, type_info))
+    return success_response(result)
 
 
 # RFC 4.1.5 - Query Objects by ElementId
@@ -54,7 +57,8 @@ def query_objects_by_id(
     for eid in element_ids:
         instance = data_source.get_instance_by_id(eid)
         if instance:
-            succeeded.append({"elementId": eid, "result": getObject(instance, request_body.includeMetadata)})
+            type_info = data_source.get_object_type_by_id(instance["typeElementId"]) if request_body.includeMetadata and instance.get("typeElementId") else None
+            succeeded.append({"elementId": eid, "result": getObject(instance, request_body.includeMetadata, type_info)})
         else:
             failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
 
@@ -86,9 +90,13 @@ def query_related_objects(
                 eid_decoded,
                 request_body.relationshipType
             )
+            related_result = []
+            for obj in related_objects:
+                type_info = data_source.get_object_type_by_id(obj["typeElementId"]) if request_body.includeMetadata and obj.get("typeElementId") else None
+                related_result.append(getObject(obj, request_body.includeMetadata, type_info))
             succeeded.append({
                 "elementId": eid_decoded,
-                "result": [getObject(obj, request_body.includeMetadata) for obj in related_objects]
+                "result": related_result
             })
         else:
             failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
@@ -191,7 +199,12 @@ def update_object(
 ):
     """Update the value of an Object"""
     try:
-        data_source.update_instance_value(elementId, body)
+        # Unwrap VQT body: {value, quality, timestamp} -> extract inner value
+        if isinstance(body, dict) and "value" in body:
+            value = body["value"]
+        else:
+            value = body
+        data_source.update_instance_value(elementId, value)
         return success_response(None)
     except Exception as e:
         return error_response(str(e))
