@@ -63,7 +63,7 @@ IGNITION_CNC_DATA = {
             "elementId": TYPE_IDS["NetworkAddressDataType"],
             "displayName": "NetworkAddressDataType",
             "namespaceUri": "http://opcfoundation.org/UA/",
-            "typeId": [default]_types_/UA/NetworkAddressDataType,
+            "typeId": "[default]_types_/UA/NetworkAddressDataType",
             "schema": "Namespaces/opcfoundation.json#types/NetworkAddressDataType"
         },
         # Inductive Automation UDT types
@@ -71,7 +71,7 @@ IGNITION_CNC_DATA = {
             "elementId": TYPE_IDS["Motor"],
             "displayName": "Motor",
             "namespaceUri": "https://inductiveautomation.com/UDT",
-            "typeId": [default]_types_/Motor,
+            "typeId": "[default]_types_/Motor",
             "schema": "Namespaces/inductive.json#types/Motor"
         },
         # CESMII CNC Profile types
@@ -79,119 +79,119 @@ IGNITION_CNC_DATA = {
             "elementId": TYPE_IDS["CNCBaseType"],
             "displayName": "CNCBaseType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/CNCBaseType,
+            "typeId": "[default]_types_/profiles/CNC/CNCBaseType",
             "schema": "Namespaces/cesmii_cnc.json#types/CNCBaseType"
         },
         {
             "elementId": TYPE_IDS["MachineInformationType"],
             "displayName": "MachineInformationType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/MachineInformationType,
+            "typeId": "[default]_types_/profiles/CNC/MachineInformationType",
             "schema": "Namespaces/cesmii_cnc.json#types/MachineInformationType"
         },
         {
             "elementId": TYPE_IDS["Identification"],
             "displayName": "Identification",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/Identification,
+            "typeId": "[default]_types_/profiles/CNC/Identification",
             "schema": "Namespaces/cesmii_cnc.json#types/Identification"
         },
         {
             "elementId": TYPE_IDS["MachineStatusType"],
             "displayName": "MachineStatusType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/MachineStatusType,
+            "typeId": "[default]_types_/profiles/CNC/MachineStatusType",
             "schema": "Namespaces/cesmii_cnc.json#types/MachineStatusType"
         },
         {
             "elementId": TYPE_IDS["CoolantSystemType"],
             "displayName": "CoolantSystemType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/CoolantSystemType,
+            "typeId": "[default]_types_/profiles/CNC/CoolantSystemType",
             "schema": "Namespaces/cesmii_cnc.json#types/CoolantSystemType"
         },
         {
             "elementId": TYPE_IDS["ICoolantPumpType"],
             "displayName": "ICoolantPumpType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/ICoolantPumpType,
+            "typeId": "[default]_types_/profiles/CNC/ICoolantPumpType",
             "schema": "Namespaces/cesmii_cnc.json#types/ICoolantPumpType"
         },
         {
             "elementId": TYPE_IDS["ICoolantTankType"],
             "displayName": "ICoolantTankType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/ICoolantTankType,
+            "typeId": "[default]_types_/profiles/CNC/ICoolantTankType",
             "schema": "Namespaces/cesmii_cnc.json#types/ICoolantTankType"
         },
         {
             "elementId": TYPE_IDS["ICoolantFilterType"],
             "displayName": "ICoolantFilterType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/ICoolantFilterType,
+            "typeId": "[default]_types_/profiles/CNC/ICoolantFilterType",
             "schema": "Namespaces/cesmii_cnc.json#types/ICoolantFilterType"
         },
         {
             "elementId": TYPE_IDS["ToolType"],
             "displayName": "ToolType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/ToolType,
+            "typeId": "[default]_types_/profiles/CNC/ToolType",
             "schema": "Namespaces/cesmii_cnc.json#types/ToolType"
         },
         {
             "elementId": TYPE_IDS["IToolInformationType"],
             "displayName": "IToolInformationType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/IToolInformationType,
+            "typeId": "[default]_types_/profiles/CNC/IToolInformationType",
             "schema": "Namespaces/cesmii_cnc.json#types/IToolInformationType"
         },
         {
             "elementId": TYPE_IDS["ToolStatusType"],
             "displayName": "ToolStatusType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/ToolStatusType,
+            "typeId": "[default]_types_/profiles/CNC/ToolStatusType",
             "schema": "Namespaces/cesmii_cnc.json#types/ToolStatusType"
         },
         {
             "elementId": TYPE_IDS["ChannelType"],
             "displayName": "ChannelType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/ChannelType,
+            "typeId": "[default]_types_/profiles/CNC/ChannelType",
             "schema": "Namespaces/cesmii_cnc.json#types/ChannelType"
         },
         {
             "elementId": TYPE_IDS["PositionType"],
             "displayName": "PositionType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/PositionType,
+            "typeId": "[default]_types_/profiles/CNC/PositionType",
             "schema": "Namespaces/cesmii_cnc.json#types/PositionType"
         },
         {
             "elementId": TYPE_IDS["CommandType"],
             "displayName": "CommandType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/CommandType,
+            "typeId": "[default]_types_/profiles/CNC/CommandType",
             "schema": "Namespaces/cesmii_cnc.json#types/CommandType"
         },
         {
             "elementId": TYPE_IDS["SpindleType"],
             "displayName": "SpindleType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/SpindleType,
+            "typeId": "[default]_types_/profiles/CNC/SpindleType",
             "schema": "Namespaces/cesmii_cnc.json#types/SpindleType"
         },
         {
             "elementId": TYPE_IDS["AxisType"],
             "displayName": "AxisType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/AxisType,
+            "typeId": "[default]_types_/profiles/CNC/AxisType",
             "schema": "Namespaces/cesmii_cnc.json#types/AxisType"
         },
         {
             "elementId": TYPE_IDS["MotorType"],
             "displayName": "MotorType",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
-            "typeId": [default]_types_/profiles/CNC/MotorType,
+            "typeId": "[default]_types_/profiles/CNC/MotorType",
             "schema": "Namespaces/cesmii_cnc.json#types/MotorType"
         }
     ],
