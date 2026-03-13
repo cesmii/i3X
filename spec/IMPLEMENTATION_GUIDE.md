@@ -373,6 +373,7 @@ The standard creates the necessary hooks to identify the version of an object ty
 ### Relationship Types
 
 Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types can can include composition, inheritance, graph, etc.
+Every Relationship Type MUST define a `reverseOf` that is also registered in the address space
 
 Below is an example of two Relationship Type definitions.
 
@@ -404,9 +405,6 @@ Below is an example of two Relationship Type definitions.
   }
 ]
 ```
-
-[TODO] is reverseOf required? What if there is no reverse?
-JW: Graph traversal breaks if relationships do not have an inverse
 
 ### Objects
 
@@ -853,7 +851,7 @@ Returns related Objects, with the option to filter on a Relationship Type.
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | List of elementIds to browse for relationships |
 | `relationshipType` | string | No | The elementId of the Relationship Type to filter on. Leave out or set to null to get all related Objects. |
-| `includeMetadata` | boolean | No | Optionally include relationship metadata in the response. |
+| `includeMetadata` | boolean | No | When true, includes all extended metadata fields on each returned Object. |
 
 ```json
 {
@@ -869,6 +867,8 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
+The `relationships` and `sourceRelationship` fields are always returned on each Object, regardless of `includeMetadata`. `sourceRelationship` identifies which relationship type was traversed to return that Object. `includeMetadata` additionally includes `typeNamespaceUri` and `typeId`.
+
 ```json
 // No metadata
 {
@@ -883,7 +883,15 @@ Returns a bulk response with the related Objects for each queried elementId.
             "displayName": "string",
             "typeElementId": "string",
             "parentId": "",
-            "isComposition": false
+            "isComposition": false,
+            "sourceRelationship": "string",
+            "relationships": {
+              "HasParent": "/",
+              "HasChildren": [
+                "child1",
+                "child2"
+              ]
+            }
           }
         ]
       }
@@ -911,15 +919,16 @@ Returns a bulk response with the related Objects for each queried elementId.
             "typeElementId": "string",
             "parentId": "",
             "isComposition": false,
-            "typeNamespaceUri": "string",
-            "typeId": "string",
+            "sourceRelationship": "string",
             "relationships": {
               "HasParent": "/",
               "HasChildren": [
                 "child1",
                 "child2"
               ]
-            }
+            },
+            "typeNamespaceUri": "string",
+            "typeId": "string"
           }
         ]
       }
@@ -933,6 +942,8 @@ Returns a bulk response with the related Objects for each queried elementId.
   }
 }
 ```
+
+> **Implementor note:** Every Relationship Type used in an Object's `relationships` map MUST be registered via the `/relationshiptypes` endpoints and MUST define a `reverseOf`. Relationships MUST be stored bidirectionally — if object A declares `HasParent: B`, then object B must declare `HasChildren: [..., A]`.
 
 ---
 
@@ -1186,7 +1197,8 @@ Subscriptions allow clients to receive value changes in real-time for objects th
 | **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
 | **sync** | Value changes are queued and delivered when the client calls the sync API. |
 
-Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered. The following sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
+Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered and acknowledge delivery. The following
+sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
 
 ### Subscriptions
 
@@ -1329,7 +1341,7 @@ Once a Subscription is created, a client can add and remove Objects to the Subsc
 - Servers SHOULD queue the updates and deliver them FIFO to clients
 - Servers SHOULD have a limit on how many updates they can queue, and when reached, start dropping older updates first
 
-[TODO] - how does a server signal a client that this is or has happened?  MGP- "this happened" referring to dropped data?  Maybe through some additional data in the `GET` /subscription.  Add some timestamp for when data was last dropped?  Maybe something more creative, also?
+[TODO] - how does a server signal a client that data has been dropped?  MGP- Maybe through some additional data in the `GET` /subscription.  Add some timestamp for when data was last dropped?  Maybe something more creative, also?
 
 ---
 
@@ -1566,6 +1578,8 @@ Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUS
 [TODO] This is useful stuff that I can't figure out yet whereto put
 
 ### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then object B MUST have the inverse relationship (as defined by `reverseOf`) back to object A. This ensures that graph traversal from either direction produces consistent results and that `POST /objects/related` can reliably return related objects regardless of which side of the relationship is queried.
 
 #### HasParent / HasChildren
 
