@@ -44,6 +44,7 @@ This document is a working draft, and should not be considered complete or norma
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
   - [Subscriptions](#subscriptions)
+  - [Listing Subscriptions](#listing-subscriptions)
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
@@ -117,10 +118,7 @@ All i3X responses follow a consistent envelope shape. Every response body contai
 │                  │ GET /relationshiptypes                   │                                                  │
 │                  │ GET /objects                             │                                                  │
 │                  │ POST /subscriptions                      │                                                  │
-│                  │ POST /subscriptions/register             │                                                  │
-│                  │ POST /subscriptions/unregister           │                                                  │
 │                  │ POST /subscriptions/sync                 │                                                  │
-│                  │ POST /subscriptions/delete               │                                                  │
 │                  │ PUT /objects/{elementId}/value           │                                                  │
 ├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
 │ Bulk             │ POST /objecttypes/query                  │ {"success": bool,                                │
@@ -129,6 +127,10 @@ All i3X responses follow a consistent envelope shape. Every response body contai
 │                  │ POST /objects/related                    │    "failed":    [{"elementId","error"}]          │
 │                  │ POST /objects/value                      │  }}                                              │
 │                  │ POST /objects/history                    │ success=false if any item failed                 │
+│                  │ POST /subscriptions/list                 │                                                  │
+│                  │ POST /subscriptions/delete               │                                                  │
+│                  │ POST /subscriptions/register             │                                                  │
+│                  │ POST /subscriptions/unregister           │                                                  │
 ├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
 │ Error            │ Any endpoint (HTTP 4xx/5xx)              │ {"success": false,                               │
 │                  │                                          │  "error": {"message": "..."}}                    │
@@ -1190,30 +1192,36 @@ Streaming provides data as fast as possible, where Sync allows the client to con
 
 Clients must first create a subscription in the server. Subscriptions have the following requirements:
 
-- The server MUST provide a unique subscriptionId to the client
+- The client must provide a unique `clientId` to scope subscriptions to the client
+- The server MUST provide a unique `subscriptionId` to the client
+- The `subscriptionId` MUST be scoped to the `clientId` to ensure that only the client has access to a subscription
 - Servers SHOULD NOT make subscriptions shareable across clients, but the standard doesn't enforce that
-- Servers SHOULD make the subscriptionId unique enough that the server can reasonably assume other clients cannot guess the subscriptionId
+- `subscriptionId` and `clientId` SHOULD be unique enough that the server can reasonably assume other clients cannot guess the identifiers
 
 ---
 
 #### `POST` /subscriptions
 
-Creates a subscription and returns a unique subscription ID. The client is responsible for caching the subscriptionId to make future
-calls on the subscription. There is no way to list all subscriptions the client has created.
+Creates a subscription scoped to a client.
 
-The client can optionally pass in a friendly name for the subscription. This is intended to assist clients and servers and logging and tracking
-subscriptions.
+The client MUST pass in a `clientId` unique to the client to scope the subscription to the client. The `clientId` SHOULD be reasonably complex and difficult for other clients to guess. Examples are authentication tokens or other unique client identifiers.
+
+The server returns a unique `subscriptionId` for the subscription. This SHOULD also be reasonably complex. Both the server and the client MUST cache the `clientId` and `subscriptionId` for future requests on the subscription.
+
+The client can optionally pass in a friendly name for the subscription. This is intended to assist clients and servers in logging and tracking subscriptions.
 
 **Parameters:**
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "displayName": "mySubscription"
 }
 ```
 
-| Name | Type | Required | Description                                                 |
-|------|------|----------|-------------------------------------------------------------|
-| `displayName` | string | No       | Optional name to associate with the subscription.|
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | Unique identifier for the client. |
+| `displayName` | string | No | Optional name to associate with the subscription. |
 
 **Response:**
 
@@ -1221,15 +1229,60 @@ subscriptions.
 {
   "success": true,
   "result": {
+    "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
     "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
     "displayName": "mySubscription"
   }
 }
 ```
-| Name | Type | Required | Description                                       |
-|------|------|----------|---------------------------------------------------|
-| `subscriptionId` | string | Yes      | Unique ID for the subscription                    |
-| `displayName` | string | Yes      | Friendly name for the subscription                |
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId passed in the request. |
+| `subscriptionId` | string | Yes | Unique ID for the subscription. |
+| `displayName` | string | Yes | Friendly name for the subscription. |
+
+---
+
+#### `POST` /subscriptions/list
+
+Get one or more subscriptions by ID. Used to check if subscriptions exist and inspect their current configuration.
+
+**Body Parameters:**
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
+}
+```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscriptions. |
+| `subscriptionIds` | string array | Yes | List of subscription IDs to retrieve. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+        "result": {
+          "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+          "displayName": "mySubscription",
+          "monitoredItems": [
+            { "elementId": "object-elementid-1", "maxDepth": 1 }
+          ]
+        }
+      }
+    ],
+    "failed": []
+  }
+}
+```
 
 ---
 
@@ -1242,13 +1295,15 @@ Delete one or more subscriptions.
 **Body Parameters:**
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
 }
 ```
 
-| Name | Type         | Required | Description                                  |
-|------|--------------|----------|----------------------------------------------|
-| `subscriptionIds` | string array | Yes | List of subscription IDs |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscriptions. |
+| `subscriptionIds` | string array | Yes | List of subscription IDs to delete. |
 
 **Response:**
 
@@ -1256,9 +1311,10 @@ Delete one or more subscriptions.
 {
   "success": true,
   "result": {
-    "message": "Unsubscribe processed.",
-    "unsubscribed": ["0"],
-    "notFound": []
+    "succeeded": [
+      { "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
+    ],
+    "failed": []
   }
 }
 ```
@@ -1281,12 +1337,14 @@ Once a Subscription is created, a client can add and remove Objects to the Subsc
 
 Register one or more Objects with a Subscription.
 
-- If an Object is registered more than once this MUST be ignored by the Server
+- If an Object is registered more than once the Server MUST return success and ignore the subsequent registration
+- The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
 
 **Request Body:**
 
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
   "elementIds": [
     "object-elementid-1",
@@ -1296,11 +1354,12 @@ Register one or more Objects with a Subscription.
 }
 ```
 
-| Field            | Type | Required | Description |
-|------------------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to register items with |
-| `elementIds`        | string[] | Yes | One or more elementIds to register |
-| `maxDepth`       | integer | No | Controls recursion depth | [TODO] - MGP explain how maxDepth works.  Similar to values, where it only follows hasComponent relationships?
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId to register items with. |
+| `elementIds` | string[] | Yes | One or more elementIds to register. |
+| `maxDepth` | integer | No | Controls recursion depth. [TODO] - MGP explain how maxDepth works. Similar to values, where it only follows hasComponent relationships? |
 
 **Response:**
 
@@ -1308,8 +1367,11 @@ Register one or more Objects with a Subscription.
 {
   "success": true,
   "result": {
-    "message": "Registered 1 objects to subscription.",
-    "totalObjects": 1
+    "succeeded": [
+      { "elementId": "object-elementid-1", "result": null },
+      { "elementId": "object-elementid-2", "result": null }
+    ],
+    "failed": []
   }
 }
 ```
@@ -1323,11 +1385,13 @@ Unregister one or more Objects from a Subscription.
 - If an Object is not registered with the subscription the server MUST ignore it
 - Once an Object is unregistered the server SHOULD stop queuing new values for the Object on the Subscription
 - The server SHOULD NOT delete any prior queued values for the Object
+- The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
 
 **Request Body:**
 
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
   "elementIds": [
     "object-elementid-1",
@@ -1339,10 +1403,10 @@ Unregister one or more Objects from a Subscription.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to unregister items from |
-| `elementIds` | string[] | Yes | One or more elementIds to unregister |
-| `maxDepth` | integer | No | Controls recursion depth |
-
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId to unregister items from. |
+| `elementIds` | string[] | Yes | One or more elementIds to unregister. |
+| `maxDepth` | integer | No | Controls recursion depth. |
 
 **Response:**
 
@@ -1350,7 +1414,11 @@ Unregister one or more Objects from a Subscription.
 {
   "success": true,
   "result": {
-    "message": "Unregistered 1 objects from subscription."
+    "succeeded": [
+      { "elementId": "object-elementid-1", "result": null },
+      { "elementId": "object-elementid-2", "result": null }
+    ],
+    "failed": []
   }
 }
 ```
@@ -1388,13 +1456,15 @@ Opens an SSE stream on the subscription to stream value changes from the server.
 **Body Parameters:**
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
 }
 ```
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to stream |
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to stream. |
 
 **Response:**
 
@@ -1418,7 +1488,7 @@ Sync allows the client to control when value changes are received, and to explic
 4. Client polls via `POST /subscriptions/sync` (no `through` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
-7. Client calls `POST /subscriptions/sync` again with `{"subscriptionId": "...", "through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
+7. Client calls `POST /subscriptions/sync` again with `{"clientId": "...", "subscriptionId": "...", "through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
 8. Server removes acknowledged updates (sequenceNumber ≤ `through`) then returns the remaining queue
 9. Continue this process
 
@@ -1440,12 +1510,14 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync |
-| `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
+| `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
 
 First call (nothing to acknowledge yet):
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
 }
 ```
@@ -1453,6 +1525,7 @@ First call (nothing to acknowledge yet):
 All subsequent calls (ack previous batch, fetch new):
 ```json
 {
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
   "through": 2
 }
