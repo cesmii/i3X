@@ -867,7 +867,10 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
-The `relationships` and `sourceRelationship` fields are always returned on each Object, regardless of `includeMetadata`. `sourceRelationship` identifies which relationship type was traversed to return that Object. `includeMetadata` additionally includes `typeNamespaceUri` and `typeId`.
+Each returned Object always includes `relationships` and `sourceRelationship` to support graph traversal without additional API calls:
+
+- `relationships` — the returned Object's own outgoing edges (same as on the Object definition), enabling clients to plan the next traversal step
+- `sourceRelationship` — the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
 
 ```json
 // No metadata
@@ -943,7 +946,7 @@ The `relationships` and `sourceRelationship` fields are always returned on each 
 }
 ```
 
-> **Implementor note:** Every Relationship Type used in an Object's `relationships` map MUST be registered via the `/relationshiptypes` endpoints and MUST define a `reverseOf`. Relationships MUST be stored bidirectionally — if object A declares `HasParent: B`, then object B must declare `HasChildren: [..., A]`.
+> **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
 ---
 
@@ -1285,7 +1288,7 @@ Get one or more subscriptions by ID. Used to check if subscriptions exist and in
         "result": {
           "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
           "displayName": "mySubscription",
-          "monitoredItems": [
+          "monitoredObjects": [
             { "elementId": "object-elementid-1", "maxDepth": 1 }
           ]
         }
@@ -1324,7 +1327,7 @@ Delete one or more subscriptions.
   "success": true,
   "result": {
     "succeeded": [
-      { "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
+      { "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
     ],
     "failed": []
   }
@@ -1579,7 +1582,7 @@ Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUS
 
 ### Relationship Semantics
 
-All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then object B MUST have the inverse relationship (as defined by `reverseOf`) back to object A. This ensures that graph traversal from either direction produces consistent results and that `POST /objects/related` can reliably return related objects regardless of which side of the relationship is queried.
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
 
 #### HasParent / HasChildren
 

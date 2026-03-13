@@ -25,7 +25,7 @@ class Subscription(BaseModel):
     displayName: Optional[str] = None
     created: str
     maxDepth: int = 1  # Depth to follow HasComponent relationships (0=infinite, 1=no recursion, N=recurse N levels)
-    monitoredItems: List[str] = []
+    monitoredObjects: List[str] = []
     pendingUpdates: List[Any] = []  # Queue for updates (max 1000, FIFO). Each item: {sequenceNumber, elementId, value, quality, timestamp}
     max_queue_size: int = 1000
     nextSequence: int = 1           # Sequence number for the next queued update
@@ -112,8 +112,8 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
             item_id = item["elementId"]
-            if item_id not in sub.monitoredItems:
-                sub.monitoredItems.append(item_id)
+            if item_id not in sub.monitoredObjects:
+                sub.monitoredObjects.append(item_id)
         succeeded.append({"elementId": eid, "result": None})
 
     return bulk_response(succeeded, failed)
@@ -142,8 +142,8 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
             item_id = item["elementId"]
-            if item_id in sub.monitoredItems:
-                sub.monitoredItems.remove(item_id)
+            if item_id in sub.monitoredObjects:
+                sub.monitoredObjects.remove(item_id)
         succeeded.append({"elementId": eid, "result": None})
 
     return bulk_response(succeeded, failed)
@@ -249,9 +249,9 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
         )
         if index is not None:
             request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
-            succeeded.append({"elementId": sub_id, "result": None})
+            succeeded.append({"subscriptionId": sub_id, "result": None})
         else:
-            failed.append({"elementId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+            failed.append({"subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
     return bulk_response(succeeded, failed)
 
@@ -275,9 +275,9 @@ def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
                 "result": {
                     "subscriptionId": sub.subscriptionId,
                     "displayName": sub.displayName,
-                    "monitoredItems": [
+                    "monitoredObjects": [
                         {"elementId": eid, "maxDepth": sub.maxDepth}
-                        for eid in sub.monitoredItems
+                        for eid in sub.monitoredObjects
                     ],
                 },
             })
@@ -295,12 +295,12 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
     try:
         # Iterate through all active subscriptions
         for sub in I3X_DATA_SUBSCRIPTIONS:
-            if not sub.monitoredItems:
+            if not sub.monitoredObjects:
                 continue
 
             # Check if this update is for a monitored element
             element_id = instance.get("elementId")
-            if element_id and element_id in sub.monitoredItems:
+            if element_id and element_id in sub.monitoredObjects:
 
                 if sub.is_streaming and sub.handler:
                     # Stream mode: immediate delivery via SSE handler
