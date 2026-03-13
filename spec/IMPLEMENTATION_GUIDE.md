@@ -404,6 +404,7 @@ Below is an example of two Relationship Type definitions.
 ```
 
 [TODO] is reverseOf required? What if there is no reverse?
+JW: Graph traversal breaks if relationships do not have an inverse
 
 ### Objects
 
@@ -646,8 +647,7 @@ Returns a list of all Relationship Types, optionally filtered by Namespace.
 | `displayName`    | string      | Yes      | Friendly name                                                                  |
 | `namespaceUri`   | string      | Yes      | Namespace that the type is associated with                                     |
 | `relationshipId` | string      | Yes      | Class or member of the Namespace that defines this relationshipType            |
-| `version`        | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
-| `schema`         | json schema | Yes      | The JSON Schema definition for the type                                        |
+| `reverseOf `     | string      | Yes      | The elementId of the reverse relationship. All relationships MUST have a reverse |
 
 ---
 
@@ -724,8 +724,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "displayName": "string",
       "typeElementId": "string",
       "parentId": "",
-      "isComposition": false,
-      "namespaceUri": "string"
+      "isComposition": false
     }
   ]
 }
@@ -823,7 +822,7 @@ Returns one or more Objects without data/values given a collection of elementIds
           "typeElementId": "string",
           "parentId": "",
           "isComposition": false,
-          "namespaceUri": "string",
+          "typeNamespaceUri": "string",
           "typeId": "string",
           "relationships": {
             "HasParent": "/",
@@ -869,6 +868,34 @@ Returns related Objects, with the option to filter on a Relationship Type.
 Returns a bulk response with the related Objects for each queried elementId.
 
 ```json
+// No metadata
+{
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "string",
+        "result": [
+          {
+            "elementId": "string",
+            "displayName": "string",
+            "typeElementId": "string",
+            "parentId": "",
+            "isComposition": false
+          }
+        ]
+      }
+    ],
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
+}
+
+// With metadata
 {
   "success": true,
   "result": {
@@ -882,6 +909,15 @@ Returns a bulk response with the related Objects for each queried elementId.
             "typeElementId": "string",
             "parentId": "",
             "isComposition": false,
+            "typeNamespaceUri": "string",
+            "typeId": "string",
+            "relationships": {
+              "HasParent": "/",
+              "HasChildren": [
+                "child1",
+                "child2"
+              ]
+            }
           }
         ]
       }
@@ -993,6 +1029,8 @@ Returns the last known value for one or more Objects.
 }
 ```
 
+> **Composition elements:** When `isComposition` is `true`, `quality` and `timestamp` are **not** present at the `result` level. Instead, each component — including `_value` for the parent's own data — carries its own VQT with individual `quality` and `timestamp` fields. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for the full response structure.
+
 ---
 
 #### `POST` /objects/history
@@ -1005,7 +1043,6 @@ Returns the historical values for one or more Objects between a start and end ti
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `elementId` | string | No | Single elementId to query |
 | `elementIds` | string[] | No | One or more elementIds to query |
 | `startTime` | string | Yes | RFC 3339 timestamp for range start |
 | `endTime` | string | Yes | RFC 3339 timestamp for range end |
@@ -1013,7 +1050,6 @@ Returns the historical values for one or more Objects between a start and end ti
 
 ```json
 {
-  "elementId": "string",
   "elementIds": [
     "string"
   ],
@@ -1088,7 +1124,21 @@ Update the value of an Object.
 
 **Request Body:**
 
-The JSON value to write to the Object. The value will replace the current Object value in its entirety. Partial writes of attributes are not currently supported.
+The value to write in VQT format. The value will replace the current Object value in its entirety. Partial writes of attributes are not currently supported.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. |
+| `quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
+| `timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
+
+```json
+{
+  "value": { "temperature": 20, "unit": "C" },
+  "quality": "Good",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
 
 **Response:**
 
@@ -1491,28 +1541,38 @@ The `maxDepth` parameter controls recursion through HasComponent relationships:
 
 **Response Structure with maxDepth:**
 
-When `maxDepth > 1` and the element has components:
+When `maxDepth > 1` and the element has components, the full `POST /objects/value` response looks like:
 
 ```json
 {
-  "elementId": "machine-001",
-  "isComposition": true,
-  "value": {
-    "_value": {
-      "value": { "status": "running" },
-      "quality": "Good",
-      "timestamp": "2025-01-08T10:30:00Z"
-    },
-    "spindle-001": {
-      "value": { "rpm": 12000 },
-      "quality": "Good",
-      "timestamp": "2025-01-08T10:30:00Z"
-    },
-    "coolant-001": {
-      "value": { "flow_rate": 5.2, "temp": 22.1 },
-      "quality": "Good",
-      "timestamp": "2025-01-08T10:30:00Z"
-    }
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "machine-001",
+        "result": {
+          "isComposition": true,
+          "value": {
+            "_value": {
+              "value": { "status": "running" },
+              "quality": "Good",
+              "timestamp": "2025-01-08T10:30:00Z"
+            },
+            "spindle-001": {
+              "value": { "rpm": 12000 },
+              "quality": "Good",
+              "timestamp": "2025-01-08T10:30:00Z"
+            },
+            "coolant-001": {
+              "value": { "flow_rate": 5.2, "temp": 22.1 },
+              "quality": "Good",
+              "timestamp": "2025-01-08T10:30:00Z"
+            }
+          }
+        }
+      }
+    ],
+    "failed": []
   }
 }
 ```
