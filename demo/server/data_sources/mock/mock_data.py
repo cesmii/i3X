@@ -11,7 +11,7 @@ I3X_DATA = {
     "objectTypes": [
         {
             # Built-in generic type for one-off instances that don't conform to any declared type.
-            "elementId": "https://cesmii.org/i3x:object",
+            "elementId": "i3x-object-type",
             "displayName": "Object",
             "namespaceUri": "https://cesmii.org/i3x",
             "typeId": "object",
@@ -416,7 +416,7 @@ I3X_DATA = {
             "elementId": "pump-station-utility-meter",
             "displayName": "Utility Meter",
             "namespaceUri": "https://cesmii.org/i3x",
-            "typeElementId": "https://cesmii.org/i3x:object",
+            "typeElementId": "i3x-object-type",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {

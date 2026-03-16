@@ -83,7 +83,7 @@ Note the distinction from composition:
 Declaring a full type definition for a one-off instance — something unique that will never be reused — creates unnecessary noise in the type registry. For these cases, i3x provides a built-in generic type:
 
 ```
-https://cesmii.org/i3x:object
+i3x-object-type
 ```
 
 Its schema is simply `{"type": "object"}` — unconstrained. An instance using this type can carry any value shape without requiring a type declaration. The `pump-station-utility-meter` instance in `mock_data.py` demonstrates this: it records electricity and water readings in a structure that exists nowhere else in the model, so inventing a `utility-meter-type` would serve no purpose.
