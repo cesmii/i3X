@@ -46,7 +46,7 @@ class RelationshipType(BaseModel):
 class ObjectInstanceMinimal(BaseModel):
     elementId: str = Field(..., description="Unique string identifier for the element")
     displayName: str = Field(..., description="Object name")
-    typeId: str = Field(..., description="ElementId of the object type")
+    typeElementId: str = Field(..., description="ElementId of the object type")
     parentId: Optional[str] = Field(None, description="ElementId of the parent object")
     isComposition: bool = Field(
         ..., description="Boolean indicating if element has child objects"
@@ -61,7 +61,7 @@ class ObjectLinkedByRelationshipType(BaseModel):
     )
     elementId: str = Field(..., description="Unique string identifier for the element")
     displayName: str = Field(..., description="Object name")
-    typeId: str = Field(..., description="ElementId of the object type")
+    typeElementId: str = Field(..., description="ElementId of the object type")
     parentId: Optional[str] = Field(None, description="ElementId of the parent object")
     isComposition: bool = Field(
         ..., description="Boolean indicating if element has child objects"

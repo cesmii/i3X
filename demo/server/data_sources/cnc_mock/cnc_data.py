@@ -161,7 +161,7 @@ CNC_DATA = {
             "elementId": "cnc-work-center",
             "displayName": "CNC Work Center",
             "namespaceUri": ISA95_NAMESPACE,
-            "typeId": "work-center-type",
+            "typeElementId": "work-center-type",
             "parentId": "/",
             "isComposition": False,
             "relationships": {
@@ -177,7 +177,7 @@ CNC_DATA = {
             "elementId": "cnc-001",
             "displayName": "CNC Machine 001",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "cnc-base-type",
+            "typeElementId": "cnc-base-type",
             "parentId": "cnc-work-center",
             "isComposition": True,
             "relationships": {
@@ -200,7 +200,7 @@ CNC_DATA = {
             "elementId": "cnc-001-status",
             "displayName": "CNC-001 Status",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "machine-status-type",
+            "typeElementId": "machine-status-type",
             "parentId": "cnc-001",
             "isComposition": False,
             "relationships": {
@@ -223,7 +223,7 @@ CNC_DATA = {
             "elementId": "cnc-001-spindle",
             "displayName": "CNC-001 Main Spindle",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "spindle-type",
+            "typeElementId": "spindle-type",
             "parentId": "cnc-001",
             "isComposition": True,
             "relationships": {
@@ -236,7 +236,7 @@ CNC_DATA = {
             "elementId": "cnc-001-spindle-motor",
             "displayName": "CNC-001 Spindle Motor",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "motor-type",
+            "typeElementId": "motor-type",
             "parentId": "cnc-001-spindle",
             "isComposition": False,
             "relationships": {
@@ -263,7 +263,7 @@ CNC_DATA = {
             "elementId": "cnc-001-axis-x",
             "displayName": "CNC-001 X Axis",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "axis-type",
+            "typeElementId": "axis-type",
             "parentId": "cnc-001",
             "isComposition": True,
             "relationships": {
@@ -276,7 +276,7 @@ CNC_DATA = {
             "elementId": "cnc-001-axis-x-position",
             "displayName": "CNC-001 X Axis Position",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "position-type",
+            "typeElementId": "position-type",
             "parentId": "cnc-001-axis-x",
             "isComposition": False,
             "relationships": {
@@ -300,7 +300,7 @@ CNC_DATA = {
             "elementId": "cnc-001-axis-y",
             "displayName": "CNC-001 Y Axis",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "axis-type",
+            "typeElementId": "axis-type",
             "parentId": "cnc-001",
             "isComposition": True,
             "relationships": {
@@ -313,7 +313,7 @@ CNC_DATA = {
             "elementId": "cnc-001-axis-y-position",
             "displayName": "CNC-001 Y Axis Position",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "position-type",
+            "typeElementId": "position-type",
             "parentId": "cnc-001-axis-y",
             "isComposition": False,
             "relationships": {
@@ -337,7 +337,7 @@ CNC_DATA = {
             "elementId": "cnc-001-axis-z",
             "displayName": "CNC-001 Z Axis",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "axis-type",
+            "typeElementId": "axis-type",
             "parentId": "cnc-001",
             "isComposition": True,
             "relationships": {
@@ -350,7 +350,7 @@ CNC_DATA = {
             "elementId": "cnc-001-axis-z-position",
             "displayName": "CNC-001 Z Axis Position",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "position-type",
+            "typeElementId": "position-type",
             "parentId": "cnc-001-axis-z",
             "isComposition": False,
             "relationships": {
@@ -374,7 +374,7 @@ CNC_DATA = {
             "elementId": "cnc-001-coolant",
             "displayName": "CNC-001 Coolant System",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "coolant-system-type",
+            "typeElementId": "coolant-system-type",
             "parentId": "cnc-001",
             "isComposition": True,
             "relationships": {
@@ -386,7 +386,7 @@ CNC_DATA = {
             "elementId": "cnc-001-coolant-tank",
             "displayName": "CNC-001 Coolant Tank",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "coolant-tank-type",
+            "typeElementId": "coolant-tank-type",
             "parentId": "cnc-001-coolant",
             "isComposition": False,
             "relationships": {
@@ -409,7 +409,7 @@ CNC_DATA = {
             "elementId": "cnc-001-coolant-pump",
             "displayName": "CNC-001 Coolant Pump",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "coolant-pump-type",
+            "typeElementId": "coolant-pump-type",
             "parentId": "cnc-001-coolant",
             "isComposition": False,
             "relationships": {
@@ -434,7 +434,7 @@ CNC_DATA = {
             "elementId": "cnc-002",
             "displayName": "CNC Machine 002",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "cnc-base-type",
+            "typeElementId": "cnc-base-type",
             "parentId": "cnc-work-center",
             "isComposition": True,
             "relationships": {
@@ -457,7 +457,7 @@ CNC_DATA = {
             "elementId": "cnc-002-status",
             "displayName": "CNC-002 Status",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "machine-status-type",
+            "typeElementId": "machine-status-type",
             "parentId": "cnc-002",
             "isComposition": False,
             "relationships": {
@@ -480,7 +480,7 @@ CNC_DATA = {
             "elementId": "cnc-002-spindle",
             "displayName": "CNC-002 Main Spindle",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "spindle-type",
+            "typeElementId": "spindle-type",
             "parentId": "cnc-002",
             "isComposition": True,
             "relationships": {
@@ -493,7 +493,7 @@ CNC_DATA = {
             "elementId": "cnc-002-spindle-motor",
             "displayName": "CNC-002 Spindle Motor",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "motor-type",
+            "typeElementId": "motor-type",
             "parentId": "cnc-002-spindle",
             "isComposition": False,
             "relationships": {
@@ -520,7 +520,7 @@ CNC_DATA = {
             "elementId": "cnc-002-axis-x",
             "displayName": "CNC-002 X Axis",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "axis-type",
+            "typeElementId": "axis-type",
             "parentId": "cnc-002",
             "isComposition": True,
             "relationships": {
@@ -533,7 +533,7 @@ CNC_DATA = {
             "elementId": "cnc-002-axis-x-position",
             "displayName": "CNC-002 X Axis Position",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "position-type",
+            "typeElementId": "position-type",
             "parentId": "cnc-002-axis-x",
             "isComposition": False,
             "relationships": {
@@ -557,7 +557,7 @@ CNC_DATA = {
             "elementId": "cnc-002-axis-y",
             "displayName": "CNC-002 Y Axis",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "axis-type",
+            "typeElementId": "axis-type",
             "parentId": "cnc-002",
             "isComposition": True,
             "relationships": {
@@ -570,7 +570,7 @@ CNC_DATA = {
             "elementId": "cnc-002-axis-y-position",
             "displayName": "CNC-002 Y Axis Position",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "position-type",
+            "typeElementId": "position-type",
             "parentId": "cnc-002-axis-y",
             "isComposition": False,
             "relationships": {
@@ -594,7 +594,7 @@ CNC_DATA = {
             "elementId": "cnc-002-axis-z",
             "displayName": "CNC-002 Z Axis",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "axis-type",
+            "typeElementId": "axis-type",
             "parentId": "cnc-002",
             "isComposition": True,
             "relationships": {
@@ -607,7 +607,7 @@ CNC_DATA = {
             "elementId": "cnc-002-axis-z-position",
             "displayName": "CNC-002 Z Axis Position",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "position-type",
+            "typeElementId": "position-type",
             "parentId": "cnc-002-axis-z",
             "isComposition": False,
             "relationships": {
@@ -631,7 +631,7 @@ CNC_DATA = {
             "elementId": "cnc-002-coolant",
             "displayName": "CNC-002 Coolant System",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "coolant-system-type",
+            "typeElementId": "coolant-system-type",
             "parentId": "cnc-002",
             "isComposition": True,
             "relationships": {
@@ -643,7 +643,7 @@ CNC_DATA = {
             "elementId": "cnc-002-coolant-tank",
             "displayName": "CNC-002 Coolant Tank",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "coolant-tank-type",
+            "typeElementId": "coolant-tank-type",
             "parentId": "cnc-002-coolant",
             "isComposition": False,
             "relationships": {
@@ -666,7 +666,7 @@ CNC_DATA = {
             "elementId": "cnc-002-coolant-pump",
             "displayName": "CNC-002 Coolant Pump",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "coolant-pump-type",
+            "typeElementId": "coolant-pump-type",
             "parentId": "cnc-002-coolant",
             "isComposition": False,
             "relationships": {

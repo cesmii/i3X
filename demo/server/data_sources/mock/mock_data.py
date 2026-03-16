@@ -415,7 +415,7 @@ I3X_DATA = {
             "elementId": "pump-station-utility-meter",
             "displayName": "Utility Meter",
             "namespaceUri": "https://cesmii.org/i3x",
-            "typeId": "https://cesmii.org/i3x:object",
+            "typeElementId": "https://cesmii.org/i3x:object",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
@@ -439,7 +439,7 @@ I3X_DATA = {
             "elementId": "sensor-002",
             "displayName": "PrecisionTempSensor-301",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "typeId": "precision-temperature-sensor-type",
+            "typeElementId": "precision-temperature-sensor-type",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
