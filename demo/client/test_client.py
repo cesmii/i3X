@@ -210,7 +210,7 @@ async def get_objects(
     url = f"{base_url}/objects"
     params = {}
     if type_id is not None:
-        params["typeId"] = type_id
+        params["typeElementId"] = type_id
     if include_metadata:
         params["includeMetadata"] = "true"
     else:
@@ -428,12 +428,12 @@ async def register(
         raise ValueError("element_ids is required to run register")
 
     payload = {
+        "subscriptionId": subscription_id,
         "elementIds": element_ids,
         "maxDepth": max_depth,
-        "includeMetadata": include_metadata,
     }
 
-    url = f"{base_url}/subscriptions/{subscription_id}/register"
+    url = f"{base_url}/subscriptions/register"
     return await post(url, payload)
 
 async def unregister(
@@ -456,10 +456,11 @@ async def unregister(
         raise ValueError("element_ids is required to run register")
 
     payload = {
+        "subscriptionId": subscription_id,
         "elementIds": element_ids,
     }
 
-    url = f"{base_url}/subscriptions/{subscription_id}/unregister"
+    url = f"{base_url}/subscriptions/unregister"
     return await post(url, payload)
 
 async def sync(base_url: str = None, subscription_id: str = None):
@@ -473,8 +474,8 @@ async def sync(base_url: str = None, subscription_id: str = None):
         raise TypeError("base_url cannot be None")
     if subscription_id is None:
         raise ValueError("subscription_id is required to run sync")
-    url = f"{base_url}/subscriptions/{subscription_id}/sync"
-    return await post(url)
+    url = f"{base_url}/subscriptions/sync"
+    return await post(url, {"subscriptionId": subscription_id})
 
 def get_user_selection_any_key():
     input("Press Enter to exit SSE...\n")
@@ -497,14 +498,31 @@ async def read_sse(url: str):
         print(f"SSE stream error: {e}")
 
 def stream(base_url: str, subscription_id: str):
-    url = f"{base_url}/subscriptions/{subscription_id}/stream"
+    url = f"{base_url}/subscriptions/stream"
+
+    async def post_and_read_sse():
+        try:
+            async with httpx.AsyncClient(timeout=None) as client:
+                async with client.stream("POST", url, json={"subscriptionId": subscription_id}, headers={"Accept": "text/event-stream"}) as response:
+                    response.raise_for_status()
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            print(line[6:])
+                        elif line:
+                            print(line)
+        except asyncio.CancelledError:
+            pass
+        except httpx.StreamClosed:
+            pass
+        except Exception as e:
+            print(f"SSE stream error: {e}")
 
     # Create a new asyncio loop in a background thread
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     # Task for SSE reader
-    sse_task = loop.create_task(read_sse(url))
+    sse_task = loop.create_task(post_and_read_sse())
 
     # Run the event loop in a background thread
     def start_loop():
@@ -532,8 +550,8 @@ async def unsubscribe(base_url: str = None, subscription_id: str = None):
         raise TypeError("base_url cannot be None")
     if subscription_id is None:
         raise ValueError("subscription_id is required to run unsubscribe")
-    url = f"{base_url}/subscriptions/{subscription_id}"
-    return await delete(url)
+    url = f"{base_url}/subscriptions/delete"
+    return await post(url, {"subscriptionIds": [subscription_id]})
 
 
 #######################################
@@ -777,30 +795,28 @@ async def main():
                     menu_text = (
                         "Subscription Methods\n"
                         "0: Back\n"
-                        "1: List Subscriptions\n"
-                        "2: Get Subscription\n"
-                        "3: Create Subscription\n"
-                        "4: Register Objects\n"
-                        "5: Unregister Objects\n"
-                        "6: Sync\n"
-                        "7: Stream (Open SSE)\n"
-                        "8: Delete Subscription\n"
+                        "1: Get Subscription\n"
+                        "2: Create Subscription\n"
+                        "3: Register Objects\n"
+                        "4: Unregister Objects\n"
+                        "5: Sync\n"
+                        "6: Stream (Open SSE)\n"
+                        "7: Delete Subscription\n"
                         "X: Quit\n"
                     )
                     print(menu_text)
-                    user_selection = get_user_selection(["0", "1", "2", "3", "4", "5","6","7", "8","X"])
+                    user_selection = get_user_selection(["0", "1", "2", "3", "4", "5", "6", "7", "X"])
                     if user_selection.upper() == "X":
                         exit()
                     elif user_selection == "0":
                         break
                     elif user_selection == "1":
-                        pretty_print_json(await get(base_url + "/subscriptions"))
-                    elif user_selection == "2":
                         subscription_id = input("Enter Subscription ID: ").strip()
                         try:
                             pretty_print_json(
-                                await get(
-                                    f"{base_url}/subscriptions/{subscription_id}"
+                                await post(
+                                    f"{base_url}/subscriptions/list",
+                                    {"subscriptionIds": [subscription_id]}
                                 )
                             )
                         except Exception as e:
@@ -808,9 +824,9 @@ async def main():
                                 "Client error '404 Not Found' for url"
                             ):
                                 print(f"Subscription ID '{subscription_id}' not found")
-                    elif user_selection == "3":
+                    elif user_selection == "2":
                         pretty_print_json(await subscribe(base_url))
-                    elif user_selection == "4":
+                    elif user_selection == "3":
                         subscription_id = input("Enter Subscription ID: ").strip()
                         element_ids = []
                         while True:
@@ -827,7 +843,7 @@ async def main():
                                     base_url,
                                     subscription_id,
                                     element_ids,
-                                    True,
+                                    False,
                                     0,
                                 )
                             )
@@ -838,7 +854,7 @@ async def main():
                                 print(
                                     f"Subscription ID '{subscription_id}' or element in '{element_ids}' not found"
                                 )
-                    elif user_selection == "5":
+                    elif user_selection == "4":
                         subscription_id = input("Enter Subscription ID: ").strip()
                         element_ids = []
                         while True:
@@ -864,7 +880,7 @@ async def main():
                                 print(
                                     f"Subscription ID '{subscription_id}' or element in '{element_ids}' not found"
                                 )
-                    elif user_selection == "6":
+                    elif user_selection == "5":
                         subscription_id = input("Enter Subscription ID: ").strip()
                         try:
                             pretty_print_json(await sync(base_url, subscription_id))
@@ -873,7 +889,7 @@ async def main():
                                 "Client error '404 Not Found' for url"
                             ):
                                 print(f"Subscription ID '{subscription_id}' not found")
-                    elif user_selection == "7":
+                    elif user_selection == "6":
                         subscription_id = input("Enter Subscription ID: ").strip()
                         try:
                             stream(base_url, subscription_id)
@@ -882,9 +898,7 @@ async def main():
                                 "Client error '404 Not Found' for url"
                             ):
                                 print(f"Subscription ID '{subscription_id}' not found")
-
-                    elif user_selection == "8":
-                        subscription_ids = []
+                    elif user_selection == "7":
                         subscription_id = input(
                             "Enter Subscription ID to delete: "
                         ).strip()

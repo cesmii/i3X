@@ -26,6 +26,7 @@ CNC_DATA = {
             "elementId": "work-center-type",
             "displayName": "WorkCenterType",
             "namespaceUri": ISA95_NAMESPACE,
+            "typeId": "WorkCenterType",
             "schema": {
                 "type": "object",
                 "description": "A work center that organizes manufacturing equipment"
@@ -36,6 +37,7 @@ CNC_DATA = {
             "elementId": "cnc-base-type",
             "displayName": "CNCBaseType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "CNCBaseType",
             "schema": {
                 "type": "object",
                 "description": "Base CNC type that aggregates key components of a CNC Machine"
@@ -46,6 +48,7 @@ CNC_DATA = {
             "elementId": "machine-status-type",
             "displayName": "MachineStatusType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "MachineStatusType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -60,6 +63,7 @@ CNC_DATA = {
             "elementId": "spindle-type",
             "displayName": "SpindleType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "SpindleType",
             "schema": {
                 "type": "object",
                 "description": "CNC Spindle with motor and operational attributes"
@@ -70,6 +74,7 @@ CNC_DATA = {
             "elementId": "motor-type",
             "displayName": "MotorType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "MotorType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -87,6 +92,7 @@ CNC_DATA = {
             "elementId": "axis-type",
             "displayName": "AxisType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "AxisType",
             "schema": {
                 "type": "object",
                 "description": "CNC Axis with position and motor attributes"
@@ -97,6 +103,7 @@ CNC_DATA = {
             "elementId": "position-type",
             "displayName": "PositionType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "PositionType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -111,6 +118,7 @@ CNC_DATA = {
             "elementId": "coolant-system-type",
             "displayName": "CoolantSystemType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "CoolantSystemType",
             "schema": {
                 "type": "object",
                 "description": "CNC Coolant System with tank, pump, and filter"
@@ -121,6 +129,7 @@ CNC_DATA = {
             "elementId": "coolant-tank-type",
             "displayName": "CoolantTankType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "CoolantTankType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -135,6 +144,7 @@ CNC_DATA = {
             "elementId": "coolant-pump-type",
             "displayName": "CoolantPumpType",
             "namespaceUri": CNC_NAMESPACE,
+            "typeId": "CoolantPumpType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -681,24 +691,28 @@ CNC_DATA = {
             "elementId": "HasParent",
             "displayName": "HasParent",
             "namespaceUri": I3X_NAMESPACE,
+            "relationshipId": "HasParent",
             "reverseOf": "HasChildren",
         },
         {
             "elementId": "HasChildren",
             "displayName": "HasChildren",
             "namespaceUri": I3X_NAMESPACE,
+            "relationshipId": "HasChildren",
             "reverseOf": "HasParent"
         },
         {
             "elementId": "HasComponent",
             "displayName": "HasComponent",
             "namespaceUri": I3X_NAMESPACE,
+            "relationshipId": "HasComponent",
             "reverseOf": "ComponentOf"
         },
         {
             "elementId": "ComponentOf",
             "displayName": "ComponentOf",
             "namespaceUri": I3X_NAMESPACE,
+            "relationshipId": "ComponentOf",
             "reverseOf": "HasComponent"
         },
     ],
