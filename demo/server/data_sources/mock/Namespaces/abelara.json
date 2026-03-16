@@ -149,34 +149,15 @@
         },
         "production-type": {
             "description": "Production container - no records, organizational metadata with HasChildren relationships",
-            "type": "object",
-            "!related": {
-                "relationshipType": "HasChildren",
-                "types": [
-                    "https://abelara.com/equipment:product-type"
-                ]
-            }
+            "type": "object"
         },
         "measurements-type": {
             "description": "Composite measurements container - no records, composed of measurement-type children",
-            "type": "object",
-            "!related": {
-                "relationshipType": "HasComponent",
-                "types": [
-                    "https://abelara.com/equipment:measurement-type"
-                ]
-            }
+            "type": "object"
         },
         "measurement-type": {
             "description": "Composite measurement type composed of value and health subtypes, with tolerance metadata in records",
             "type": "object",
-            "!related": {
-                "relationshipType": "HasComponent",
-                "types": [
-                    "https://abelara.com/equipment:measurement-value-type",
-                    "https://abelara.com/equipment:measurement-health-type"
-                ]
-            },
             "properties": {
                 "tolerance": {
                     "type": "number",
@@ -186,11 +167,11 @@
                     "type": "boolean",
                     "description": "Whether current value is within tolerance"
                 },
-                "!value": {
+                "value": {
                     "$ref": "#/types/measurement-value-type",
                     "description": "Composed child: measurement value"
                 },
-                "!health": {
+                "health": {
                     "$ref": "#/types/measurement-health-type",
                     "description": "Composed child: measurement health indicator"
                 }

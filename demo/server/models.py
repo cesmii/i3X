@@ -15,12 +15,14 @@ class Namespace(BaseModel):
 
 # RFC 4.1.2/4.1.3 - Object Type Model
 class ObjectType(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
     elementId: str = Field(..., description="Unique string identifier for the type")
     displayName: str = Field(..., description="Type name")
     namespaceUri: str = Field(..., description="Namespace URI")
     version: Optional[str] = Field(None, description="Optional type version in Semantic Versioning format (e.g. '1.0.0')")
-    schema: Dict[str, Any] = Field(
-        ..., description="JSON Schema definition for this object type"
+    type_schema: Dict[str, Any] = Field(
+        ..., alias="schema", description="JSON Schema definition for this object type"
     )
 
 
