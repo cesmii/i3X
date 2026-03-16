@@ -411,7 +411,8 @@ I3X_DATA = {
         },
         {
             # Example of i3x:object generic type for a one-off instance that doesn't
-            # warrant its own type declaration.
+            # warrant its own type declaration. The extra instance-level properties
+            # (meterSerialNumber, billingAccount) appear when includeMetadata=true.
             "elementId": "pump-station-utility-meter",
             "displayName": "Utility Meter",
             "namespaceUri": "https://cesmii.org/i3x",
@@ -421,6 +422,8 @@ I3X_DATA = {
             "relationships": {
                 "HasParent": "pump-station",
             },
+            "meterSerialNumber": "UTL-2019-0042",
+            "billingAccount": "ACCT-8812",
             "records": [
                 {
                     "value": {
