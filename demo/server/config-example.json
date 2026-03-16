@@ -36,6 +36,16 @@
     "subscriptions": {
         "ttl_seconds": 300
     },
+    "capabilities": {
+        "query": {
+            "history": true
+        },
+        "update": {
+            "current": true,
+            "history": false
+        },
+        "subscribe": true
+    },
     "data_source_routing": {
         "primary": "exploratory",
         "get_namespaces": "exploratory",

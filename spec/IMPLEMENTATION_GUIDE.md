@@ -44,6 +44,7 @@ This document is a working draft, and should not be considered complete or norma
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
   - [Subscriptions](#subscriptions)
+  - [Listing Subscriptions](#listing-subscriptions)
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
@@ -109,33 +110,34 @@ All i3X responses follow a consistent envelope shape. Every response body contai
 ### Response Shape Summary
 
 ```
-┌──────────────────┬──────────────────────────────────────────┬──────────────────────────────────────────────────┐
-│      Format      │                 Endpoints                │                     Structure                    │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ Success (single) │ GET /namespaces                          │ {"success": true, "result": <data>}              │
-│                  │ GET /objecttypes                         │                                                  │
-│                  │ GET /relationshiptypes                   │                                                  │
-│                  │ GET /objects                             │                                                  │
-│                  │ POST /subscriptions                      │                                                  │
-│                  │ POST /subscriptions/register             │                                                  │
-│                  │ POST /subscriptions/unregister           │                                                  │
-│                  │ POST /subscriptions/sync                 │                                                  │
-│                  │ POST /subscriptions/delete               │                                                  │
-│                  │ PUT /objects/{elementId}/value           │                                                  │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ Bulk             │ POST /objecttypes/query                  │ {"success": bool,                                │
-│                  │ POST /relationshiptypes/query            │  "result": {                                     │
-│                  │ POST /objects/list                       │    "succeeded": [{"elementId","result"}],        │
-│                  │ POST /objects/related                    │    "failed":    [{"elementId","error"}]          │
-│                  │ POST /objects/value                      │  }}                                              │
-│                  │ POST /objects/history                    │ success=false if any item failed                 │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ Error            │ Any endpoint (HTTP 4xx/5xx)              │ {"success": false,                               │
-│                  │                                          │  "error": {"message": "..."}}                    │
-├──────────────────┼──────────────────────────────────────────┼──────────────────────────────────────────────────┤
-│ SSE Stream       │ POST /subscriptions/stream               │ data: [{"elementId","value","quality",           │
-│                  │                                          │         "timestamp"}]                            │
-└──────────────────┴──────────────────────────────────────────┴──────────────────────────────────────────────────┘
+┌──────────────────┬──────────────────────────────────────────┐
+│      Format      │                 Endpoints                │ 
+├──────────────────┼──────────────────────────────────────────┤
+│ Success (single) │ GET /namespaces                          │
+│                  │ GET /objecttypes                         │
+│                  │ GET /relationshiptypes                   │
+│                  │ GET /objects                             │
+│                  │ POST /subscriptions                      │
+│                  │ POST /subscriptions/sync                 │
+│                  │ PUT /objects/{elementId}/value           │
+├──────────────────┼──────────────────────────────────────────┤
+│ Bulk             │ POST /objecttypes/query                  │
+│                  │ POST /relationshiptypes/query            │
+│                  │ POST /objects/list                       │
+│                  │ POST /objects/related                    │
+│                  │ POST /objects/value                      │
+│                  │ POST /objects/history                    │
+│                  │ POST /subscriptions/list                 │
+│                  │ POST /subscriptions/delete               │
+│                  │ POST /subscriptions/register             │
+│                  │ POST /subscriptions/unregister           │
+├──────────────────┼──────────────────────────────────────────┤
+│ Error            │ Any endpoint (HTTP 4xx/5xx)              │
+│                  │                                          │
+├──────────────────┼──────────────────────────────────────────┤
+│ SSE Stream       │ POST /subscriptions/stream               │
+│                  │                                          │
+└──────────────────┴──────────────────────────────────────────┘
 ```
 
 ### Success Response
@@ -315,13 +317,19 @@ The DisplayName the human readable name often used when displaying the Namespace
 
 ### Namespaces
 
-A Namespace provides a logical grouping of elements within the i3X address space. The following is an example of a Namespace definition.
+A Namespace provides a logical grouping of elements within the i3X address space. When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the external Namespace.
+
+When an implementation of an external Namespace is in-exact, by convention, the Namespace URI SHOULD be suffixed with a `projection` query string indicating the source of the adaption.
+
+For example, by default the project MAY be called i3X: http://opcfoundation.org/UA/Robotics/?projection=i3X
+
+The following is an example of a Namespace definition.
 
 [TODO] - should a namespace also have an elementId to make it consistent with everything else? What if we add a GET /namesapce/{id} route?
 
 ```json
   {
-    "uri": "https://cesmii.org/i3x",
+    "uri": "https://cesmii.org/i3X",
     "displayName": "I3X"
   }
 ```
@@ -371,6 +379,7 @@ The standard creates the necessary hooks to identify the version of an object ty
 ### Relationship Types
 
 Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types can can include composition, inheritance, graph, etc.
+Every Relationship Type MUST define a `reverseOf` that is also registered in the address space.
 
 Below is an example of two Relationship Type definitions.
 
@@ -403,12 +412,6 @@ Below is an example of two Relationship Type definitions.
 ]
 ```
 
-**Requirements:**
-
-- Every Relationship Type MUST define a `reverseOf` — the elementId of the Relationship Type that represents the inverse direction
-- The inverse Relationship Type MUST also be registered (e.g. if `HasParent` defines `reverseOf: HasChildren`, then `HasChildren` must also exist with `reverseOf: HasParent`)
-- If object A has relationship type X to object B, then B MUST store the inverse relationship to A. This bidirectionality ensures the graph is fully traversable from any node via `POST /objects/related`
-
 ### Objects
 
 Objects are actual equipment, sensors, or processes with values. Their values are defined by Object Types and they can be related via Relationship Types. For example, we may have the following Objects in the server.
@@ -427,10 +430,9 @@ The definition of an Object looks as follows.
  {
     "elementId": "string",
     "displayName": "string",
-    "typeId": "string",
+    "typeElementId": "string",
     "parentId": "string",
     "isComposition": false,
-    "namespaceUri": "string"
   }
 ```
 
@@ -438,20 +440,17 @@ The definition of an Object looks as follows.
 |-------|------|-------------|
 | `elementId` | string | Unique identifier |
 | `displayName` | string | Human-friendly name |
-| `typeId` | string | ElementId of the Object Type |
+| `typeElementId` | string | ElementId of the Object Type |
 | `parentId` | string? | ElementId of parent (null if root) |
 | `isComposition` | boolean | True if the element encapsulates its children |
-| `namespaceUri` | string | Namespace URI |
-
-[TODO] - i'm still not clear on isComposition, may need an example
 
 When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
 
 **Requirements:**
 
-- An Object SHOULD have a `typeId`
-- When the `typeId` is set, the Object's value MUST conform to the Object Type schema.
-- Objects MAY not have a backing Object Type. In this case the `typeId` is left as an empty string ""
+- An Object SHOULD have a `typeElementId`
+- When the `typeElementId` is set, the Object's value MUST conform to the Object Type schema.
+- Objects MAY not have a backing Object Type. In this case the `typeId` is left as an empty string "" [JW: Why would we allow this?]
 
 ## Exploratory Methods
 
@@ -548,6 +547,7 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
+      "typeId": "string",
       "version": "1.0.0",
       "schema": {...}
     }
@@ -560,7 +560,8 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
 | `elementId`    | string      | Yes      | Unique identifier                                                              |
 | `displayName`  | string      | Yes      | Friendly name                                                                  |
 | `namespaceUri` | string      | Yes      | Namespace that the type is associated with                                     |
-| `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)          |
+| `typeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
+| `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
 | `schema`       | json schema | Yes      | The JSON Schema definition for the type                                        |
 
 ---
@@ -596,6 +597,8 @@ Returns one or more Object Types given a collection of elementIds.
           "elementId": "string",
           "displayName": "string",
           "namespaceUri": "string",
+          "typeId": "string",
+          "version": "1.0.0",
           "schema": {}
         }
       }
@@ -634,11 +637,20 @@ Returns a list of all Relationship Types, optionally filtered by Namespace.
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
+      "relationshipId": "string",
       "reverseOf": "string"
     }
   ]
 }
 ```
+
+| Field            | Type        | Required | Description                                                                    |
+|------------------|-------------|----------|--------------------------------------------------------------------------------|
+| `elementId`      | string      | Yes      | Unique identifier                                                              |
+| `displayName`    | string      | Yes      | Friendly name                                                                  |
+| `namespaceUri`   | string      | Yes      | Namespace that the type is associated with                                     |
+| `relationshipId` | string      | Yes      | Class or member of the Namespace that defines this relationshipType            |
+| `reverseOf `     | string      | Yes      | The elementId of the reverse relationship. All relationships MUST have a reverse |
 
 ---
 
@@ -673,6 +685,7 @@ Returns one or more Relationship Types given a collection of elementIds.
           "elementId": "string",
           "displayName": "string",
           "namespaceUri": "string",
+          "relationshipId": "string",
           "reverseOf": "string"
         }
       }
@@ -693,13 +706,13 @@ Returns one or more Relationship Types given a collection of elementIds.
 
 #### `GET` /objects
 
-Returns a list of all Objects, optionally filtered by `typeId`. This allows a client to ask for all Objects of a given type.
+Returns a list of all Objects, optionally filtered by `typeElementId`. This allows a client to ask for all Objects of a given type.
 
 **Parameters:**
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `typeId` | string | No | When set, returns Objects of the given typeId. If not set, all Objects are returned. |
+| `typeElementId` | string | No | When set, returns Objects of the given typeElementId. If not set, all Objects are returned. |
 | `includeMetadata` | boolean | No | Optionally include metadata in the response. |
 
 **Response:**
@@ -712,10 +725,9 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
     {
       "elementId": "string",
       "displayName": "string",
-      "typeId": "string",
+      "typeElementId": "string",
       "parentId": "",
-      "isComposition": false,
-      "namespaceUri": "string"
+      "isComposition": false
     }
   ]
 }
@@ -727,10 +739,11 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
     {
       "elementId": "string",
       "displayName": "string",
-      "typeId": "string",
+      "typeElementId": "string",
       "parentId": "",
       "isComposition": false,
-      "namespaceUri": "string",
+      "typeNamespaceUri": "string",
+      "typeId":"string",
       "relationships": {
         "HasParent": "/",
         "HasChildren": [
@@ -745,6 +758,7 @@ Returns a list of all Objects, optionally filtered by `typeId`. This allows a cl
 
 [TODO] - Why do we have both parentId and relationships metadata? Doesn't this overlap with /objects/related?
   MGP: /objects/related returns the actual objects that are related.  The relationships identifies what is related without returning the related objects.
+  JW: parentId must always travel with the object so a tree can be constructed. relationships may optionally travel with the object so a graph can be traveresed.
 [TODO] - should we package metadata under 'required'/spec section and a place for custom server metadata?
   MGP: The demo puts custom server metadata along side the object metadata, such as "operationStartDate" in the pump-101 element.
 
@@ -783,10 +797,9 @@ Returns one or more Objects without data/values given a collection of elementIds
         "result": {
           "elementId": "string",
           "displayName": "string",
-          "typeId": "string",
+          "typeElementId": "string",
           "parentId": "",
-          "isComposition": false,
-          "namespaceUri": "string"
+          "isComposition": false
         }
       }
     ],
@@ -809,10 +822,11 @@ Returns one or more Objects without data/values given a collection of elementIds
         "result": {
           "elementId": "string",
           "displayName": "string",
-          "typeId": "string",
+          "typeElementId": "string",
           "parentId": "",
           "isComposition": false,
-          "namespaceUri": "string",
+          "typeNamespaceUri": "string",
+          "typeId": "string",
           "relationships": {
             "HasParent": "/",
             "HasChildren": [
@@ -862,6 +876,7 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
 - `sourceRelationship` — the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
 
 ```json
+// No metadata
 {
   "success": true,
   "result": {
@@ -872,15 +887,54 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
           {
             "elementId": "string",
             "displayName": "string",
-            "typeId": "string",
+            "typeElementId": "string",
             "parentId": "",
             "isComposition": false,
-            "namespaceUri": "string",
+            "sourceRelationship": "string",
             "relationships": {
-              "HasParent": "string",
-              "HasChildren": ["string"]
+              "HasParent": "/",
+              "HasChildren": [
+                "child1",
+                "child2"
+              ]
+            }
+          }
+        ]
+      }
+    ],
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
+}
+
+// With metadata
+{
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "string",
+        "result": [
+          {
+            "elementId": "string",
+            "displayName": "string",
+            "typeElementId": "string",
+            "parentId": "",
+            "isComposition": false,
+            "sourceRelationship": "string",
+            "relationships": {
+              "HasParent": "/",
+              "HasChildren": [
+                "child1",
+                "child2"
+              ]
             },
-            "sourceRelationship": "HasParent"
+            "typeNamespaceUri": "string",
+            "typeId": "string"
           }
         ]
       }
@@ -929,7 +983,7 @@ Values in i3X have the following definition.
 | `Bad` | Value is invalid or connection failed | Communication failure, sensor malfunction |
 | `Uncertain` | Value quality cannot be determined | Sensor in calibration, stale data |
 
-Below is an example of a temperature sensor value return, along with the Object and Object Type Definition for context.
+Below is an example of a temperature sensor value return.
 
 ```json
 // Object Value read for tempSensor1
@@ -940,30 +994,6 @@ Below is an example of a temperature sensor value return, along with the Object 
   },
   "quality": "Good",
   "timestamp": "2025-01-08T10:30:00Z"
-}
-
-// Object definition for tempSensor1
-{
-  "elementId": "tempSensor1",
-  "displayName": "Temperature Sensor 1",
-  "typeId": "TemperatureSensorType",
-  "parentId": "",
-  "isComposition": false,
-  "namespaceUri": "https://example.com/ns/sensors"
-}
-
-// Object Type definition
-{
-  "elementId": "TemperatureSensorType",
-  "displayName": "Temperature Sensor",
-  "namespaceUri": "https://example.com/ns/sensors",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "temperature": { "type": "number" },
-      "unit": { "type": "string", "enum": ["C", "F", "K"] }
-    }
-  }
 }
 ```
 
@@ -1018,6 +1048,8 @@ Returns the last known value for one or more Objects.
 }
 ```
 
+> **Composition elements:** When `isComposition` is `true`, `quality` and `timestamp` are **not** present at the `result` level. Instead, each component — including `_value` for the parent's own data — carries its own VQT with individual `quality` and `timestamp` fields. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for the full response structure.
+
 ---
 
 #### `POST` /objects/history
@@ -1030,7 +1062,6 @@ Returns the historical values for one or more Objects between a start and end ti
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `elementId` | string | No | Single elementId to query |
 | `elementIds` | string[] | No | One or more elementIds to query |
 | `startTime` | string | Yes | RFC 3339 timestamp for range start |
 | `endTime` | string | Yes | RFC 3339 timestamp for range end |
@@ -1038,7 +1069,6 @@ Returns the historical values for one or more Objects between a start and end ti
 
 ```json
 {
-  "elementId": "string",
   "elementIds": [
     "string"
   ],
@@ -1113,7 +1143,21 @@ Update the value of an Object.
 
 **Request Body:**
 
-The JSON value to write to the Object. The value will replace the current Object value in its entirety. Partial writes of attributes are not currently supported.
+The value to write in VQT format. The value will replace the current Object value in its entirety. Partial writes of attributes are not currently supported.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. |
+| `quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
+| `timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
+
+```json
+{
+  "value": { "temperature": 20, "unit": "C" },
+  "quality": "Good",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
 
 **Response:**
 
@@ -1159,18 +1203,18 @@ Subscriptions allow clients to receive value changes in real-time for objects th
 | **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
 | **sync** | Value changes are queued and delivered when the client calls the sync API. |
 
-Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered and acknowledge delivery. The following 
+Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered and acknowledge delivery. The following
 sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
 
 ### Subscriptions
 
 Clients must first create a subscription in the server. Subscriptions have the following requirements:
 
-- The client must provide a unique clientId to scope subscriptions to the client
-- The server MUST provide a unique subscriptionId to the client
-- The subscriptionId must be scoped to the clientId to ensure that only the client has access to a subscription
+- The client must provide a unique `clientId` to scope subscriptions to the client
+- The server MUST provide a unique `subscriptionId` to the client
+- The `subscriptionId` MUST be scoped to the `clientId` to ensure that only the client has access to a subscription
 - Servers SHOULD NOT make subscriptions shareable across clients, but the standard doesn't enforce that
-- subscriptionId and clientIds SHOULD be unique enough that the server can reasonably assume other clients cannot guess the identifiers
+- `subscriptionId` and `clientId` SHOULD be unique enough that the server can reasonably assume other clients cannot guess the identifiers
 
 ---
 
@@ -1178,13 +1222,11 @@ Clients must first create a subscription in the server. Subscriptions have the f
 
 Creates a subscription scoped to a client.
 
-The client MUST pass in a clientId unique to the client to scope the subscription to the client. The clientId SHOULD be reasonably complex and difficult
-for other clients to guess. Examples are authentication tokens or other unique client identifiers.
+The client MUST pass in a `clientId` unique to the client to scope the subscription to the client. The `clientId` SHOULD be reasonably complex and difficult for other clients to guess. Examples are authentication tokens or other unique client identifiers.
 
-The server returns a unique subscriptionId for the subscription. This SHOULD also be reasonably complex. Both the server and the client MUST cache the clientId
-and subscriptionId for future requests on the subscription.
+The server returns a unique `subscriptionId` for the subscription. This SHOULD also be reasonably complex. Both the server and the client MUST cache the `clientId` and `subscriptionId` for future requests on the subscription.
 
-The client can optionally pass in a friendly name for the subscription. This is intended to assist clients and servers and logging and tracking subscriptions.
+The client can optionally pass in a friendly name for the subscription. This is intended to assist clients and servers in logging and tracking subscriptions.
 
 **Parameters:**
 ```json
@@ -1194,10 +1236,10 @@ The client can optionally pass in a friendly name for the subscription. This is 
 }
 ```
 
-| Name          | Type | Required | Description                                       |
-|---------------|------|----------|---------------------------------------------------|
-| `clientId`    | string | Yes      | Unique identifier for the client.                 |
-| `displayName` | string | No       | Optional name to associate with the subscription. |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | Unique identifier for the client. |
+| `displayName` | string | No | Optional name to associate with the subscription. |
 
 **Response:**
 
@@ -1211,17 +1253,18 @@ The client can optionally pass in a friendly name for the subscription. This is 
   }
 }
 ```
-| Name | Type | Required | Description                        |
-|------|------|----------|------------------------------------|
-| `clientId` | string | Yes      | The clientId passed in the request |
-| `subscriptionId` | string | Yes      | Unique ID for the subscription     |
-| `displayName` | string | Yes      | Friendly name for the subscription |
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId passed in the request. |
+| `subscriptionId` | string | Yes | Unique ID for the subscription. |
+| `displayName` | string | Yes | Friendly name for the subscription. |
 
 ---
 
 #### `POST` /subscriptions/list
 
-Get one or more subscriptions. This is used to check if subscriptions exist and their current configuration.
+Get one or more subscriptions by ID. Used to check if subscriptions exist and inspect their current configuration.
 
 **Body Parameters:**
 ```json
@@ -1231,10 +1274,10 @@ Get one or more subscriptions. This is used to check if subscriptions exist and 
 }
 ```
 
-| Name              | Type         | Required | Description                        |
-|-------------------|--------------|----------|------------------------------------|
-| `clientId`        | string       | Yes | The clientId for the subscriptions |
-| `subscriptionIds` | string array | Yes | List of subscription IDs           |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscriptions. |
+| `subscriptionIds` | string array | Yes | List of subscription IDs to retrieve. |
 
 **Response:**
 
@@ -1244,14 +1287,14 @@ Get one or more subscriptions. This is used to check if subscriptions exist and 
   "result": {
     "succeeded": [
       {
-        "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-        "displayName": "mySubscription",
-        "objects": [
-          {
-            "elementId": "object1",
-            "maxDepth": 1
-          }
-        ]
+        "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+        "result": {
+          "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+          "displayName": "mySubscription",
+          "monitoredObjects": [
+            { "elementId": "object-elementid-1", "maxDepth": 1 }
+          ]
+        }
       }
     ],
     "failed": []
@@ -1274,10 +1317,10 @@ Delete one or more subscriptions.
 }
 ```
 
-| Name              | Type         | Required | Description                        |
-|-------------------|--------------|----------|------------------------------------|
-| `clientId`        | string       | Yes | The clientId for the subscriptions |
-| `subscriptionIds` | string array | Yes | List of subscription IDs           |
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscriptions. |
+| `subscriptionIds` | string array | Yes | List of subscription IDs to delete. |
 
 **Response:**
 
@@ -1285,9 +1328,9 @@ Delete one or more subscriptions.
 {
   "success": true,
   "result": {
-    "succeeded": [{
-      "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
-    }],
+    "succeeded": [
+      { "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
+    ],
     "failed": []
   }
 }
@@ -1311,55 +1354,8 @@ Once a Subscription is created, a client can add and remove Objects to the Subsc
 
 Register one or more Objects with a Subscription.
 
-- If an Object is registered more than once the Server MUST return success and ignore the subsequent registrations
-- The Server MUST support partial failures (ex. bad elementId) and not fail the full request
-
-**Request Body:**
-
-```json
-{
-  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
-  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-  "elementIds": [
-    "object-elementid-1",
-    "object-elementid-2"
-  ],
-  "maxDepth": 1
-}
-```
-
-| Field            | Type | Required | Description |
-|------------------|------|----------|-------------|
-| `clientId`        | string       | Yes | The clientId for the subscriptions |
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to register items with |
-| `elementIds`        | string[] | Yes | One or more elementIds to register |
-| `maxDepth`       | integer | No | Controls recursion depth | [TODO] - MGP explain how maxDepth works.  Similar to values, where it only follows hasComponent relationships?
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "result": {
-    "succeeded": [{
-        "elementId": "object-elementid-1"
-      },{
-        "elementId": "object-elementid-2"
-      }],
-   "failed": [] 
-  }
-}
-```
-
----
-
-#### `POST` /subscriptions/unregister
-
-Unregister one or more Objects from a Subscription.
-
-- Once an Object is unregistered the server SHOULD stop queuing new values for the Object on the Subscription
-- The server SHOULD NOT delete any prior queued values for the Object
-- The Server MUST support partial failures (ex. bad elementId) and not fail the full request
+- If an Object is registered more than once the Server MUST return success and ignore the subsequent registration
+- The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
 
 **Request Body:**
 
@@ -1377,11 +1373,10 @@ Unregister one or more Objects from a Subscription.
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `clientId`        | string       | Yes | The clientId for the subscriptions |
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to unregister items from |
-| `elementIds` | string[] | Yes | One or more elementIds to unregister |
-| `maxDepth` | integer | No | Controls recursion depth |
-
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId to register items with. |
+| `elementIds` | string[] | Yes | One or more elementIds to register. |
+| `maxDepth` | integer | No | Controls recursion depth. [TODO] - MGP explain how maxDepth works. Similar to values, where it only follows hasComponent relationships? |
 
 **Response:**
 
@@ -1389,11 +1384,56 @@ Unregister one or more Objects from a Subscription.
 {
   "success": true,
   "result": {
-    "succeeded": [{
-      "elementId": "object-elementid-1"
-    },{
-      "elementId": "object-elementid-2"
-    }],
+    "succeeded": [
+      { "elementId": "object-elementid-1", "result": null },
+      { "elementId": "object-elementid-2", "result": null }
+    ],
+    "failed": []
+  }
+}
+```
+
+---
+
+#### `POST` /subscriptions/unregister
+
+Unregister one or more Objects from a Subscription.
+
+- Once an Object is unregistered the server SHOULD stop queuing new values for the Object on the Subscription
+- The server SHOULD NOT delete any prior queued values for the Object
+- The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
+
+**Request Body:**
+
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "elementIds": [
+    "object-elementid-1",
+    "object-elementid-2"
+  ],
+  "maxDepth": 1
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId to unregister items from. |
+| `elementIds` | string[] | Yes | One or more elementIds to unregister. |
+| `maxDepth` | integer | No | Controls recursion depth. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": {
+    "succeeded": [
+      { "elementId": "object-elementid-1", "result": null },
+      { "elementId": "object-elementid-2", "result": null }
+    ],
     "failed": []
   }
 }
@@ -1439,8 +1479,8 @@ Opens an SSE stream on the subscription to stream value changes from the server.
 
 | Name | Type | Required | Description |
 |------|------|----------|-------------|
-| `clientId`        | string       | Yes | The clientId for the subscriptions |
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to stream |
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to stream. |
 
 **Response:**
 
@@ -1464,7 +1504,7 @@ Sync allows the client to control when value changes are received, and to explic
 4. Client polls via `POST /subscriptions/sync` (no `through` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
-7. Client calls `POST /subscriptions/sync` again with `{"subscriptionId": "...", "through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
+7. Client calls `POST /subscriptions/sync` again with `{"clientId": "...", "subscriptionId": "...", "through": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
 8. Server removes acknowledged updates (sequenceNumber ≤ `through`) then returns the remaining queue
 9. Continue this process
 
@@ -1486,9 +1526,9 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `clientId`        | string       | Yes | The clientId for the subscriptions |
-| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync |
-| `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones |
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
+| `through` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
 
 First call (nothing to acknowledge yet):
 ```json
@@ -1592,28 +1632,38 @@ The `maxDepth` parameter controls recursion through HasComponent relationships:
 
 **Response Structure with maxDepth:**
 
-When `maxDepth > 1` and the element has components:
+When `maxDepth > 1` and the element has components, the full `POST /objects/value` response looks like:
 
 ```json
 {
-  "elementId": "machine-001",
-  "isComposition": true,
-  "value": {
-    "_value": {
-      "value": { "status": "running" },
-      "quality": "Good",
-      "timestamp": "2025-01-08T10:30:00Z"
-    },
-    "spindle-001": {
-      "value": { "rpm": 12000 },
-      "quality": "Good",
-      "timestamp": "2025-01-08T10:30:00Z"
-    },
-    "coolant-001": {
-      "value": { "flow_rate": 5.2, "temp": 22.1 },
-      "quality": "Good",
-      "timestamp": "2025-01-08T10:30:00Z"
-    }
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "machine-001",
+        "result": {
+          "isComposition": true,
+          "value": {
+            "_value": {
+              "value": { "status": "running" },
+              "quality": "Good",
+              "timestamp": "2025-01-08T10:30:00Z"
+            },
+            "spindle-001": {
+              "value": { "rpm": 12000 },
+              "quality": "Good",
+              "timestamp": "2025-01-08T10:30:00Z"
+            },
+            "coolant-001": {
+              "value": { "flow_rate": 5.2, "temp": 22.1 },
+              "quality": "Good",
+              "timestamp": "2025-01-08T10:30:00Z"
+            }
+          }
+        }
+      }
+    ],
+    "failed": []
   }
 }
 ```

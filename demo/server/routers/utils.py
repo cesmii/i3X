@@ -15,20 +15,24 @@ def bulk_response(succeeded, failed):
     return {"success": overall_success, "result": {"succeeded": succeeded, "failed": failed}}
 
 
-def getObject(instance: Any, includeMetadata: bool) -> Any:
+def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> Any:
     """Helper to format object with or without metadata"""
-    if includeMetadata:
-        return instance
-
-    noMetadataObject = {
+    base = {
         "elementId": instance["elementId"],
         "displayName": instance["displayName"],
-        "typeId": instance["typeId"],
-        "namespaceUri": instance["namespaceUri"],
+        "typeElementId": instance["typeElementId"],
         "parentId": instance.get("parentId"),
-        "isComposition": instance["isComposition"]
+        "isComposition": instance["isComposition"],
     }
-    return noMetadataObject
+    if not includeMetadata:
+        return base
+
+    metadata_object = dict(base)
+    if type_info:
+        metadata_object["typeNamespaceUri"] = type_info.get("namespaceUri")
+        metadata_object["typeId"] = type_info.get("typeId")
+    metadata_object["relationships"] = instance.get("relationships", {})
+    return metadata_object
 
 
 def getValue(value: Any, includeMetadata: bool) -> Any:

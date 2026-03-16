@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_redoc_html
+from routers.info import info
 from routers.namespaces import ns
 from routers.typeDefinitions import typeDefinitions
 from routers.objects import explore, query, update
@@ -170,8 +171,11 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 # Setup app state (data source will be set after config is loaded)
 app.state.I3X_DATA_SUBSCRIPTIONS = []  # List[Subscription]
 app.state.subscription_ttl_seconds = config.get("subscriptions", {}).get("ttl_seconds", 300)
+app.state.app_config = app_config
+app.state.capabilities_config = config.get("capabilities", {})
 
-# Include namespaces
+# Include routers
+app.include_router(info)
 app.include_router(ns)
 app.include_router(typeDefinitions)
 app.include_router(explore)
