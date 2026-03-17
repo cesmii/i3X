@@ -369,6 +369,10 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 }
 ```
 
+**Built-in type: `i3x-object-type`**
+
+The i3X specification defines one built-in Object Type: `i3x-object-type` (namespace: `https://cesmii.org/i3x`). Its schema is `{"type": "object"}` — unconstrained. Servers MUST register this type. Instances that do not conform to any declared type SHOULD reference it via `typeElementId: "i3x-object-type"` rather than leaving the field empty.
+
 **Requirements**
 - An Object Type MUST have a JSON Schema definition
 - An Object Type MUST belong to one Namespace
@@ -412,6 +416,32 @@ Below is an example of two Relationship Type definitions.
 ]
 ```
 
+**Expressing type inheritance with `allOf`**
+
+When one Object Type is a specialization of another (i.e., it `InheritsFrom` a base type), express this in the JSON Schema `schema` field using `allOf`. The derived type references the base type's schema and adds its own properties:
+
+```json
+{
+  "elementId": "PressureSensorType",
+  "displayName": "Pressure Sensor",
+  "namespaceUri": "https://example.com/ns/sensors",
+  "schema": {
+    "allOf": [
+      { "$ref": "https://example.com/ns/sensors/schemas/SensorType" },
+      {
+        "type": "object",
+        "properties": {
+          "pressure": { "type": "number" },
+          "unit": { "type": "string", "enum": ["bar", "psi", "Pa"] }
+        }
+      }
+    ]
+  }
+}
+```
+
+This maps to the `InheritsFrom`/`InheritedBy` relationship types registered in the address space. Distinguish this from composition: `allOf` with `$ref` means "is a kind of" (inheritance); a `$ref` inside `properties` means "is made up of" (composition, corresponding to `HasComponent`).
+
 ### Objects
 
 Objects are actual equipment, sensors, or processes with values. Their values are defined by Object Types and they can be related via Relationship Types. For example, we may have the following Objects in the server.
@@ -446,11 +476,15 @@ The definition of an Object looks as follows.
 
 When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
 
+**Field clarifications:**
+
+- `typeElementId` on an instance is a reference to the instance's Object Type — it holds the `elementId` of the corresponding Object Type definition. This is different from `typeId`, which appears on Object Type definitions themselves (not on instances) to identify the external namespace type being projected or implemented (e.g., an OPC UA type name like `"TemperatureSensorType"`).
+
 **Requirements:**
 
 - An Object SHOULD have a `typeElementId`
 - When the `typeElementId` is set, the Object's value MUST conform to the Object Type schema.
-- Objects MAY not have a backing Object Type. In this case the `typeId` is left as an empty string "" [JW: Why would we allow this?]
+- Objects without a declared type SHOULD set `typeElementId` to `i3x-object-type`. This is the built-in generic type (namespace: `https://cesmii.org/i3x`) whose schema is `{"type": "object"}` — unconstrained. Use it for one-off instances rather than declaring a purpose-built Object Type that will never be reused.
 
 ## Exploratory Methods
 
@@ -756,11 +790,33 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 }
 ```
 
-[TODO] - Why do we have both parentId and relationships metadata? Doesn't this overlap with /objects/related?
-  MGP: /objects/related returns the actual objects that are related.  The relationships identifies what is related without returning the related objects.
-  JW: parentId must always travel with the object so a tree can be constructed. relationships may optionally travel with the object so a graph can be traveresed.
-[TODO] - should we package metadata under 'required'/spec section and a place for custom server metadata?
-  MGP: The demo puts custom server metadata along side the object metadata, such as "operationStartDate" in the pump-101 element.
+**Note on `parentId` vs `relationships`:** `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
+
+**Extended properties with `includeMetadata=true`:** When `includeMetadata=true`, the response includes the standard metadata fields (`typeNamespaceUri`, `typeId`, `relationships`) plus any additional implementation-specific properties on the instance (per RFC 3.1.2 optional metadata). These extended properties appear alongside the standard metadata fields. For example:
+
+```json
+// With metadata (including extended properties)
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "pump-101",
+      "displayName": "Pump 101",
+      "typeElementId": "PumpType",
+      "parentId": "production-line-a",
+      "isComposition": false,
+      "typeNamespaceUri": "https://example.com/ns/equipment",
+      "typeId": "PumpType",
+      "relationships": {
+        "HasParent": "production-line-a",
+        "HasChildren": []
+      },
+      "engUnit": "RPM",
+      "operationStartDate": "2023-06-15T00:00:00Z"
+    }
+  ]
+}
+```
 
 ---
 
