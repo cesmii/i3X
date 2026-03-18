@@ -418,29 +418,56 @@ Below is an example of two Relationship Type definitions.
 
 **Expressing type inheritance with `allOf`**
 
-When one Object Type is a specialization of another (i.e., it `InheritsFrom` a base type), express this in the JSON Schema `schema` field using `allOf`. The derived type references the base type's schema and adds its own properties:
+When one Object Type is a specialization of another (i.e., it `InheritsFrom` a base type), express this in the JSON Schema using `allOf`. The derived type references the base type within the same namespace schema file and adds its own properties:
 
 ```json
-{
-  "elementId": "PressureSensorType",
-  "displayName": "Pressure Sensor",
-  "namespaceUri": "https://example.com/ns/sensors",
-  "schema": {
+"temperature-sensor-type": {
+    "type": "object",
+    "properties": {
+        "temperature": { "type": "number" },
+        "unit": { "type": "string" }
+    }
+},
+"precision-temperature-sensor-type": {
+    "description": "Temperature sensor extended with accuracy and calibration metadata",
     "allOf": [
-      { "$ref": "https://example.com/ns/sensors/schemas/SensorType" },
-      {
-        "type": "object",
-        "properties": {
-          "pressure": { "type": "number" },
-          "unit": { "type": "string", "enum": ["bar", "psi", "Pa"] }
+        { "$ref": "#/types/temperature-sensor-type" },
+        {
+            "type": "object",
+            "properties": {
+                "accuracy": { "type": "number" },
+                "calibrationDate": { "type": "string" }
+            },
+            "required": ["accuracy", "calibrationDate"]
         }
-      }
     ]
-  }
 }
 ```
 
-This maps to the `InheritsFrom`/`InheritedBy` relationship types registered in the address space. Distinguish this from composition: `allOf` with `$ref` means "is a kind of" (inheritance); a `$ref` inside `properties` means "is made up of" (composition, corresponding to `HasComponent`).
+Both types are independent entries in the flat `types` map. The server resolves the `$ref` and inlines the base type's properties when serving the schema, so clients receive the fully expanded shape.
+
+The corresponding Object Type entries in the address space record the relationship:
+
+```json
+{ "elementId": "temperature-sensor-type", ... },
+{
+  "elementId": "precision-temperature-sensor-type",
+  ...
+  "related": { "relationshipType": "InheritsFrom", "types": ["temperature-sensor-type"] }
+}
+```
+
+An instance typed as `precision-temperature-sensor-type` simply sets `typeElementId` to that type's `elementId` — no other change is needed on the instance:
+
+```json
+{
+  "elementId": "sensor-302",
+  "typeElementId": "precision-temperature-sensor-type",
+  ...
+}
+```
+
+Distinguish inheritance from composition: `allOf` with `$ref` means "is a kind of" (`InheritsFrom`); a `$ref` inside `properties` means "is made up of" (`HasComponent`).
 
 ### Objects
 
