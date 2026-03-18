@@ -80,9 +80,7 @@ Note the distinction from composition:
 
 ## UnknownType
 
-When an instance is discovered at runtime and its type cannot be determined (e.g. during MQTT topic discovery or OPC UA browsing), the implementation should register a placeholder type called `UnknownType` in its type registry and use its `elementId` as the `typeElementId` on affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances.
-
-The mock data registers this as `unknown-type` (elementId) in `Namespaces/i3x.json` and uses it for `pump-station-utility-meter`, which simulates an instance discovered without type information.
+When an instance is discovered at runtime and its type cannot be determined (e.g. during MQTT topic discovery or OPC UA browsing), the implementation should register a placeholder type called `UnknownType` in its type registry and use its `elementId` as the `typeElementId` on affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. See the Implementation Guide for guidance.
 
 ## Relationship Metadata
 

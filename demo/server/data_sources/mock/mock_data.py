@@ -10,14 +10,6 @@ I3X_DATA = {
     ],
     "objectTypes": [
         {
-            # Placeholder type for instances whose type cannot be determined at import/discovery time.
-            "elementId": "unknown-type",
-            "displayName": "UnknownType",
-            "namespaceUri": "https://cesmii.org/i3x",
-            "typeId": "unknown",
-            "schema": "Namespaces/i3x.json#types/unknown"
-        },
-        {
             "elementId": "work-center-type",    # A unique ID within the implementation's address space
             "displayName": "WorkCenterType",    # A human readable name the implementation may wish to localize
             "namespaceUri": "https://isa.org/isa95",    # A reference to a source of the namespace, which may be external to the implementation
@@ -125,8 +117,7 @@ I3X_DATA = {
                     "pump-101",
                     "tank-201",
                     "sensor-001",
-                    "sensor-002",
-                    "pump-station-utility-meter"
+                    "sensor-002"
                 ],
             },
             # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
@@ -408,33 +399,6 @@ I3X_DATA = {
             # Optional Object Metadata (RFC 3.1.2)
             "engUnit": "CEL",
             "calibrationDate": "2025-01-15",
-        },
-        {
-            # Example of UnknownType: an instance discovered at runtime whose type
-            # could not be determined. The extra instance-level properties
-            # (meterSerialNumber, billingAccount) appear when includeMetadata=true.
-            "elementId": "pump-station-utility-meter",
-            "displayName": "Utility Meter",
-            "namespaceUri": "https://cesmii.org/i3x",
-            "typeElementId": "unknown-type",
-            "parentId": "pump-station",
-            "isComposition": False,
-            "relationships": {
-                "HasParent": "pump-station",
-            },
-            "meterSerialNumber": "UTL-2019-0042",
-            "billingAccount": "ACCT-8812",
-            "records": [
-                {
-                    "value": {
-                        "electricityKwh": 1482.7,
-                        "waterLiters": 30421.0,
-                        "readingDate": "2025-10-28"
-                    },
-                    "quality": "GOOD",
-                    "timestamp": "2025-10-28T10:15:30Z",
-                }
-            ]
         },
         {
             # Example of allOf type extension: precision-temperature-sensor-type inherits
