@@ -4,6 +4,35 @@
     "types": {
         "sensor-type": {
             "type": "number"
+        },
+        "temperature-sensor-type": {
+            "description": "Base temperature sensor reporting a reading with unit",
+            "type": "object",
+            "properties": {
+                "temperature": { "type": "number" },
+                "unit": { "type": "string" }
+            },
+            "required": ["temperature", "unit"]
+        },
+        "precision-temperature-sensor-type": {
+            "description": "Temperature sensor extended with accuracy and calibration metadata, using allOf to inherit temperature-sensor-type",
+            "allOf": [
+                { "$ref": "#/types/temperature-sensor-type" },
+                {
+                    "type": "object",
+                    "properties": {
+                        "accuracy": {
+                            "type": "number",
+                            "description": "Measurement accuracy in +/- degrees"
+                        },
+                        "calibrationDate": {
+                            "type": "string",
+                            "description": "ISO 8601 date of last calibration"
+                        }
+                    },
+                    "required": ["accuracy", "calibrationDate"]
+                }
+            ]
         }
     }
 }

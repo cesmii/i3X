@@ -17,6 +17,8 @@ def bulk_response(succeeded, failed):
 
 def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> Any:
     """Helper to format object with or without metadata"""
+    STANDARD_FIELDS = {"elementId", "displayName", "typeElementId", "parentId", "isComposition", "namespaceUri", "relationships", "records"}
+
     base = {
         "elementId": instance["elementId"],
         "displayName": instance["displayName"],
@@ -32,6 +34,12 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> An
         metadata_object["typeNamespaceUri"] = type_info.get("namespaceUri")
         metadata_object["typeId"] = type_info.get("typeId")
     metadata_object["relationships"] = instance.get("relationships", {})
+
+    # Include any extra instance-level properties (RFC 3.1.2 optional metadata)
+    for key, value in instance.items():
+        if key not in STANDARD_FIELDS:
+            metadata_object[key] = value
+
     return metadata_object
 
 

@@ -67,11 +67,47 @@ class MockDataSource(I3XDataSource):
                 print(f"Could not resolve JSON pointer {json_pointer} in {file_path}")
                 return type_definition
 
+        # Resolve any $ref pointers within the schema before returning
+        current = self._resolve_refs(current, schema_data)
+
         # Replace the schema pointer string with the actual schema definition
         result = type_definition.copy()
         result["schema"] = current
 
         return result
+
+    def _resolve_refs(self, schema: Any, document: Dict[str, Any], _visiting: frozenset = frozenset()) -> Any:
+        """
+        Recursively resolve $ref pointers within a schema against its source document.
+        Only resolves same-document refs (starting with '#/'). External refs are left as-is.
+        _visiting tracks in-progress pointers to prevent infinite recursion.
+        """
+        if isinstance(schema, dict):
+            if "$ref" in schema:
+                ref = schema["$ref"]
+                if ref.startswith("#/"):
+                    pointer = ref[2:]  # strip leading "#/"
+                    if pointer in _visiting:
+                        return schema  # circular ref, leave as-is
+                    parts = pointer.split("/")
+                    target = document
+                    for part in parts:
+                        if isinstance(target, dict) and part in target:
+                            target = target[part]
+                        else:
+                            return schema  # unresolvable, leave as-is
+                    resolved = self._resolve_refs(target, document, _visiting | {pointer})
+                    # Merge any sibling keys (e.g. "description") alongside the resolved schema
+                    other_keys = {k: v for k, v in schema.items() if k != "$ref"}
+                    if other_keys and isinstance(resolved, dict):
+                        return {**resolved, **other_keys}
+                    return resolved
+                # External $ref — leave untouched
+                return schema
+            return {k: self._resolve_refs(v, document, _visiting) for k, v in schema.items()}
+        if isinstance(schema, list):
+            return [self._resolve_refs(item, document, _visiting) for item in schema]
+        return schema
 
     def start(
         self, update_callback: Optional[Callable[[Dict[str, Any]], None]] = None

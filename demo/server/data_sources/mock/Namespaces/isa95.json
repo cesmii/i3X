@@ -4,21 +4,11 @@
     "types": {
         "work-center-type": {
             "description": "ISA-95 Work Center - organizational container with HasChildren relationships",
-            "type": "object",
-            "!related": {
-                "relationshipType": "HasChildren",
-                "types": [
-                    "https://isa.org/isa95:work-unit-type"
-                ]
-            }
+            "type": "object"
         },
         "work-unit-type": {
             "description": "ISA-95 Work Unit - can be simple or complex with HasComponent relationships to child elements",
-            "type": "object",
-            "!related": {
-                "relationshipType": "HasComponent",
-                "note": "Complex work units may be composed of state, production, measurements, and other child elements"
-            }
+            "type": "object"
         }
     }
 }

@@ -192,7 +192,7 @@ class MQTTDataSource(I3XDataSource):
                     'timestamp': timestamp,
                     'topic': msg.topic,  # Keep original topic for reference
                     'namespaceUri': namespace_uri,  # Store discovered namespace (or None)
-                    'typeId': type_id  # Store namespace-based type ID (or None for topic-based)
+                    'typeElementId': type_id  # Store namespace-based type ID (or None for topic-based)
                 }
                 
                 # If callback is set, notify subscription system of update
@@ -215,7 +215,7 @@ class MQTTDataSource(I3XDataSource):
                     instance = {
                         "elementId": element_id,
                         "displayName": name,
-                        "typeId": type_id or (element_id + "_TYPE"),
+                        "typeElementId": type_id or (element_id + "_TYPE"),
                         "parentId": parent_id,
                         "isComposition": False,  # MQTT topic hierarchy is organizational, not composition
                         "namespaceUri": namespace_uri or self.MQTT_NAMESPACE_URI,
@@ -317,9 +317,9 @@ class MQTTDataSource(I3XDataSource):
         if type_id is None:
             return all_instances
         
-        # Filter by typeId
-        filtered_instances = [instance for instance in all_instances if instance["typeId"] == type_id]
-        self.logger.info(f"Filtered {len(all_instances)} instances to {len(filtered_instances)} matching typeId: {type_id}")
+        # Filter by typeElementId
+        filtered_instances = [instance for instance in all_instances if instance["typeElementId"] == type_id]
+        self.logger.info(f"Filtered {len(all_instances)} instances to {len(filtered_instances)} matching typeElementId: {type_id}")
         return filtered_instances
     
     def get_instance_by_id(self, element_id: str) -> Optional[Dict[str, Any]]:
@@ -775,7 +775,7 @@ class MQTTDataSource(I3XDataSource):
         # Use discovered namespace from payload, or fall back to default
         namespace_uri = topic_data.get('namespaceUri') or self.MQTT_NAMESPACE_URI
         # Use stored type ID, or infer from topic name for virtual nodes
-        type_id = topic_data.get('typeId')
+        type_id = topic_data.get('typeElementId')
         if type_id is None:
             type_name = self._get_name_from_topic(original_topic)
             type_id = f"{type_name}Type"
@@ -783,7 +783,7 @@ class MQTTDataSource(I3XDataSource):
         return {
             "elementId": element_id,
             "displayName": name,
-            "typeId": type_id,
+            "typeElementId": type_id,
             "parentId": parent_id,
             "isComposition": False,  # MQTT topic hierarchy is organizational, not composition
             "namespaceUri": namespace_uri,
@@ -814,7 +814,7 @@ class MQTTDataSource(I3XDataSource):
                     'topic': '/',
                     'virtual': True,
                     'namespaceUri': None,  # Virtual nodes use default namespace
-                    'typeId': None
+                    'typeElementId': None
                 }
                 self.logger.info("Created virtual root node: /")
 
@@ -843,6 +843,6 @@ class MQTTDataSource(I3XDataSource):
                     'topic': parent_topic,
                     'virtual': True,  # Mark as virtual for debugging
                     'namespaceUri': None,  # Virtual nodes use default namespace
-                    'typeId': None
+                    'typeElementId': None
                 }
                 self.logger.debug(f"Created virtual parent node: {parent_topic}")

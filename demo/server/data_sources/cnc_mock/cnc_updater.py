@@ -55,7 +55,7 @@ class CNCDataUpdater:
                 old_record = current_record.copy()
 
                 # Apply CNC-specific value updates based on instance type
-                type_id = instance.get("typeId", "")
+                type_id = instance.get("typeElementId", "")
                 value = current_record["value"]
 
                 if isinstance(value, dict):

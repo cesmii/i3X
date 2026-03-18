@@ -15,6 +15,7 @@ I3X_DATA = {
             "namespaceUri": "https://isa.org/isa95",    # A reference to a source of the namespace, which may be external to the implementation
             "typeId": "WorkCenterType",                 # A reference to the member of the source namespace being used (or projected) for this type
             "schema": "Namespaces/isa95.json#types/work-center-type",   # A demo-implementation-specific pointer to the location of the type's schema
+            "related": {"relationshipType": "HasChildren", "types": ["https://isa.org/isa95:work-unit-type"]},
         },
         {
             "elementId": "work-unit-type",
@@ -22,6 +23,7 @@ I3X_DATA = {
             "namespaceUri": "https://isa.org/isa95",
             "typeId": "WorkUnitType",
             "schema": "Namespaces/isa95.json#types/work-unit-type",
+            "related": {"relationshipType": "HasComponent"},
         },
         {
             "elementId": "state-type",
@@ -43,20 +45,23 @@ I3X_DATA = {
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "ProductionType",
             "schema": "Namespaces/abelara.json#types/production-type",
+            "related": {"relationshipType": "HasChildren", "types": ["https://abelara.com/equipment:product-type"]},
         },
         {
             "elementId": "measurements-type",
             "displayName": "MeasurementsType",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "MeasurementsType",
-            "schema": "Namespaces/abelara.json#types/measurements-type"
+            "schema": "Namespaces/abelara.json#types/measurements-type",
+            "related": {"relationshipType": "HasComponent", "types": ["https://abelara.com/equipment:measurement-type"]},
         },
         {
             "elementId": "measurement-type",
             "displayName": "MeasurementType",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "MeasurementType",
-            "schema": "Namespaces/abelara.json#types/measurement-type"
+            "schema": "Namespaces/abelara.json#types/measurement-type",
+            "related": {"relationshipType": "HasComponent", "types": ["https://abelara.com/equipment:measurement-value-type", "https://abelara.com/equipment:measurement-health-type"]},
         },
         {
             "elementId": "measurement-value-type",
@@ -79,6 +84,20 @@ I3X_DATA = {
             "typeId": "SensorType",
             "schema": "Namespaces/thinkiq.json#types/sensor-type"
         },
+        {
+            "elementId": "temperature-sensor-type",
+            "displayName": "TemperatureSensorType",
+            "namespaceUri": "https://thinkiq.com/equipment",
+            "typeId": "TemperatureSensorType",
+            "schema": "Namespaces/thinkiq.json#types/temperature-sensor-type"
+        },
+        {
+            "elementId": "precision-temperature-sensor-type",
+            "displayName": "PrecisionTemperatureSensorType",
+            "namespaceUri": "https://thinkiq.com/equipment",
+            "schema": "Namespaces/thinkiq.json#types/precision-temperature-sensor-type",
+            "related": {"relationshipType": "InheritsFrom", "types": ["https://thinkiq.com/equipment:temperature-sensor-type"]},
+        },
     ],
     "instances": [
         {
@@ -97,7 +116,8 @@ I3X_DATA = {
                 "HasChildren": [
                     "pump-101",
                     "tank-201",
-                    "sensor-001"
+                    "sensor-001",
+                    "sensor-002"
                 ],
             },
             # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
@@ -379,6 +399,43 @@ I3X_DATA = {
             # Optional Object Metadata (RFC 3.1.2)
             "engUnit": "CEL",
             "calibrationDate": "2025-01-15",
+        },
+        {
+            # Example of allOf type extension: precision-temperature-sensor-type inherits
+            # temperature-sensor-type and adds accuracy + calibrationDate to the value shape.
+            "elementId": "sensor-002",
+            "displayName": "PrecisionTempSensor-301",
+            "namespaceUri": "https://thinkiq.com/equipment",
+            "typeElementId": "precision-temperature-sensor-type",
+            "parentId": "pump-station",
+            "isComposition": False,
+            "relationships": {
+                "Monitors": "pump-101",
+                "InheritsFrom": "temperature-sensor-type"
+            },
+            "records": [
+                {
+                    "value": {
+                        "temperature": 85.2,
+                        "unit": "CEL",
+                        "accuracy": 0.1,
+                        "calibrationDate": "2025-06-01"
+                    },
+                    "quality": "GOOD",
+                    "timestamp": "2025-10-28T10:15:30Z",
+                },
+                {
+                    "value": {
+                        "temperature": 83.7,
+                        "unit": "CEL",
+                        "accuracy": 0.1,
+                        "calibrationDate": "2025-06-01"
+                    },
+                    "quality": "GOOD",
+                    "timestamp": "2025-10-27T10:15:30Z",
+                },
+            ],
+            "engUnit": "CEL",
         },
     ],
     "relationshipTypes": [
