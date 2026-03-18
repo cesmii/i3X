@@ -2,8 +2,8 @@
     "$schema": "http://json-schema.org/draft-04/schema#",
     "$id": "https://cesmii.org/i3x",
     "types": {
-        "object": {
-            "description": "Generic untyped object. Use when an instance does not conform to any declared type. Value shape is unconstrained.",
+        "unknown": {
+            "description": "Placeholder type for instances whose type cannot be determined. Value shape is unconstrained.",
             "type": "object"
         }
     }

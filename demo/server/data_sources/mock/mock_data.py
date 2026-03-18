@@ -10,12 +10,12 @@ I3X_DATA = {
     ],
     "objectTypes": [
         {
-            # Built-in generic type for one-off instances that don't conform to any declared type.
-            "elementId": "i3x-object-type",
-            "displayName": "Object",
+            # Placeholder type for instances whose type cannot be determined at import/discovery time.
+            "elementId": "unknown-type",
+            "displayName": "UnknownType",
             "namespaceUri": "https://cesmii.org/i3x",
-            "typeId": "object",
-            "schema": "Namespaces/i3x.json#types/object"
+            "typeId": "unknown",
+            "schema": "Namespaces/i3x.json#types/unknown"
         },
         {
             "elementId": "work-center-type",    # A unique ID within the implementation's address space
@@ -410,13 +410,13 @@ I3X_DATA = {
             "calibrationDate": "2025-01-15",
         },
         {
-            # Example of i3x:object generic type for a one-off instance that doesn't
-            # warrant its own type declaration. The extra instance-level properties
+            # Example of UnknownType: an instance discovered at runtime whose type
+            # could not be determined. The extra instance-level properties
             # (meterSerialNumber, billingAccount) appear when includeMetadata=true.
             "elementId": "pump-station-utility-meter",
             "displayName": "Utility Meter",
             "namespaceUri": "https://cesmii.org/i3x",
-            "typeElementId": "i3x-object-type",
+            "typeElementId": "unknown-type",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {

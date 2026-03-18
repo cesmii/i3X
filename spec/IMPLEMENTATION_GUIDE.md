@@ -369,9 +369,9 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 }
 ```
 
-**Built-in type: `i3x-object-type`**
+**Unknown types: `UnknownType`**
 
-The i3X specification defines one built-in Object Type: `i3x-object-type` (namespace: `https://cesmii.org/i3x`). Its schema is `{"type": "object"}` — unconstrained. Servers MUST register this type. Instances that do not conform to any declared type SHOULD reference it via `typeElementId: "i3x-object-type"` rather than leaving the field empty.
+When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` in their type registry and use its `elementId` as the `typeElementId` on all affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. The `UnknownType` schema should be `{"type": "object"}`. The choice of `elementId` is implementation-specific.
 
 **Requirements**
 - An Object Type MUST have a JSON Schema definition
@@ -484,7 +484,7 @@ When an Object is read via the `/objects/value` API it returns the value of the 
 
 - An Object SHOULD have a `typeElementId`
 - When the `typeElementId` is set, the Object's value MUST conform to the Object Type schema.
-- Objects without a declared type SHOULD set `typeElementId` to `i3x-object-type`. This is the built-in generic type (namespace: `https://cesmii.org/i3x`) whose schema is `{"type": "object"}` — unconstrained. Use it for one-off instances rather than declaring a purpose-built Object Type that will never be reused.
+- Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
 
 ## Exploratory Methods
 

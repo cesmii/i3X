@@ -78,17 +78,11 @@ Note the distinction from composition:
 - `allOf` / `$ref` in properties → `HasComponent` — the value *is made up of* child objects that exist independently in the graph
 - `allOf` in `allOf` → `InheritsFrom` — the type *is a kind of* the base type, with the same value shape plus extensions
 
-## The `i3x:object` Built-in Type
+## UnknownType
 
-Declaring a full type definition for a one-off instance — something unique that will never be reused — creates unnecessary noise in the type registry. For these cases, i3x provides a built-in generic type:
+When an instance is discovered at runtime and its type cannot be determined (e.g. during MQTT topic discovery or OPC UA browsing), the implementation should register a placeholder type called `UnknownType` in its type registry and use its `elementId` as the `typeElementId` on affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances.
 
-```
-i3x-object-type
-```
-
-Its schema is simply `{"type": "object"}` — unconstrained. An instance using this type can carry any value shape without requiring a type declaration. The `pump-station-utility-meter` instance in `mock_data.py` demonstrates this: it records electricity and water readings in a structure that exists nowhere else in the model, so inventing a `utility-meter-type` would serve no purpose.
-
-The `i3x:object` type is defined in `Namespaces/i3x.json`, which is the home for any future i3x built-in primitive types (`number`, `string`, `boolean`, etc.) if the community decides to adopt them.
+The mock data registers this as `unknown-type` (elementId) in `Namespaces/i3x.json` and uses it for `pump-station-utility-meter`, which simulates an instance discovered without type information.
 
 ## Relationship Metadata
 
