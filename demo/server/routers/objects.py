@@ -56,12 +56,13 @@ def query_objects_by_id(
     failed = []
 
     for eid in element_ids:
-        instance = data_source.get_instance_by_id(eid)
+        eid_decoded = unquote(eid)
+        instance = data_source.get_instance_by_id(eid_decoded)
         if instance:
             type_info = data_source.get_object_type_by_id(instance["typeElementId"]) if request_body.includeMetadata and instance.get("typeElementId") else None
-            succeeded.append({"elementId": eid, "result": getObject(instance, request_body.includeMetadata, type_info)})
+            succeeded.append({"elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info)})
         else:
-            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(succeeded, failed)
 
@@ -94,7 +95,10 @@ def query_related_objects(
             related_result = []
             for obj in related_objects:
                 type_info = data_source.get_object_type_by_id(obj["typeElementId"]) if request_body.includeMetadata and obj.get("typeElementId") else None
-                related_result.append(getObject(obj, request_body.includeMetadata, type_info))
+                formatted = getObject(obj, request_body.includeMetadata, type_info)
+                if obj.get("sourceRelationship"):
+                    formatted["sourceRelationship"] = obj["sourceRelationship"]
+                related_result.append(formatted)
             succeeded.append({
                 "elementId": eid_decoded,
                 "result": related_result

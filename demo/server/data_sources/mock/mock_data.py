@@ -104,6 +104,7 @@ I3X_DATA = {
             "elementId": "pump-station",
             "displayName": "pump-station",
             "typeElementId": "work-center-type",
+            "namespaceUri": "https://isa.org/isa95",
             # A "/" is unsed to indicate this object is attached to the root
             "parentId": "/",
             # A platform implementation would read its graph in order to populate these required response fields.
@@ -129,6 +130,7 @@ I3X_DATA = {
             "elementId": "pump-101",
             "displayName": "pump-101",
             "typeElementId": "work-unit-type",
+            "namespaceUri": "https://isa.org/isa95",
             "parentId": "pump-station",
             # This element's data is made up of the data of other elements, so this element IS complex
             #   We would expect a client would want to recurse a complex structure by default
@@ -151,6 +153,7 @@ I3X_DATA = {
             "elementId": "pump-101-state",
             "displayName": "pump-101 State",
             "typeElementId": "state-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101",
             "isComposition": False,
             "relationships": {
@@ -231,6 +234,7 @@ I3X_DATA = {
             "elementId": "pump-101-production",
             "displayName": "pump-101 Production",
             "typeElementId": "production-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101",
             # This element has related data, but that data is not a part of the definition of this data, so it is not complex
             "isComposition": False,
@@ -246,6 +250,7 @@ I3X_DATA = {
             "elementId": "pump-101-production-product",
             "displayName": "pump-101 Product",
             "typeElementId": "product-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-production",
             "isComposition": False,
             "relationships": {
@@ -268,6 +273,7 @@ I3X_DATA = {
             "elementId": "pump-101-measurements",
             "displayName": "pump-101 Measurements",
             "typeElementId": "measurements-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101",
             # This element has related data, and that data IS a part of the definition of this data, so it IS complex
             "isComposition": True,
@@ -282,6 +288,7 @@ I3X_DATA = {
             "elementId": "pump-101-bearing-temperature",
             "displayName": "pump-101 Bearing Temperature",
             "typeElementId": "measurement-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-measurements",
             # This element has related data, and that data IS a part of the definition of this data, so it IS complex
             "isComposition": True,
@@ -312,6 +319,7 @@ I3X_DATA = {
             "elementId": "pump-101-measurements-bearing-temperature-value",
             "displayName": "Pump 101 Bearing Temperature Value",
             "typeElementId": "measurement-value-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-bearing-temperature",
             "isComposition": False,
             "relationships": {
@@ -337,6 +345,7 @@ I3X_DATA = {
             "elementId": "pump-101-measurements-bearing-temperature-health",
             "displayName": "Pump 101 Bearing Health",
             "typeElementId": "measurement-health-type",
+            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-bearing-temperature",
             "isComposition": False,
             "relationships": {
@@ -359,6 +368,7 @@ I3X_DATA = {
             "elementId": "tank-201",
             "displayName": "tank-201",
             "typeElementId": "work-unit-type",
+            "namespaceUri": "https://isa.org/isa95",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
@@ -370,6 +380,7 @@ I3X_DATA = {
             "elementId": "sensor-001",
             "displayName": "TempSensor-101",
             "typeElementId": "sensor-type",
+            "namespaceUri": "https://thinkiq.com/equipment",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
@@ -446,6 +457,7 @@ I3X_DATA = {
             "elementId": "sensor-003",
             "displayName": "TempSensor-VendorX",
             "typeElementId": "temperature-sensor-type",
+            "namespaceUri": "https://thinkiq.com/equipment",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {

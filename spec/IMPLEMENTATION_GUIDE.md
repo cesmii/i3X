@@ -196,26 +196,31 @@ Composition element (when `maxDepth > 1`):
   "elementId": "pump-101-measurements",
   "result": {
     "isComposition": true,
-    "value": {
-      "_value": { "value": null, "quality": "GoodNoData", "timestamp": "..." },
+    "value": null,
+    "quality": "GoodNoData",
+    "timestamp": "...",
+    "components": {
       "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
     }
   }
 }
 ```
 
-- `_value` contains the parent element's own VQT
-- Other keys are child `elementId`s (HasComponent children)
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by `elementId`
 
 #### History result shape (`POST /objects/history`)
 
 ```json
 {
   "elementId": "sensor-001",
-  "result": [
-    { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" },
-    { "isComposition": false, "value": 54.9, "quality": "Good", "timestamp": "2025-10-27T10:15:30Z" }
-  ]
+  "result": {
+    "isComposition": false,
+    "values": [
+      { "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" },
+      { "value": 54.9, "quality": "Good", "timestamp": "2025-10-27T10:15:30Z" }
+    ]
+  }
 }
 ```
 
@@ -788,6 +793,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "elementId": "string",
       "displayName": "string",
       "typeElementId": "string",
+      "namespaceUri": "string",
       "parentId": "",
       "isComposition": false
     }
@@ -802,6 +808,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "elementId": "string",
       "displayName": "string",
       "typeElementId": "string",
+      "namespaceUri": "string",
       "parentId": "",
       "isComposition": false,
       "typeNamespaceUri": "string",
@@ -954,10 +961,10 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
-Each returned Object always includes `relationships` and `sourceRelationship` to support graph traversal without additional API calls:
+Each returned Object always includes `sourceRelationship` to support graph traversal without additional API calls. When `includeMetadata=true`, `relationships` is also included:
 
-- `relationships` — the returned Object's own outgoing edges (same as on the Object definition), enabling clients to plan the next traversal step
-- `sourceRelationship` — the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
+- `sourceRelationship` — always present; the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
+- `relationships` — present only with `includeMetadata=true`; the returned Object's own outgoing edges, enabling clients to plan the next traversal step without an additional call
 
 ```json
 // No metadata
@@ -1199,7 +1206,7 @@ Returns the last known value for one or more Objects.
 }
 ```
 
-> **Composition elements:** When `isComposition` is `true`, `quality` and `timestamp` are **not** present at the `result` level. Instead, each component — including `_value` for the parent's own data — carries its own VQT with individual `quality` and `timestamp` fields. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for the full response structure.
+> **Composition elements:** When `isComposition` is `true`, `quality` and `timestamp` at the `result` level reflect the parent element's own VQT. Child component values appear under `components`, keyed by `elementId`. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for the full response structure.
 
 ---
 
@@ -1794,12 +1801,10 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
         "elementId": "machine-001",
         "result": {
           "isComposition": true,
-          "value": {
-            "_value": {
-              "value": { "status": "running" },
-              "quality": "Good",
-              "timestamp": "2025-01-08T10:30:00Z"
-            },
+          "value": { "status": "running" },
+          "quality": "Good",
+          "timestamp": "2025-01-08T10:30:00Z",
+          "components": {
             "spindle-001": {
               "value": { "rpm": 12000 },
               "quality": "Good",
@@ -1821,9 +1826,9 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
 
 **Key Points:**
 
-- `_value` contains the parent element's own value
-- Child component values are keyed by their `elementId`
-- Each child value is in VQT format
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
 
 ---

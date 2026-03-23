@@ -1,5 +1,4 @@
 from typing import Any
-from datetime import datetime, timezone
 
 
 def success_response(result):
@@ -25,6 +24,7 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> An
         "typeElementId": instance["typeElementId"],
         "parentId": instance.get("parentId"),
         "isComposition": instance["isComposition"],
+        "namespaceUri": instance.get("namespaceUri"),
     }
     if not includeMetadata:
         return base
@@ -43,81 +43,62 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> An
     return metadata_object
 
 
-def getValue(value: Any, includeMetadata: bool) -> Any:
-    """Helper to format value with or without metadata"""
-    if not includeMetadata:
-        return value
-
-    metadataValue = {
-        "dataType": "object",
-        "quality": "GoodNoData" if not value else "Good",
-        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "value": value
-    }
-
-    return metadataValue
-
-
-def getValueMetadata(value: Any) -> Any:
-    """Helper to extract metadata from value"""
-    metadata = {
-        "dataType": "object",
-        "quality": "GoodNoData" if not value else "Good",
-        "timestamp": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-    }
-    return metadata
-
 
 def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_history: bool = False) -> Any:
     """
     Converts data source {elementId: {data: [VQT...], childId: {...}}}
-    to guide format {isComposition, value, quality, timestamp}.
+    to the response format described in the Implementation Guide.
 
-    Returns the 'result' value for a bulk succeeded item.
-    For is_history=True, returns a list of VQT dicts.
+    For current value (is_history=False):
+      Simple:      {isComposition, value, quality, timestamp}
+      Composition: {isComposition, value, quality, timestamp, components: {childId: {value, quality, timestamp}}}
+
+    For history (is_history=True):
+      {isComposition, values: [{value, quality, timestamp}, ...]}
     """
     if element_id not in ds_result:
         return None
 
     element_data = ds_result[element_id]
     is_composition = instance.get("isComposition", False) if instance else False
-
-    # Check if there are child keys (composition structure with children)
     child_keys = [k for k in element_data.keys() if k != "data"]
 
     if is_history:
         data_list = element_data.get("data", [])
-        result = []
-        for vqt in data_list:
-            result.append({
-                "isComposition": is_composition,
-                "value": vqt.get("value"),
-                "quality": vqt.get("quality"),
-                "timestamp": vqt.get("timestamp")
-            })
-        return result
+        return {
+            "isComposition": is_composition,
+            "values": [
+                {"value": vqt.get("value"), "quality": vqt.get("quality"), "timestamp": vqt.get("timestamp")}
+                for vqt in data_list
+            ]
+        }
     elif child_keys:
-        # Composition with children: build nested value
+        # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])
         parent_vqt = parent_data[0] if parent_data else {}
 
-        value_dict = {"_value": parent_vqt}
+        components = {}
         for child_key in child_keys:
             child_data = element_data[child_key]
             if isinstance(child_data, dict) and "data" in child_data:
                 child_vqt = child_data["data"][0] if child_data["data"] else {}
-                value_dict[child_key] = child_vqt
+                components[child_key] = {
+                    "value": child_vqt.get("value"),
+                    "quality": child_vqt.get("quality"),
+                    "timestamp": child_vqt.get("timestamp"),
+                }
             else:
-                value_dict[child_key] = child_data
+                components[child_key] = child_data
 
         return {
             "isComposition": True,
-            "value": value_dict,
+            "value": parent_vqt.get("value"),
             "quality": parent_vqt.get("quality"),
-            "timestamp": parent_vqt.get("timestamp")
+            "timestamp": parent_vqt.get("timestamp"),
+            "components": components,
         }
     else:
-        # Simple (no children): flat VQT
+        # Simple leaf element
         data_list = element_data.get("data", [{}])
         vqt = data_list[0] if data_list else {}
 
@@ -125,7 +106,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             "isComposition": is_composition,
             "value": vqt.get("value"),
             "quality": vqt.get("quality"),
-            "timestamp": vqt.get("timestamp")
+            "timestamp": vqt.get("timestamp"),
         }
 
 
@@ -153,14 +134,14 @@ def getSubscriptionValue(instance: Any, record: Any, maxDepth: int = 1, data_sou
         if ds_result and element_id in ds_result:
             transformed = transform_value_result(element_id, ds_result, instance, is_history=False)
             if isinstance(transformed, dict):
-                result = {"elementId": element_id, "value": transformed.get("value")}
-                if transformed.get("isComposition") and isinstance(transformed.get("value"), dict):
-                    parent_vqt = transformed["value"].get("_value", {})
-                    result["quality"] = parent_vqt.get("quality") if isinstance(parent_vqt, dict) else None
-                    result["timestamp"] = parent_vqt.get("timestamp") if isinstance(parent_vqt, dict) else None
-                else:
-                    result["quality"] = transformed.get("quality")
-                    result["timestamp"] = transformed.get("timestamp")
+                result = {
+                    "elementId": element_id,
+                    "value": transformed.get("value"),
+                    "quality": transformed.get("quality"),
+                    "timestamp": transformed.get("timestamp"),
+                }
+                if transformed.get("components"):
+                    result["components"] = transformed["components"]
                 return result
 
     # Build flat VQT from record

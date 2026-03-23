@@ -162,7 +162,10 @@ class TestI3XEndpoints(unittest.TestCase):
         self.assertEqual(len(succeeded), 1)
         item = succeeded[0]
         self.assertEqual(item["elementId"], "pump-101-state")
-        self.assertIsInstance(item["result"], list)
+        self.assertIsInstance(item["result"], dict)
+        self.assertIn("isComposition", item["result"])
+        self.assertIn("values", item["result"])
+        self.assertIsInstance(item["result"]["values"], list)
 
     def test_relationship_type_query_endpoint(self):
         """Test RFC 4.1.4 - Relationship Type query (POST /relationshiptypes/query)"""
