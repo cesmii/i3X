@@ -962,6 +962,10 @@ Returns the apparent shape of one or more Object instances. The apparent shape i
       "result": {
         "elementId": "string",
         "typeElementId": "string",
+        "typeNamespaceUri": "string",
+        "resolvedTypes": [
+          { "typeElementId": "string", "namespaceUri": "string" }
+        ],
         "conformant": false,
         "apparentSchema": {
           "type": "object",
@@ -988,6 +992,8 @@ Returns the apparent shape of one or more Object instances. The apparent shape i
 |-------|------|----------|-------------|
 | `elementId` | string | Yes | ElementId of the queried Object |
 | `typeElementId` | string | Yes | ElementId of the declared ObjectType |
+| `typeNamespaceUri` | string | Yes | Namespace URI of the declared ObjectType |
+| `resolvedTypes` | object[] | Yes | Ordered list of types in the `allOf` inheritance chain, most specific first. Each entry has `typeElementId` and `namespaceUri`. |
 | `conformant` | boolean | Yes | `true` if the current value has no attributes beyond the declared schema |
 | `apparentSchema` | JSON Schema | Yes | Merged schema: all declared properties (with `allOf` resolved) plus inferred schemas for any extra attributes |
 | `extraAttributes` | string[] | Yes | Names of attributes present in the current value but absent from the declared type |

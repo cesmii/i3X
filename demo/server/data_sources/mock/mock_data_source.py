@@ -507,6 +507,62 @@ class MockDataSource(I3XDataSource):
         else:
             return type(obj).__name__
 
+    def _load_schema_raw(self, type_definition: Dict[str, Any]) -> Any:
+        """Load schema from file without resolving $ref pointers — used for inheritance chain walking."""
+        schema_pointer = type_definition.get("schema", "")
+        if not isinstance(schema_pointer, str) or "#" not in schema_pointer:
+            return {}
+        file_path, json_pointer = schema_pointer.split("#", 1)
+        if file_path not in self._schema_cache:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            full_path = os.path.join(current_dir, file_path)
+            try:
+                with open(full_path, 'r') as f:
+                    self._schema_cache[file_path] = json.load(f)
+            except Exception:
+                return {}
+        schema_data = self._schema_cache[file_path]
+        current = schema_data
+        for part in json_pointer.strip("/").split("/"):
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return {}
+        return current
+
+    def _collect_type_chain(self, type_id: str, _visited: frozenset = frozenset()) -> List[Dict[str, Any]]:
+        """
+        Walk the allOf inheritance chain for a type, returning an ordered list of
+        {typeElementId, namespaceUri} from most specific (first) to most general (last).
+        """
+        if type_id in _visited:
+            return []
+        type_def = next((t for t in self.data["objectTypes"] if t["elementId"] == type_id), None)
+        if not type_def:
+            return []
+
+        chain = [{"typeElementId": type_def["elementId"], "namespaceUri": type_def.get("namespaceUri")}]
+
+        schema_pointer = type_def.get("schema", "")
+        if not isinstance(schema_pointer, str) or "#" not in schema_pointer:
+            return chain
+        namespace_file = schema_pointer.split("#")[0]  # e.g. "Namespaces/thinkiq.json"
+
+        raw_schema = self._load_schema_raw(type_def)
+        for allof_entry in raw_schema.get("allOf", []):
+            if isinstance(allof_entry, dict) and "$ref" in allof_entry:
+                ref = allof_entry["$ref"]
+                if ref.startswith("#/types/"):
+                    parent_key = ref[len("#/types/"):]
+                    parent_schema_pointer = f"{namespace_file}#types/{parent_key}"
+                    parent_type = next(
+                        (t for t in self.data["objectTypes"] if t.get("schema") == parent_schema_pointer),
+                        None
+                    )
+                    if parent_type:
+                        chain.extend(self._collect_type_chain(parent_type["elementId"], _visited | {type_id}))
+        return chain
+
     def _collect_schema_properties(self, schema: Any) -> Dict[str, Any]:
         """
         Recursively collect all property definitions from a JSON Schema,
@@ -587,6 +643,8 @@ class MockDataSource(I3XDataSource):
         return {
             "elementId": element_id,
             "typeElementId": type_id,
+            "typeNamespaceUri": type_def.get("namespaceUri") if type_def else None,
+            "resolvedTypes": self._collect_type_chain(type_id) if type_id else [],
             "conformant": conformant,
             "apparentSchema": apparent_schema,
             "extraAttributes": extra_attributes,
