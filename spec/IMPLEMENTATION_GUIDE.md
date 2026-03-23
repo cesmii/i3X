@@ -105,49 +105,25 @@ Clients SHOULD use `GET /info` to discover the `specVersion` and `capabilities` 
 
 ## Response Format
 
-All i3X responses follow a consistent envelope shape. Every response body contains a `success` boolean so clients can check the outcome without inspecting HTTP status codes or response structure first.
+All i3X responses follow a consistent response shape.
 
-### Response Shape Summary
-
-```
-┌──────────────────┬──────────────────────────────────────────┐
-│      Format      │                 Endpoints                │ 
-├──────────────────┼──────────────────────────────────────────┤
-│ Success (single) │ GET /namespaces                          │
-│                  │ GET /objecttypes                         │
-│                  │ GET /relationshiptypes                   │
-│                  │ GET /objects                             │
-│                  │ POST /subscriptions                      │
-│                  │ POST /subscriptions/sync                 │
-│                  │ PUT /objects/{elementId}/value           │
-├──────────────────┼──────────────────────────────────────────┤
-│ Bulk             │ POST /objecttypes/query                  │
-│                  │ POST /relationshiptypes/query            │
-│                  │ POST /objects/list                       │
-│                  │ POST /objects/related                    │
-│                  │ POST /objects/value                      │
-│                  │ POST /objects/history                    │
-│                  │ POST /subscriptions/list                 │
-│                  │ POST /subscriptions/delete               │
-│                  │ POST /subscriptions/register             │
-│                  │ POST /subscriptions/unregister           │
-├──────────────────┼──────────────────────────────────────────┤
-│ Error            │ Any endpoint (HTTP 4xx/5xx)              │
-│                  │                                          │
-├──────────────────┼──────────────────────────────────────────┤
-│ SSE Stream       │ POST /subscriptions/stream               │
-│                  │                                          │
-└──────────────────┴──────────────────────────────────────────┘
-```
-
-### Success Response
-
-All GET endpoints and most action endpoints return:
+Successful responses return an HTTP 200 with the following response shape. The result shape is specific to the endpoint.
 
 ```json
 {
   "success": true,
   "result": <data>
+}
+```
+
+Error responses return HTTP 4xx/5xx (see [Error Handling](#error-handling)) with the following shape. The message contains Server specific details on the cause of the failure.
+
+```json
+{
+  "success": false,
+  "error": {
+    "message": "failure message"
+  }
 }
 ```
 
@@ -168,89 +144,27 @@ Examples:
 
 POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed.
 
+The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
+
 ```json
 {
   "success": false,
-  "result": {
-    "succeeded": [
-      { "elementId": "pump-101", "result": { ... } }
-    ],
-    "failed": [
-      { "elementId": "non-existent", "error": { "message": "Element not found: non-existent" } }
-    ]
-  }
-}
-```
-
-#### Value result shape (`POST /objects/value`)
-
-Simple (leaf) element:
-```json
-{ "elementId": "sensor-001", "result": { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" } }
-```
-
-Composition element (when `maxDepth > 1`):
-```json
-{
-  "elementId": "pump-101-measurements",
-  "result": {
-    "isComposition": true,
-    "value": {
-      "_value": { "value": null, "quality": "GoodNoData", "timestamp": "..." },
-      "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
+  "results": [
+    {
+      "success": true,
+      "elementId": "pump-101", 
+      "result": { ... }
+    },
+    {
+      "success": false,
+      "elementId": "non-existent", 
+      "error": { 
+        "message": "Element not found: non-existent"
+      }
     }
-  }
-}
-```
-
-- `_value` contains the parent element's own VQT
-- Other keys are child `elementId`s (HasComponent children)
-
-#### History result shape (`POST /objects/history`)
-
-```json
-{
-  "elementId": "sensor-001",
-  "result": [
-    { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" },
-    { "isComposition": false, "value": 54.9, "quality": "Good", "timestamp": "2025-10-27T10:15:30Z" }
   ]
 }
 ```
-
-### Error Response
-
-Returned for HTTP 4xx/5xx responses. See [Error Handling](#error-handling) for HTTP status code reference.
-
-```json
-{
-  "success": false,
-  "error": { "message": "Human-readable error message" }
-}
-```
-
-### SSE Stream Events
-
-Each event from `POST /subscriptions/stream` is a JSON array of flat value updates:
-
-```
-data: [{"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"}]
-```
-
-### Sync Response
-
-`POST /subscriptions/sync` returns all pending queued updates, each with a sequence number for acknowledgement:
-
-```json
-{
-  "success": true,
-  "result": [
-    { "sequenceNumber": 1, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z" },
-    { "sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z" }
-  ]
-}
-```
-
 ### Design Rationale
 
 **Why a consistent `{success, result}` envelope?**
@@ -258,14 +172,9 @@ data: [{"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp"
 - Error shape is predictable regardless of which endpoint failed
 - Bulk operations surface partial failures without using HTTP error codes
 
-**Why `succeeded`/`failed` instead of a flat array?**
-- Clearly separates items that worked from items that didn't
-- Clients can process successes independently without inspecting each item for a status flag
+**Why return bulk results in a flat array with succes/failure included in each row?**
 - `success: false` at the top level signals that action is needed without forcing clients to iterate all items first
-
-**Why VQT for subscription updates?**
-- Consistent with query value format — same parsing logic for polling and streaming
-- `sequenceNumber` on sync items enables reliable at-least-once acknowledgement
+- Clients rely on the results being in the same order as the request, making lookups for a specific elementid faster
 
 ---
 
@@ -649,28 +558,26 @@ Returns one or more Object Types given a collection of elementIds.
 
 ```json
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
         "elementId": "string",
-        "result": {
-          "elementId": "string",
-          "displayName": "string",
-          "namespaceUri": "string",
-          "typeId": "string",
-          "version": "1.0.0",
-          "schema": {}
-        }
+        "displayName": "string",
+        "namespaceUri": "string",
+        "typeId": "string",
+        "version": "1.0.0",
+        "schema": {}
       }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Object type not found: string" }
-      }
-    ]
-  }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Object type not found: string" }
+    }
+  ]
 }
 ```
 
@@ -737,27 +644,25 @@ Returns one or more Relationship Types given a collection of elementIds.
 
 ```json
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
         "elementId": "string",
-        "result": {
-          "elementId": "string",
-          "displayName": "string",
-          "namespaceUri": "string",
-          "relationshipId": "string",
-          "reverseOf": "string"
-        }
+        "displayName": "string",
+        "namespaceUri": "string",
+        "relationshipId": "string",
+        "reverseOf": "string"
       }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Relationship type not found: string" }
-      }
-    ]
-  }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Relationship type not found: string" }
+    }
+  ]
 }
 ```
 
@@ -872,56 +777,52 @@ Returns one or more Objects without data/values given a collection of elementIds
 ```json
 // No metadata
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
         "elementId": "string",
-        "result": {
-          "elementId": "string",
-          "displayName": "string",
-          "typeElementId": "string",
-          "parentId": "",
-          "isComposition": false
-        }
+        "displayName": "string",
+        "typeElementId": "string",
+        "parentId": "",
+        "isComposition": false
       }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Element not found: string" }
-      }
-    ]
-  }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
 }
 
 // With metadata
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      {
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
         "elementId": "string",
-        "result": {
-          "elementId": "string",
-          "displayName": "string",
-          "typeElementId": "string",
-          "parentId": "",
-          "isComposition": false,
-          "typeNamespaceUri": "string",
-          "typeId": "string",
-          "relationships": {
-            "HasParent": "/",
-            "HasChildren": [
-              "child1",
-              "child2"
-            ]
-          }
+        "displayName": "string",
+        "typeElementId": "string",
+        "parentId": "",
+        "isComposition": false,
+        "typeNamespaceUri": "string",
+        "typeId": "string",
+        "relationships": {
+          "HasParent": "/",
+          "HasChildren": [
+            "child1",
+            "child2"
+          ]
         }
       }
-    ],
-    "failed": []
-  }
+    }
+  ]
 }
 ```
 
@@ -961,74 +862,70 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
 ```json
 // No metadata
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
-        "elementId": "string",
-        "result": [
-          {
-            "elementId": "string",
-            "displayName": "string",
-            "typeElementId": "string",
-            "parentId": "",
-            "isComposition": false,
-            "sourceRelationship": "string",
-            "relationships": {
-              "HasParent": "/",
-              "HasChildren": [
-                "child1",
-                "child2"
-              ]
-            }
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": [
+        {
+          "elementId": "string",
+          "displayName": "string",
+          "typeElementId": "string",
+          "parentId": "",
+          "isComposition": false,
+          "sourceRelationship": "string",
+          "relationships": {
+            "HasParent": "/",
+            "HasChildren": [
+              "child1",
+              "child2"
+            ]
           }
-        ]
-      }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Element not found: string" }
-      }
-    ]
-  }
+        }
+      ]
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
 }
 
 // With metadata
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
-        "elementId": "string",
-        "result": [
-          {
-            "elementId": "string",
-            "displayName": "string",
-            "typeElementId": "string",
-            "parentId": "",
-            "isComposition": false,
-            "sourceRelationship": "string",
-            "relationships": {
-              "HasParent": "/",
-              "HasChildren": [
-                "child1",
-                "child2"
-              ]
-            },
-            "typeNamespaceUri": "string",
-            "typeId": "string"
-          }
-        ]
-      }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Element not found: string" }
-      }
-    ]
-  }
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": [
+        {
+          "elementId": "string",
+          "displayName": "string",
+          "typeElementId": "string",
+          "parentId": "",
+          "isComposition": false,
+          "sourceRelationship": "string",
+          "relationships": {
+            "HasParent": "/",
+            "HasChildren": [
+              "child1",
+              "child2"
+            ]
+          },
+          "typeNamespaceUri": "string",
+          "typeId": "string"
+        }
+      ]
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
 }
 ```
 
@@ -1104,30 +1001,28 @@ Returns the last known value for one or more Objects.
 
 ```json
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
-        "elementId": "string",
-        "result": {
-          "isComposition": false,
-          "value": {
-            "temperature": 1,
-            "inletPressure": "2",
-            "outletPressure": 0.11
-          },
-          "quality": "Good",
-          "timestamp": "2026-01-29T16:37:41Z"
-        }
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "isComposition": false,
+        "value": {
+          "temperature": 1,
+          "inletPressure": "2",
+          "outletPressure": 0.11
+        },
+        "quality": "Good",
+        "timestamp": "2026-01-29T16:37:41Z"
       }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Element not found: string" }
-      }
-    ]
-  }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
 }
 ```
 
@@ -1165,42 +1060,40 @@ Returns the historical values for one or more Objects between a start and end ti
 
 ```json
 {
-  "success": true,
-  "result": {
-    "succeeded": [
-      {
-        "elementId": "object-elementid-1",
-        "result": [
-          {
-            "isComposition": false,
-            "value": {
-              "temperature": 1,
-              "inletPressure": "2",
-              "outletPressure": 0.11
-            },
-            "quality": "Good",
-            "timestamp": "2026-01-29T16:00:00Z"
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "object-elementid-1",
+      "result": [
+        {
+          "isComposition": false,
+          "value": {
+            "temperature": 1,
+            "inletPressure": "2",
+            "outletPressure": 0.11
           },
-          {
-            "isComposition": false,
-            "value": {
-              "temperature": 3,
-              "inletPressure": "4",
-              "outletPressure": 0.22
-            },
-            "quality": "Good",
-            "timestamp": "2026-01-29T15:00:00Z"
-          }
-        ]
-      }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Element not found: string" }
-      }
-    ]
-  }
+          "quality": "Good",
+          "timestamp": "2026-01-29T16:00:00Z"
+        },
+        {
+          "isComposition": false,
+          "value": {
+            "temperature": 3,
+            "inletPressure": "4",
+            "outletPressure": 0.22
+          },
+          "quality": "Good",
+          "timestamp": "2026-01-29T15:00:00Z"
+        }
+      ]
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
 }
 ```
 
@@ -1367,21 +1260,19 @@ Get one or more subscriptions by ID. Used to check if subscriptions exist and in
 ```json
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      {
-        "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-        "result": {
-          "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-          "displayName": "mySubscription",
-          "monitoredObjects": [
-            { "elementId": "object-elementid-1", "maxDepth": 1 }
-          ]
-        }
+  "results": [
+    {
+      "success": true,
+      "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+      "result": {
+        "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+        "displayName": "mySubscription",
+        "monitoredObjects": [
+          { "elementId": "object-elementid-1", "maxDepth": 1 }
+        ]
       }
-    ],
-    "failed": []
-  }
+    }
+  ]
 }
 ```
 ---
@@ -1410,12 +1301,9 @@ Delete one or more subscriptions.
 ```json
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      { "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
-    ],
-    "failed": []
-  }
+  "results": [
+    { "success": true, "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
+  ]
 }
 ```
 
@@ -1466,13 +1354,10 @@ Register one or more Objects with a Subscription.
 ```json
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      { "elementId": "object-elementid-1", "result": null },
-      { "elementId": "object-elementid-2", "result": null }
-    ],
-    "failed": []
-  }
+  "results": [
+    { "success": true, "elementId": "object-elementid-1", "result": null },
+    { "success": true, "elementId": "object-elementid-2", "result": null }
+  ]
 }
 ```
 
@@ -1512,13 +1397,10 @@ Unregister one or more Objects from a Subscription.
 ```json
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      { "elementId": "object-elementid-1", "result": null },
-      { "elementId": "object-elementid-2", "result": null }
-    ],
-    "failed": []
-  }
+  "results": [
+    { "success": true, "elementId": "object-elementid-1", "result": null },
+    { "success": true, "elementId": "object-elementid-2", "result": null }
+  ]
 }
 ```
 
@@ -1720,34 +1602,32 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
 ```json
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      {
-        "elementId": "machine-001",
-        "result": {
-          "isComposition": true,
-          "value": {
-            "_value": {
-              "value": { "status": "running" },
-              "quality": "Good",
-              "timestamp": "2025-01-08T10:30:00Z"
-            },
-            "spindle-001": {
-              "value": { "rpm": 12000 },
-              "quality": "Good",
-              "timestamp": "2025-01-08T10:30:00Z"
-            },
-            "coolant-001": {
-              "value": { "flow_rate": 5.2, "temp": 22.1 },
-              "quality": "Good",
-              "timestamp": "2025-01-08T10:30:00Z"
-            }
+  "results": [
+    {
+      "success": true,
+      "elementId": "machine-001",
+      "result": {
+        "isComposition": true,
+        "value": {
+          "_value": {
+            "value": { "status": "running" },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "spindle-001": {
+            "value": { "rpm": 12000 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "coolant-001": {
+            "value": { "flow_rate": 5.2, "temp": 22.1 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
           }
         }
       }
-    ],
-    "failed": []
-  }
+    }
+  ]
 }
 ```
 
