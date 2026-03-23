@@ -44,16 +44,16 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data["success"])
-        succeeded = data["result"]["succeeded"]
+        succeeded = [r for r in data["results"] if r["success"]]
         self.assertEqual(len(succeeded), 1)
         self.assertEqual(succeeded[0]["elementId"], "work-center-type")
 
-        # Test non-existent type (appears in failed)
+        # Test non-existent type (appears as failed)
         response = self.client.post("/objecttypes/query", json={"elementIds": ["non-existent"]})
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertFalse(data["success"])
-        self.assertEqual(len(data["result"]["failed"]), 1)
+        self.assertEqual(len([r for r in data["results"] if not r["success"]]), 1)
 
     def test_object_type_definition_batch(self):
         """Test RFC 4.1.2 - Object Type Definition batch query"""
@@ -64,8 +64,8 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(data["success"])  # one item failed
-        self.assertEqual(len(data["result"]["succeeded"]), 1)
-        self.assertEqual(len(data["result"]["failed"]), 1)
+        self.assertEqual(len([r for r in data["results"] if r["success"]]), 1)
+        self.assertEqual(len([r for r in data["results"] if not r["success"]]), 1)
 
     def test_instances_endpoint(self):
         """Test RFC 4.1.6 - Instances of an Object Type"""
@@ -84,16 +84,16 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data["success"])
-        succeeded = data["result"]["succeeded"]
+        succeeded = [r for r in data["results"] if r["success"]]
         self.assertEqual(len(succeeded), 1)
         self.assertEqual(succeeded[0]["elementId"], "pump-101")
 
-        # Test non-existent object (appears in failed)
+        # Test non-existent object (appears as failed)
         response = self.client.post("/objects/list", json={"elementIds": ["non-existent"]})
         data = response.json()
         self.assertEqual(response.status_code, 200)
         self.assertFalse(data["success"])
-        self.assertEqual(len(data["result"]["failed"]), 1)
+        self.assertEqual(len([r for r in data["results"] if not r["success"]]), 1)
 
     def test_object_definition_batch(self):
         """Test RFC 4.1.8 - Object Definition batch query"""
@@ -104,8 +104,8 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertFalse(data["success"])  # one item failed
-        self.assertEqual(len(data["result"]["succeeded"]), 2)
-        self.assertEqual(len(data["result"]["failed"]), 1)
+        self.assertEqual(len([r for r in data["results"] if r["success"]]), 2)
+        self.assertEqual(len([r for r in data["results"] if not r["success"]]), 1)
 
     def test_last_known_value_endpoint(self):
         """Test RFC 4.2.1.1 - Object Element LastKnownValue (POST /objects/value)"""
@@ -115,7 +115,7 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data["success"])
-        succeeded = data["result"]["succeeded"]
+        succeeded = [r for r in data["results"] if r["success"]]
         self.assertEqual(len(succeeded), 1)
         item = succeeded[0]
         self.assertEqual(item["elementId"], "pump-101-state")
@@ -138,7 +138,7 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(data, dict)
-        succeeded_ids = [item["elementId"] for item in data["result"]["succeeded"]]
+        succeeded_ids = [item["elementId"] for item in data["results"] if item["success"]]
         self.assertIn("pump-101-state", succeeded_ids)
         self.assertIn("pump-101-measurements", succeeded_ids)
 
@@ -149,7 +149,7 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertTrue(data["success"])
-        self.assertIn("succeeded", data["result"])
+        self.assertIn("results", data)
 
     def test_historical_values_endpoint(self):
         """Test RFC 4.2.1.2 - Historical Values (POST /objects/history)"""
@@ -158,7 +158,7 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(data, dict)
-        succeeded = data["result"]["succeeded"]
+        succeeded = [r for r in data["results"] if r["success"]]
         self.assertEqual(len(succeeded), 1)
         item = succeeded[0]
         self.assertEqual(item["elementId"], "pump-101-state")
@@ -174,7 +174,7 @@ class TestI3XEndpoints(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIsInstance(data, dict)
-        self.assertIn("succeeded", data["result"])
+        self.assertIn("results", data)
 
     def test_request_validation_errors(self):
         """Test request validation - must provide elementIds array"""

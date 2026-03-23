@@ -23,9 +23,9 @@ def error_response(message):
     return {"success": False, "error": {"message": message}}
 
 
-def bulk_response(succeeded, failed):
-    overall_success = len(failed) == 0
-    return {"success": overall_success, "result": {"succeeded": succeeded, "failed": failed}}
+def bulk_response(results):
+    overall_success = all(r.get("success", False) for r in results)
+    return {"success": overall_success, "results": results}
 
 
 def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> Any:

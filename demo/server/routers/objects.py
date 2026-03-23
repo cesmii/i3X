@@ -44,19 +44,18 @@ def query_objects_by_id(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
         instance = data_source.get_instance_by_id(eid_decoded)
         if instance:
             type_info = data_source.get_object_type_by_id(instance["typeElementId"]) if request_body.includeMetadata and instance.get("typeElementId") else None
-            succeeded.append({"elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info)})
+            results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info)})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.1.6 - Objects linked by Relationship Type
@@ -73,8 +72,7 @@ def query_related_objects(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -91,14 +89,11 @@ def query_related_objects(
                 if obj.get("sourceRelationship"):
                     formatted["sourceRelationship"] = obj["sourceRelationship"]
                 related_result.append(formatted)
-            succeeded.append({
-                "elementId": eid_decoded,
-                "result": related_result
-            })
+            results.append({"success": True, "elementId": eid_decoded, "result": related_result})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.1.1 - Object Element LastKnown Value
@@ -118,8 +113,7 @@ def query_last_known_values(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -132,13 +126,13 @@ def query_last_known_values(
             )
             if value:
                 transformed = transform_value_result(eid_decoded, value, instance, is_history=False)
-                succeeded.append({"elementId": eid_decoded, "result": transformed})
+                results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                failed.append({"elementId": eid_decoded, "error": {"message": "No value available"}})
+                results.append({"success": False, "elementId": eid_decoded, "error": {"message": "No value available"}})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.1.2 - Object Element HistoricalValue
@@ -158,8 +152,7 @@ def query_historical_values(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -174,13 +167,13 @@ def query_historical_values(
             )
             if historical_values:
                 transformed = transform_value_result(eid_decoded, historical_values, instance, is_history=True)
-                succeeded.append({"elementId": eid_decoded, "result": transformed})
+                results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                failed.append({"elementId": eid_decoded, "error": {"message": "No historical data available"}})
+                results.append({"success": False, "elementId": eid_decoded, "error": {"message": "No historical data available"}})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.1.8 - Apparent Shape
@@ -192,16 +185,15 @@ def get_apparent_shapes(
     """
     Return the apparent schema for one or more Object instances.
     """
-    succeeded = []
-    failed = []
+    results = []
     for eid in request_body.get_element_ids():
         eid_decoded = unquote(eid)
         result = data_source.get_instance_apparent_shape(eid_decoded)
         if result is not None:
-            succeeded.append({"elementId": eid_decoded, "result": result})
+            results.append({"success": True, "elementId": eid_decoded, "result": result})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
-    return bulk_response(succeeded, failed)
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+    return bulk_response(results)
 
 
 # RFC 4.2.2.1 - Object Element LastKnownValue update

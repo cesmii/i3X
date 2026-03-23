@@ -35,18 +35,17 @@ def query_object_types_by_id(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
         obj_type = data_source.get_object_type_by_id(eid_decoded)
         if obj_type:
-            succeeded.append({"elementId": eid_decoded, "result": formatObjectType(obj_type)})
+            results.append({"success": True, "elementId": eid_decoded, "result": formatObjectType(obj_type)})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Object type not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Object type not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.1.4 - Relationship Types
@@ -77,15 +76,14 @@ def query_relationship_types_by_id(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
         rel_type = data_source.get_relationship_type_by_id(eid_decoded)
         if rel_type:
-            succeeded.append({"elementId": eid_decoded, "result": rel_type})
+            results.append({"success": True, "elementId": eid_decoded, "result": rel_type})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Relationship type not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Relationship type not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)

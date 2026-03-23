@@ -96,21 +96,20 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
         raise HTTPException(status_code=404, detail="Subscription not found")
 
     data_source = request.app.state.data_source
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "error": {"message": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
             item_id = item["elementId"]
             if item_id not in sub.monitoredObjects:
                 sub.monitoredObjects.append(item_id)
-        succeeded.append({"elementId": eid, "result": None})
+        results.append({"success": True, "elementId": eid, "result": None})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.3.2 - Unregister Monitored Items
@@ -126,21 +125,20 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
         raise HTTPException(status_code=404, detail="Subscription not found")
 
     data_source = request.app.state.data_source
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "error": {"message": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
             item_id = item["elementId"]
             if item_id in sub.monitoredObjects:
                 sub.monitoredObjects.remove(item_id)
-        succeeded.append({"elementId": eid, "result": None})
+        results.append({"success": True, "elementId": eid, "result": None})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # POST /subscriptions/stream - Open SSE stream
@@ -228,8 +226,7 @@ def sync_subscription(request: Request, req: SyncRequest):
 )
 def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     """Delete one or more subscriptions by ID. subscriptionIds are passed in the request body."""
-    succeeded = []
-    failed = []
+    results = []
 
     for sub_id in req.subscriptionIds:
         index = next(
@@ -243,11 +240,11 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
         )
         if index is not None:
             request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
-            succeeded.append({"subscriptionId": sub_id, "result": None})
+            results.append({"success": True, "subscriptionId": sub_id, "result": None})
         else:
-            failed.append({"subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # POST /subscriptions/list - Get one or more subscriptions by ID
@@ -258,13 +255,13 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
 )
 def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
     """Get one or more subscriptions by ID to check their existence and current configuration."""
-    succeeded = []
-    failed = []
+    results = []
 
     for sub_id in req.subscriptionIds:
         sub = _find_sub(request, sub_id, req.clientId)
         if sub:
-            succeeded.append({
+            results.append({
+                "success": True,
                 "subscriptionId": sub_id,
                 "result": {
                     "subscriptionId": sub.subscriptionId,
@@ -277,9 +274,9 @@ def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
                 },
             })
         else:
-            failed.append({"subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # Subscription thread responsible for creating updates for items being monitored.
