@@ -164,48 +164,6 @@ The Server's response MUST be in the same order and the same size as the request
 }
 ```
 
-#### Value result shape (`POST /objects/value`)
-
-Simple (leaf) element:
-```json
-{ "success": true, "elementId": "sensor-001", "result": { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" } }
-```
-
-Composition element (when `maxDepth > 1`):
-```json
-{
-  "success": true,
-  "elementId": "pump-101-measurements",
-  "result": {
-    "isComposition": true,
-    "value": null,
-    "quality": "GoodNoData",
-    "timestamp": "...",
-    "components": {
-      "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
-    }
-  }
-}
-```
-
-- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
-- `components` is present only on composition elements and contains child values keyed by `elementId`
-
-#### History result shape (`POST /objects/history`)
-
-```json
-{
-  "success": true,
-  "elementId": "sensor-001",
-  "result": {
-    "isComposition": false,
-    "values": [
-      { "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" },
-      { "value": 54.9, "quality": "Good", "timestamp": "2025-10-27T10:15:30Z" }
-    ]
-  }
-}
-```
 ### Design Rationale
 
 **Why a consistent `{success, result}` envelope?**
@@ -997,44 +955,42 @@ Returns the apparent shape of one or more Object instances. The apparent shape i
 ```json
 {
   "success": true,
-  "result": {
-    "succeeded": [
-      {
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
         "elementId": "string",
-        "result": {
-          "elementId": "string",
-          "typeElementId": "string",
-          "conformant": false,
-          "apparentSchema": {
-            "type": "object",
-            "properties": {
-              "temperature":      { "type": "number" },
-              "unit":             { "type": "string" },
-              "vendor_serial":    { "type": "string" },
-              "firmware_version": { "type": "string" }
-            }
-          },
-          "extraAttributes": ["vendor_serial", "firmware_version"]
-        }
+        "typeElementId": "string",
+        "conformant": false,
+        "apparentSchema": {
+          "type": "object",
+          "properties": {
+            "temperature":      { "type": "number" },
+            "unit":             { "type": "string" },
+            "vendor_serial":    { "type": "string" },
+            "firmware_version": { "type": "string" }
+          }
+        },
+        "extraAttributes": ["vendor_serial", "firmware_version"]
       }
-    ],
-    "failed": [
-      {
-        "elementId": "string",
-        "error": { "message": "Element not found: string" }
-      }
-    ]
-  }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
 }
 ```
 
-| Field | Type | Description |
-|-------|------|-------------|
-| `elementId` | string | ElementId of the queried Object |
-| `typeElementId` | string | ElementId of the declared ObjectType |
-| `conformant` | boolean | `true` if the current value has no attributes beyond the declared schema |
-| `apparentSchema` | JSON Schema | Merged schema: all declared properties (with `allOf` resolved) plus inferred schemas for any extra attributes |
-| `extraAttributes` | string[] | Names of attributes present in the current value but absent from the declared type |
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementId` | string | Yes | ElementId of the queried Object |
+| `typeElementId` | string | Yes | ElementId of the declared ObjectType |
+| `conformant` | boolean | Yes | `true` if the current value has no attributes beyond the declared schema |
+| `apparentSchema` | JSON Schema | Yes | Merged schema: all declared properties (with `allOf` resolved) plus inferred schemas for any extra attributes |
+| `extraAttributes` | string[] | Yes | Names of attributes present in the current value but absent from the declared type |
 
 **Notes:**
 - Implementations SHOULD resolve `allOf` inheritance chains before comparing, so inherited attributes are not incorrectly listed as extra.
@@ -1136,7 +1092,33 @@ Returns the last known value for one or more Objects.
 }
 ```
 
-> **Composition elements:** When `isComposition` is `true`, `quality` and `timestamp` at the `result` level reflect the parent element's own VQT. Child component values appear under `components`, keyed by `elementId`. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for the full response structure.
+**Result shape — simple (leaf) element:**
+
+```json
+{ "success": true, "elementId": "sensor-001", "result": { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" } }
+```
+
+**Result shape — composition element** (when `maxDepth > 1`):
+
+```json
+{
+  "success": true,
+  "elementId": "pump-101-measurements",
+  "result": {
+    "isComposition": true,
+    "value": null,
+    "quality": "GoodNoData",
+    "timestamp": "...",
+    "components": {
+      "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
+    }
+  }
+}
+```
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by `elementId`
+- See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for full recursion behavior
 
 ---
 
@@ -1175,28 +1157,13 @@ Returns the historical values for one or more Objects between a start and end ti
     {
       "success": true,
       "elementId": "object-elementid-1",
-      "result": [
-        {
-          "isComposition": false,
-          "value": {
-            "temperature": 1,
-            "inletPressure": "2",
-            "outletPressure": 0.11
-          },
-          "quality": "Good",
-          "timestamp": "2026-01-29T16:00:00Z"
-        },
-        {
-          "isComposition": false,
-          "value": {
-            "temperature": 3,
-            "inletPressure": "4",
-            "outletPressure": 0.22
-          },
-          "quality": "Good",
-          "timestamp": "2026-01-29T15:00:00Z"
-        }
-      ]
+      "result": {
+        "isComposition": false,
+        "values": [
+          { "value": { "temperature": 1, "inletPressure": "2", "outletPressure": 0.11 }, "quality": "Good", "timestamp": "2026-01-29T16:00:00Z" },
+          { "value": { "temperature": 3, "inletPressure": "4", "outletPressure": 0.22 }, "quality": "Good", "timestamp": "2026-01-29T15:00:00Z" }
+        ]
+      }
     },
     {
       "success": false,
@@ -1206,6 +1173,9 @@ Returns the historical values for one or more Objects between a start and end ti
   ]
 }
 ```
+
+- `isComposition` is at the `result` envelope level, not per value entry
+- `values` is an ordered array of VQT objects for the requested time range
 
 ---
 
