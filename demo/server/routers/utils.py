@@ -1,4 +1,18 @@
 from typing import Any
+from fastapi import Request
+
+
+def get_data_source(request: Request) -> Any:
+    """Shared FastAPI dependency — injects the configured data source into route handlers."""
+    return request.app.state.data_source
+
+
+OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "typeId", "version", "schema"}
+
+
+def formatObjectType(type_def: Any) -> Any:
+    """Filter an ObjectType dict to the spec-defined fields, excluding implementation internals."""
+    return {k: v for k, v in type_def.items() if k in OBJECT_TYPE_FIELDS}
 
 
 def success_response(result):

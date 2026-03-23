@@ -14,8 +14,7 @@ from models import (
     DeleteSubscriptionsRequest,
     ListSubscriptionsRequest,
 )
-from data_sources.data_interface import I3XDataSource
-from .utils import getSubscriptionValue, success_response, bulk_response
+from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source
 
 
 # Not required, but showing what information is stored for simulated subscriptions
@@ -43,11 +42,6 @@ class Subscription(BaseModel):
 
 
 subs = APIRouter(prefix="", tags=["Subscribe"])
-
-
-def get_data_source(request: Request) -> I3XDataSource:
-    """Dependency to inject data source"""
-    return request.app.state.data_source
 
 
 def _find_sub(request: Request, subscription_id: str, client_id: Optional[str] = None) -> Optional[Subscription]:
@@ -271,18 +265,19 @@ def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
         sub = _find_sub(request, sub_id, req.clientId)
         if sub:
             succeeded.append({
-                "elementId": sub_id,
+                "subscriptionId": sub_id,
                 "result": {
                     "subscriptionId": sub.subscriptionId,
                     "displayName": sub.displayName,
+                    "maxDepth": sub.maxDepth,
                     "monitoredObjects": [
-                        {"elementId": eid, "maxDepth": sub.maxDepth}
+                        {"elementId": eid}
                         for eid in sub.monitoredObjects
                     ],
                 },
             })
         else:
-            failed.append({"elementId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+            failed.append({"subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
     return bulk_response(succeeded, failed)
 
@@ -313,16 +308,11 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
                         sub.is_streaming = False
                         sub.handler = None
                 else:
-                    # Queue mode: store for later /sync retrieval in flat format with sequence number
-                    actual_value = value.get("value") if isinstance(value, dict) else value
-                    quality = value.get("quality", "Good") if isinstance(value, dict) else "Good"
-                    timestamp = value.get("timestamp") if isinstance(value, dict) else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    # Queue mode: store for later /sync retrieval
+                    update_value = getSubscriptionValue(instance, value, maxDepth=sub.maxDepth, data_source=data_source)
                     queued_item = {
                         "sequenceNumber": sub.nextSequence,
-                        "elementId": element_id,
-                        "value": actual_value,
-                        "quality": quality,
-                        "timestamp": timestamp,
+                        **update_value,
                     }
                     sub.nextSequence += 1
                     # Enforce FIFO with max queue size

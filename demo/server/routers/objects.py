@@ -1,26 +1,18 @@
-from fastapi import APIRouter, Path, Query, HTTPException, Request, Body, Depends
+from fastapi import APIRouter, Path, Query, HTTPException, Body, Depends
 from typing import Optional, Any
 from urllib.parse import unquote
 from models import (
-    ObjectInstanceMinimal,
-    ObjectInstance,
     GetObjectsRequest,
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
     GetApparentShapeRequest,
 )
-from data_sources.data_interface import I3XDataSource
-from .utils import getObject, success_response, error_response, bulk_response, transform_value_result
+from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
 update = APIRouter(prefix="", tags=["Update"])
-
-
-def get_data_source(request: Request) -> I3XDataSource:
-    """Dependency to inject data source"""
-    return request.app.state.data_source
 
 
 # RFC 4.1.5 - Instances of an Object Type
@@ -28,7 +20,7 @@ def get_data_source(request: Request) -> I3XDataSource:
 def get_objects(
     typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Return all Objects. Optionally filter by typeElementId"""
     result = []
@@ -42,7 +34,7 @@ def get_objects(
 @explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById")
 def query_objects_by_id(
     request_body: GetObjectsRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return one or more Objects by elementId.
@@ -71,7 +63,7 @@ def query_objects_by_id(
 @explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects")
 def query_related_objects(
     request_body: GetRelatedObjectsRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return related objects for one or more elementIds.
@@ -113,7 +105,7 @@ def query_related_objects(
 @query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues")
 def query_last_known_values(
     request_body: GetObjectValueRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return last known value for one or more Objects.
@@ -153,7 +145,7 @@ def query_last_known_values(
 @query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues")
 def query_historical_values(
     request_body: GetObjectHistoryRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Get the historical values for one or more Objects.
@@ -195,7 +187,7 @@ def query_historical_values(
 @explore.post("/objects/apparentShape", summary="Get Apparent Shapes", operation_id="getApparentShape")
 def get_apparent_shapes(
     request_body: GetApparentShapeRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return the apparent schema for one or more Object instances.
@@ -221,9 +213,11 @@ def get_apparent_shapes(
 def update_object(
     elementId: str = Path(...),
     body: Any = Body(...),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Update the value of an Object"""
+    if not data_source.get_instance_by_id(elementId):
+        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
     try:
         # Unwrap VQT body: {value, quality, timestamp} -> extract inner value
         if isinstance(body, dict) and "value" in body:
@@ -244,7 +238,7 @@ def update_object(
 )
 def update_object_history(
     elementId: str = Path(...),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Update the historical values for one or more Objects"""
     raise HTTPException(status_code=501, detail="Operation not implemented")
