@@ -97,3 +97,17 @@ class I3XDataSource(ABC):
     def get_all_instances(self) -> List[Dict[str, Any]]:
         """Return all instances (used by subscription worker)"""
         pass
+
+    @abstractmethod
+    def get_instance_apparent_shape(self, element_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Return the apparent schema of an instance by ElementId (RFC 4.1.8).
+
+        Compares the declared ObjectType schema (with allOf resolved) against the
+        instance's current value to detect extra attributes not in the type definition.
+
+        Returns a dict with:
+            elementId, typeElementId, conformant, apparentSchema, extraAttributes
+        Returns None if the element does not exist.
+        """
+        pass

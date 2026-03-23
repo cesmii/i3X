@@ -131,6 +131,7 @@ All i3X responses follow a consistent envelope shape. Every response body contai
 │                  │ POST /subscriptions/delete               │
 │                  │ POST /subscriptions/register             │
 │                  │ POST /subscriptions/unregister           │
+│                  │ POST /objects/apparentShape              │
 ├──────────────────┼──────────────────────────────────────────┤
 │ Error            │ Any endpoint (HTTP 4xx/5xx)              │
 │                  │                                          │
@@ -1033,6 +1034,73 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
 ```
 
 > **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
+
+---
+
+#### `POST` /objects/apparentShape
+
+Returns the apparent shape of one or more Object instances. The apparent shape is the union of the Object's declared type schema and any additional attributes found in its current value that are not declared in the type. This is useful when instances carry vendor-specific or platform-specific attributes that were never modelled in the ObjectType — rather than creating many near-duplicate types (type bloat) or silently discarding the extra data, the apparent shape endpoint surfaces them explicitly.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | Yes | One or more elementIds to inspect |
+
+```json
+{
+  "elementIds": ["string"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": {
+    "succeeded": [
+      {
+        "elementId": "string",
+        "result": {
+          "elementId": "string",
+          "typeElementId": "string",
+          "conformant": false,
+          "apparentSchema": {
+            "type": "object",
+            "properties": {
+              "temperature":      { "type": "number" },
+              "unit":             { "type": "string" },
+              "vendor_serial":    { "type": "string" },
+              "firmware_version": { "type": "string" }
+            }
+          },
+          "extraAttributes": ["vendor_serial", "firmware_version"]
+        }
+      }
+    ],
+    "failed": [
+      {
+        "elementId": "string",
+        "error": { "message": "Element not found: string" }
+      }
+    ]
+  }
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `elementId` | string | ElementId of the queried Object |
+| `typeElementId` | string | ElementId of the declared ObjectType |
+| `conformant` | boolean | `true` if the current value has no attributes beyond the declared schema |
+| `apparentSchema` | JSON Schema | Merged schema: all declared properties (with `allOf` resolved) plus inferred schemas for any extra attributes |
+| `extraAttributes` | string[] | Names of attributes present in the current value but absent from the declared type |
+
+**Notes:**
+- Implementations SHOULD resolve `allOf` inheritance chains before comparing, so inherited attributes are not incorrectly listed as extra.
+- If the instance has no current value, `conformant` SHOULD be `true` and `extraAttributes` SHOULD be empty.
+- The declared type schema is available in full via `GET /objecttypes` or `POST /objecttypes/query`.
 
 ---
 

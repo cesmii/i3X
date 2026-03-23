@@ -8,6 +8,7 @@ from models import (
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
+    GetApparentShapeRequest,
 )
 from data_sources.data_interface import I3XDataSource
 from .utils import getObject, success_response, error_response, bulk_response, transform_value_result
@@ -183,6 +184,27 @@ def query_historical_values(
         else:
             failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
+    return bulk_response(succeeded, failed)
+
+
+# RFC 4.1.8 - Apparent Shape
+@explore.post("/objects/apparentShape", summary="Get Apparent Shapes", operation_id="getApparentShape")
+def get_apparent_shapes(
+    request_body: GetApparentShapeRequest,
+    data_source: I3XDataSource = Depends(get_data_source),
+):
+    """
+    Return the apparent schema for one or more Object instances.
+    """
+    succeeded = []
+    failed = []
+    for eid in request_body.get_element_ids():
+        eid_decoded = unquote(eid)
+        result = data_source.get_instance_apparent_shape(eid_decoded)
+        if result is not None:
+            succeeded.append({"elementId": eid_decoded, "result": result})
+        else:
+            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
     return bulk_response(succeeded, failed)
 
 

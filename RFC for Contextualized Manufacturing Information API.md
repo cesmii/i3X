@@ -161,6 +161,21 @@ If the Query specifies an optional query parameter, an implementation MAY suppor
 
 If the ElementId exists as an instance object, this query MUST return the instance object, conforming to the Type definition from which the instance object is derived. The returned payload MUST include the most recent values of metadata indicated in [section 3.1.1](#311-required-object-metadata) and, if indicated by an optional query parameter, MAY include the most recent values of metadata indicated in [section 3.1.2](#312-optional-object-metadata).
 
+#### 4.1.8 Apparent Shape
+
+This Query MUST return the apparent schema of an object instance by ElementId. The apparent shape represents the actual structure of the object as observed in the platform — the union of the declared ObjectType schema and any additional attributes present in the instance's current value that are not declared in the type.
+
+The response MUST include:
+- **elementId**: the ElementId of the queried object
+- **typeElementId**: the ElementId of the declared ObjectType
+- **conformant**: a boolean indicating whether the instance's current value conforms to its declared type schema with no extra attributes
+- **apparentSchema**: a JSON Schema object representing the full apparent structure of the instance, including both declared and extra attributes
+- **extraAttributes**: an array of attribute names present in the instance's current value but not declared in the ObjectType schema
+
+This Query MUST accept an array of ElementIds, consistent with other bulk query methods in this API.
+
+Implementations SHOULD resolve `allOf` inheritance chains in the declared type schema before comparing against the instance's actual data, so that inherited attributes are not incorrectly reported as extra.
+
 ### 4.2 Value Methods
 Value methods MAY be used to both Read and Write values in a CMIP, depending on the server implementation. In order to keep this document independent of any specific implementation technology choices, a Read operation shall be referred to as a Query; a Write operation shall be referred to as an Update. An Update may change an existing value in the CMIP.
 

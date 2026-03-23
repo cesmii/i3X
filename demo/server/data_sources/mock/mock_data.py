@@ -117,7 +117,8 @@ I3X_DATA = {
                     "pump-101",
                     "tank-201",
                     "sensor-001",
-                    "sensor-002"
+                    "sensor-002",
+                    "sensor-003"
                 ],
             },
             # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
@@ -432,6 +433,44 @@ I3X_DATA = {
                         "calibrationDate": "2025-06-01"
                     },
                     "quality": "GOOD",
+                    "timestamp": "2025-10-27T10:15:30Z",
+                },
+            ],
+            "engUnit": "CEL",
+        },
+        {
+            # Example of apparent shape: this instance is typed as temperature-sensor-type
+            # (which declares only 'temperature' and 'unit'), but its actual value also carries
+            # vendor_serial and firmware_version — attributes not in the declared schema.
+            # GET /objects/sensor-003/apparentShape will surface these as extraAttributes.
+            "elementId": "sensor-003",
+            "displayName": "TempSensor-VendorX",
+            "typeElementId": "temperature-sensor-type",
+            "parentId": "pump-station",
+            "isComposition": False,
+            "relationships": {
+                "HasParent": "pump-station",
+                "Monitors": "tank-201"
+            },
+            "records": [
+                {
+                    "value": {
+                        "temperature": 72.4,
+                        "unit": "CEL",
+                        "vendor_serial": "SN-XYZ-9001",
+                        "firmware_version": "2.3.1"
+                    },
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T10:15:30Z",
+                },
+                {
+                    "value": {
+                        "temperature": 71.8,
+                        "unit": "CEL",
+                        "vendor_serial": "SN-XYZ-9001",
+                        "firmware_version": "2.3.1"
+                    },
+                    "quality": "Good",
                     "timestamp": "2025-10-27T10:15:30Z",
                 },
             ],
