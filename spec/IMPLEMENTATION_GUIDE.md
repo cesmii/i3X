@@ -101,8 +101,8 @@ All servers MUST implement a `GET /info` endpoint that returns information about
 
 Clients SHOULD use `GET /info` to discover the `specVersion` and `capabilities` supported by a server before making other API calls.
 
-The server MUST prefix API endpoints with baseURL/i3x/v1 where the `v1` is the version number. This version will only be incremented (ex. v2) if there is a future
-version of the API with a breaking change. `baseURL` is server dependent, and `i3x` is required.
+The server MUST prefix API endpoints with `baseURL/v1/namespaces` where the `v1` is the version number. This version will only be incremented (ex. v2) if there is a future
+version of the API with a breaking change. `baseURL` is server dependent.
 
 ## Response Format
 
