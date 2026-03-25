@@ -81,21 +81,21 @@ I3X_DATA = {
             "elementId": "sensor-type",
             "displayName": "SensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "sourceTypeId": 1001,
+            "sourceTypeId": "1001",
             "schema": "Namespaces/thinkiq.json#types/sensor-type"
         },
         {
             "elementId": "temperature-sensor-type",
             "displayName": "TemperatureSensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "sourceTypeId": 1002,
+            "sourceTypeId": "1002",
             "schema": "Namespaces/thinkiq.json#types/temperature-sensor-type"
         },
         {
             "elementId": "precision-temperature-sensor-type",
             "displayName": "PrecisionTemperatureSensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "sourceTypeId": 1003,
+            "sourceTypeId": "1003",
             "schema": "Namespaces/thinkiq.json#types/precision-temperature-sensor-type",
             "related": {"relationshipType": "InheritsFrom", "types": ["https://thinkiq.com/equipment:temperature-sensor-type"]},
         },
