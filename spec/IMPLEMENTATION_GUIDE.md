@@ -1470,7 +1470,7 @@ Sync allows the client to control when value changes are received, and to explic
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/register`
-3. Server queues updates as they occur, each assigned a monotonically increasing sequence number specific to the subscriber
+3. Server queues updates as they occur, each assigned a monotonically increasing `sequenceNumber`.  Each subscription uses a different `sequenceNumber` where the first update within a new subscription sets `sequenceNumber=1`.  `sequenceNumber` is a 64-bit unsigned integer so rollover happens after 2⁶⁴ − 1
 4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
@@ -1498,7 +1498,7 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 |-------|------|----------|-------------|
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
-| `lastSequenceNumber` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
+| `lastSequenceNumber` | 64-bit unsigned integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
 
 First call (nothing to acknowledge yet):
 ```json
