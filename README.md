@@ -2,7 +2,11 @@
 
 ## Status of This Effort
 
-i3X is in a _pre-release_ Alpha state. While the API signature is largely stable, expect significant changes to response structures, and minor changes to method calls over the first quarter of 2026 while we stabilize a 1.0 release. If you want to help, please see [Contributing.md](#Contributing.md)
+i3X is in a _pre-release_ Alpha state. 
+
+**This branch represents the effort to progress to a 1.0 specification. It contains breaking changes from the Alpha (main) branch.**
+
+While the API signature is largely stable, expect significant changes to response structures, and minor changes to method calls over the first quarter of 2026 while we stabilize a 1.0 release. If you want to help, please see [Contributing.md](#Contributing.md)
 
 ## What is i3X?
 
