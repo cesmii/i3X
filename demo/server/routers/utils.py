@@ -28,10 +28,15 @@ def bulk_response(results):
     return {"success": overall_success, "results": results}
 
 
-def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> Any:
-    """Helper to format object with or without metadata"""
+def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra_attrs: Any = None) -> Any:
+    """Helper to format object with or without metadata.
+
+    extra_attrs: dict of {attrName: schema_fragment} for attributes present in the
+    instance's value but not declared in its ObjectType. Pass None to skip the check.
+    """
     STANDARD_FIELDS = {"elementId", "displayName", "typeElementId", "parentId", "isComposition", "namespaceUri", "relationships", "records"}
 
+    is_extended = bool(extra_attrs)
     base = {
         "elementId": instance["elementId"],
         "displayName": instance["displayName"],
@@ -39,6 +44,7 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> An
         "parentId": instance.get("parentId"),
         "isComposition": instance["isComposition"],
         "namespaceUri": instance.get("namespaceUri"),
+        "isExtended": is_extended,
     }
     if not includeMetadata:
         return base
@@ -48,6 +54,9 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None) -> An
         metadata_object["typeNamespaceUri"] = type_info.get("namespaceUri")
         metadata_object["typeId"] = type_info.get("typeId")
     metadata_object["relationships"] = instance.get("relationships", {})
+
+    if extra_attrs:
+        metadata_object["extendedAttributes"] = extra_attrs
 
     # Include any extra instance-level properties (RFC 3.1.2 optional metadata)
     for key, value in instance.items():

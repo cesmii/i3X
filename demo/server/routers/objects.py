@@ -6,7 +6,6 @@ from models import (
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
-    GetApparentShapeRequest,
 )
 from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source
 
@@ -26,7 +25,8 @@ def get_objects(
     result = []
     for i in data_source.get_instances(typeElementId):
         type_info = data_source.get_object_type_by_id(i["typeElementId"]) if includeMetadata and i.get("typeElementId") else None
-        result.append(getObject(i, includeMetadata, type_info))
+        extra_attrs = data_source.get_instance_extra_attributes(i["elementId"])
+        result.append(getObject(i, includeMetadata, type_info, extra_attrs))
     return success_response(result)
 
 
@@ -51,7 +51,8 @@ def query_objects_by_id(
         instance = data_source.get_instance_by_id(eid_decoded)
         if instance:
             type_info = data_source.get_object_type_by_id(instance["typeElementId"]) if request_body.includeMetadata and instance.get("typeElementId") else None
-            results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info)})
+            extra_attrs = data_source.get_instance_extra_attributes(eid_decoded)
+            results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info, extra_attrs)})
         else:
             results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
@@ -85,7 +86,8 @@ def query_related_objects(
             related_result = []
             for obj in related_objects:
                 type_info = data_source.get_object_type_by_id(obj["typeElementId"]) if request_body.includeMetadata and obj.get("typeElementId") else None
-                formatted = getObject(obj, request_body.includeMetadata, type_info)
+                extra_attrs = data_source.get_instance_extra_attributes(obj["elementId"])
+                formatted = getObject(obj, request_body.includeMetadata, type_info, extra_attrs)
                 if obj.get("sourceRelationship"):
                     formatted["sourceRelationship"] = obj["sourceRelationship"]
                 related_result.append(formatted)
@@ -173,26 +175,6 @@ def query_historical_values(
         else:
             results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(results)
-
-
-# RFC 4.1.8 - Apparent Shape
-@explore.post("/objects/apparentShape", summary="Get Apparent Shapes", operation_id="getApparentShape")
-def get_apparent_shapes(
-    request_body: GetApparentShapeRequest,
-    data_source=Depends(get_data_source),
-):
-    """
-    Return the apparent schema for one or more Object instances.
-    """
-    results = []
-    for eid in request_body.get_element_ids():
-        eid_decoded = unquote(eid)
-        result = data_source.get_instance_apparent_shape(eid_decoded)
-        if result is not None:
-            results.append({"success": True, "elementId": eid_decoded, "result": result})
-        else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
     return bulk_response(results)
 
 

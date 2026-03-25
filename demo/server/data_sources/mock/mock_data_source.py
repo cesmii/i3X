@@ -594,17 +594,15 @@ class MockDataSource(I3XDataSource):
             return {"type": "object"}
         return {}
 
-    def get_instance_apparent_shape(self, element_id: str) -> Optional[Dict[str, Any]]:
-        """RFC 4.1.8 - Return apparent schema for an instance."""
-        instance = self.get_instance_by_id(element_id, values=True)
-        if not instance:
-            return None
-
+    def _compute_extra_attributes(self, instance: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Return a {attrName: schema_fragment} dict for attributes present in the
+        instance's most recent value that are not declared in its ObjectType schema.
+        Returns an empty dict if the instance is fully conformant.
+        """
         type_id = instance.get("typeElementId")
         type_def = self.get_object_type_by_id(type_id) if type_id else None
         declared_schema = type_def.get("schema", {}) if type_def else {}
-
-        # Collect all declared properties, resolving allOf inheritance
         declared_props = self._collect_schema_properties(declared_schema)
 
         # Find most recent value
@@ -614,7 +612,6 @@ class MockDataSource(I3XDataSource):
             ts = record.get("timestamp")
             if ts:
                 try:
-                    from datetime import datetime
                     dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                     if most_recent_dt is None or dt > most_recent_dt:
                         most_recent_dt = dt
@@ -622,33 +619,19 @@ class MockDataSource(I3XDataSource):
                 except ValueError:
                     pass
 
-        # Find extra attributes: in the actual value but not in the declared schema
-        extra_attributes = []
-        apparent_props = dict(declared_props)
-
+        extra = {}
         if isinstance(most_recent_value, dict):
             for k, v in most_recent_value.items():
                 if k not in declared_props:
-                    extra_attributes.append(k)
-                    apparent_props[k] = self._infer_json_type(v)
+                    extra[k] = self._infer_json_type(v)
+        return extra
 
-        conformant = len(extra_attributes) == 0
-
-        # Build apparent schema — always object-shaped when we have properties
-        if apparent_props or declared_schema.get("type") == "object" or "allOf" in declared_schema:
-            apparent_schema = {"type": "object", "properties": apparent_props}
-        else:
-            apparent_schema = dict(declared_schema)
-
-        return {
-            "elementId": element_id,
-            "typeElementId": type_id,
-            "typeNamespaceUri": type_def.get("namespaceUri") if type_def else None,
-            "resolvedTypes": self._collect_type_chain(type_id) if type_id else [],
-            "conformant": conformant,
-            "apparentSchema": apparent_schema,
-            "extraAttributes": extra_attributes,
-        }
+    def get_instance_extra_attributes(self, element_id: str) -> Optional[Dict[str, Any]]:
+        """Return extra (non-schema) attributes for an instance, or None if not found."""
+        instance = self.get_instance_by_id(element_id, values=True)
+        if not instance:
+            return None
+        return self._compute_extra_attributes(instance)
 
     def get_all_instances(self) -> List[Dict[str, Any]]:
         # Filter out records member from each instance before returning (unique to mock data)

@@ -694,7 +694,8 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "typeElementId": "string",
       "namespaceUri": "string",
       "parentId": "",
-      "isComposition": false
+      "isComposition": false,
+      "isExtended": false
     }
   ]
 }
@@ -710,14 +711,16 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "namespaceUri": "string",
       "parentId": "",
       "isComposition": false,
+      "isExtended": true,
       "typeNamespaceUri": "string",
-      "typeId":"string",
+      "typeId": "string",
       "relationships": {
         "HasParent": "/",
-        "HasChildren": [
-          "child1",
-          "child2"
-        ]
+        "HasChildren": ["child1", "child2"]
+      },
+      "extendedAttributes": {
+        "vendor_serial": { "type": "string" },
+        "firmware_version": { "type": "string" }
       }
     }
   ]
@@ -726,31 +729,9 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 
 **Note on `parentId` vs `relationships`:** `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
 
-**Extended properties with `includeMetadata=true`:** When `includeMetadata=true`, the response includes the standard metadata fields (`typeNamespaceUri`, `typeId`, `relationships`) plus any additional implementation-specific properties on the instance (per RFC 3.1.2 optional metadata). These extended properties appear alongside the standard metadata fields. For example:
+**`isExtended`** is always present. When `true`, the Object's current value contains attributes not declared in its ObjectType schema — the Object carries data the type doesn't describe. The declared type schema can be retrieved via `POST /objecttypes/query`.
 
-```json
-// With metadata (including extended properties)
-{
-  "success": true,
-  "result": [
-    {
-      "elementId": "pump-101",
-      "displayName": "Pump 101",
-      "typeElementId": "PumpType",
-      "parentId": "production-line-a",
-      "isComposition": false,
-      "typeNamespaceUri": "https://example.com/ns/equipment",
-      "typeId": "PumpType",
-      "relationships": {
-        "HasParent": "production-line-a",
-        "HasChildren": []
-      },
-      "engUnit": "RPM",
-      "operationStartDate": "2023-06-15T00:00:00Z"
-    }
-  ]
-}
-```
+**`extendedAttributes`** is present only when `includeMetadata=true` and `isExtended=true`. It contains only the non-conformant attributes and their inferred schemas, keyed by attribute name. Declared attributes are omitted — they can be looked up from the `typeElementId`.
 
 ---
 
@@ -932,77 +913,6 @@ Each returned Object always includes `sourceRelationship` to support graph trave
 ```
 
 > **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
-
----
-
-#### `POST` /objects/apparentShape
-
-Returns the apparent shape of one or more Object instances. The apparent shape is the union of the Object's declared type schema and any additional attributes found in its current value that are not declared in the type. This is useful when instances carry vendor-specific or platform-specific attributes that were never modelled in the ObjectType — rather than creating many near-duplicate types (type bloat) or silently discarding the extra data, the apparent shape endpoint surfaces them explicitly.
-
-**Request Body:**
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `elementIds` | string[] | Yes | One or more elementIds to inspect |
-
-```json
-{
-  "elementIds": ["string"]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "results": [
-    {
-      "success": true,
-      "elementId": "string",
-      "result": {
-        "elementId": "string",
-        "typeElementId": "string",
-        "typeNamespaceUri": "string",
-        "resolvedTypes": [
-          { "typeElementId": "string", "namespaceUri": "string" }
-        ],
-        "conformant": false,
-        "apparentSchema": {
-          "type": "object",
-          "properties": {
-            "temperature":      { "type": "number" },
-            "unit":             { "type": "string" },
-            "vendor_serial":    { "type": "string" },
-            "firmware_version": { "type": "string" }
-          }
-        },
-        "extraAttributes": ["vendor_serial", "firmware_version"]
-      }
-    },
-    {
-      "success": false,
-      "elementId": "string",
-      "error": { "message": "Element not found: string" }
-    }
-  ]
-}
-```
-
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `elementId` | string | Yes | ElementId of the queried Object |
-| `typeElementId` | string | Yes | ElementId of the declared ObjectType |
-| `typeNamespaceUri` | string | Yes | Namespace URI of the declared ObjectType |
-| `resolvedTypes` | object[] | Yes | Ordered list of types in the `allOf` inheritance chain, most specific first. Each entry has `typeElementId` and `namespaceUri`. |
-| `conformant` | boolean | Yes | `true` if the current value has no attributes beyond the declared schema |
-| `apparentSchema` | JSON Schema | Yes | Merged schema: all declared properties (with `allOf` resolved) plus inferred schemas for any extra attributes |
-| `extraAttributes` | string[] | Yes | Names of attributes present in the current value but absent from the declared type |
-
-**Notes:**
-- Implementations SHOULD resolve `allOf` inheritance chains before comparing, so inherited attributes are not incorrectly listed as extra.
-- If the instance has no current value, `conformant` SHOULD be `true` and `extraAttributes` SHOULD be empty.
-- The declared type schema is available in full via `GET /objecttypes` or `POST /objecttypes/query`.
 
 ---
 

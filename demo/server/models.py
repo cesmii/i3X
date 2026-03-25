@@ -237,17 +237,3 @@ class GetRelationshipTypesRequest(ElementIdRequest):
     pass
 
 
-class GetApparentShapeRequest(ElementIdRequest):
-    """Request model for POST /objects/apparentShape"""
-    pass
-
-
-# RFC 4.1.8 - Apparent Shape Response
-class ApparentShapeResponse(BaseModel):
-    elementId: str = Field(..., description="ElementId of the queried object")
-    typeElementId: Optional[str] = Field(None, description="ElementId of the declared ObjectType")
-    typeNamespaceUri: Optional[str] = Field(None, description="Namespace URI of the declared ObjectType")
-    resolvedTypes: List[Dict[str, Any]] = Field(default_factory=list, description="Ordered list of types in the allOf inheritance chain, from most specific to most general, each with typeElementId and namespaceUri")
-    conformant: bool = Field(..., description="True if current value has no attributes beyond the declared schema")
-    apparentSchema: Dict[str, Any] = Field(..., description="Merged schema: declared properties plus inferred schemas for extra attributes")
-    extraAttributes: List[str] = Field(..., description="Attribute names present in current value but absent from the declared type")

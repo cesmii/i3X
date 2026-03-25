@@ -99,15 +99,15 @@ class I3XDataSource(ABC):
         pass
 
     @abstractmethod
-    def get_instance_apparent_shape(self, element_id: str) -> Optional[Dict[str, Any]]:
+    def get_instance_extra_attributes(self, element_id: str) -> Optional[Dict[str, Any]]:
         """
-        Return the apparent schema of an instance by ElementId (RFC 4.1.8).
+        Return extra (non-schema) attributes for an instance by ElementId.
 
         Compares the declared ObjectType schema (with allOf resolved) against the
-        instance's current value to detect extra attributes not in the type definition.
+        instance's current value to identify attributes not declared in the type.
 
-        Returns a dict with:
-            elementId, typeElementId, conformant, apparentSchema, extraAttributes
+        Returns a dict of {attrName: inferred_schema_fragment} for any extra attributes.
+        Returns an empty dict if the instance is fully conformant.
         Returns None if the element does not exist.
         """
         pass
