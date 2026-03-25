@@ -427,7 +427,7 @@ The fields returned depend on whether `includeMetadata` is requested:
 | `relationships` | object | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
 | `extendedAttributes` | object | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
 
-When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
+When an Object is read via the `/objects/value` API it returns the value of the Object. For conformant Objects the value matches the schema defined by the Object Type. For extended Objects (`isExtended=true`) the value may contain additional attributes beyond the declared schema; the schemas for those extra attributes are available via the exploratory endpoints with `includeMetadata=true`.
 
 **Requirements:**
 
