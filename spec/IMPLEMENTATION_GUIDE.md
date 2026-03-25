@@ -393,28 +393,41 @@ Here `Production Line A` is the parent object of type `Line`, and the machines a
 The definition of an Object looks as follows.
 
 ```json
- {
-    "elementId": "string",
-    "displayName": "string",
-    "typeElementId": "string",
-    "parentId": "string",
-    "isComposition": false,
-  }
+{
+  "elementId": "string",
+  "displayName": "string",
+  "typeElementId": "string",
+  "parentId": "string",
+  "namespaceUri": "string",
+  "isComposition": false,
+  "isExtended": false
+}
 ```
+
+The fields returned depend on whether `includeMetadata` is requested:
+
+**Always present (base fields):**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `elementId` | string | Unique identifier |
-| `displayName` | string | Human-friendly name |
-| `typeElementId` | string | ElementId of the Object Type |
-| `parentId` | string? | ElementId of parent (null if root) |
-| `isComposition` | boolean | True if the element encapsulates its children |
+| `elementId` | string | Unique identifier for this Object within the i3X address space |
+| `displayName` | string | Human-friendly name for display |
+| `typeElementId` | string | ElementId of the Object Type that defines this Object's schema |
+| `parentId` | string? | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object |
+| `namespaceUri` | string | The namespace this Object instance belongs to — identifies where this piece of equipment, sensor, or process lives in the address space |
+| `isComposition` | boolean | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
+| `isExtended` | boolean | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `extendedAttributes` below. |
+
+**Additional fields present only when `includeMetadata=true`:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `typeNamespaceUri` | string | The namespace the ObjectType *definition* belongs to — where this type's schema was defined. Distinct from `namespaceUri`: an instance may be registered in one namespace (e.g., a vendor's equipment namespace) while being typed with a type defined in a different namespace (e.g., an ISA-95 or OPC UA standard namespace). |
+| `sourceTypeId` | string | The identifier of this type within its *external source namespace* (e.g., an OPC UA type name, or a ThinkIQ numeric ID). Provided so clients can correlate back to the originating system without additional lookups. Distinct from `typeElementId`, which is the i3X address space identifier. |
+| `relationships` | object | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
+| `extendedAttributes` | object | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
 
 When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
-
-**Field clarifications:**
-
-- `typeElementId` on an instance is a reference to the instance's Object Type — it holds the `elementId` of the corresponding Object Type definition. This is different from `sourceTypeId`, which appears on Object Type definitions themselves (not on instances) to identify the external namespace type being projected or implemented (e.g., an OPC UA type name like `"TemperatureSensorType"`).
 
 **Requirements:**
 
@@ -692,8 +705,8 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "elementId": "string",
       "displayName": "string",
       "typeElementId": "string",
-      "namespaceUri": "string",
       "parentId": "",
+      "namespaceUri": "string",
       "isComposition": false,
       "isExtended": false
     }
@@ -708,8 +721,8 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "elementId": "string",
       "displayName": "string",
       "typeElementId": "string",
-      "namespaceUri": "string",
       "parentId": "",
+      "namespaceUri": "string",
       "isComposition": false,
       "isExtended": true,
       "typeNamespaceUri": "string",
@@ -729,9 +742,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 
 **Note on `parentId` vs `relationships`:** `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
 
-**`isExtended`** is always present. When `true`, the Object's current value contains attributes not declared in its ObjectType schema — the Object carries data the type doesn't describe. The declared type schema can be retrieved via `POST /objecttypes/query`.
-
-**`extendedAttributes`** is present only when `includeMetadata=true` and `isExtended=true`. It contains only the non-conformant attributes and their inferred schemas, keyed by attribute name. Declared attributes are omitted — they can be looked up from the `typeElementId`.
+See the [Objects](#objects) section for a full description of all response fields.
 
 ---
 
@@ -770,7 +781,9 @@ Returns one or more Objects without data/values given a collection of elementIds
         "displayName": "string",
         "typeElementId": "string",
         "parentId": "",
-        "isComposition": false
+        "namespaceUri": "string",
+        "isComposition": false,
+        "isExtended": false
       }
     },
     {
@@ -793,21 +806,25 @@ Returns one or more Objects without data/values given a collection of elementIds
         "displayName": "string",
         "typeElementId": "string",
         "parentId": "",
+        "namespaceUri": "string",
         "isComposition": false,
+        "isExtended": true,
         "typeNamespaceUri": "string",
         "sourceTypeId": "string",
         "relationships": {
           "HasParent": "/",
-          "HasChildren": [
-            "child1",
-            "child2"
-          ]
+          "HasChildren": ["child1", "child2"]
+        },
+        "extendedAttributes": {
+          "vendor_serial": { "type": "string" }
         }
       }
     }
   ]
 }
 ```
+
+See the [Objects](#objects) section for a full description of all response fields.
 
 ---
 
@@ -856,15 +873,10 @@ Each returned Object always includes `sourceRelationship` to support graph trave
           "displayName": "string",
           "typeElementId": "string",
           "parentId": "",
+          "namespaceUri": "string",
           "isComposition": false,
-          "sourceRelationship": "string",
-          "relationships": {
-            "HasParent": "/",
-            "HasChildren": [
-              "child1",
-              "child2"
-            ]
-          }
+          "isExtended": false,
+          "sourceRelationship": "string"
         }
       ]
     },
@@ -889,17 +901,16 @@ Each returned Object always includes `sourceRelationship` to support graph trave
           "displayName": "string",
           "typeElementId": "string",
           "parentId": "",
+          "namespaceUri": "string",
           "isComposition": false,
-          "sourceRelationship": "string",
+          "isExtended": false,
+          "typeNamespaceUri": "string",
+          "sourceTypeId": "string",
           "relationships": {
             "HasParent": "/",
-            "HasChildren": [
-              "child1",
-              "child2"
-            ]
+            "HasChildren": ["child1", "child2"]
           },
-          "typeNamespaceUri": "string",
-          "sourceTypeId": "string"
+          "sourceRelationship": "string"
         }
       ]
     },
@@ -911,6 +922,8 @@ Each returned Object always includes `sourceRelationship` to support graph trave
   ]
 }
 ```
+
+See the [Objects](#objects) section for a full description of all response fields.
 
 > **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
