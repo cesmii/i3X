@@ -414,7 +414,7 @@ When an Object is read via the `/objects/value` API it returns the value of the 
 
 **Field clarifications:**
 
-- `typeElementId` on an instance is a reference to the instance's Object Type — it holds the `elementId` of the corresponding Object Type definition. This is different from `typeId`, which appears on Object Type definitions themselves (not on instances) to identify the external namespace type being projected or implemented (e.g., an OPC UA type name like `"TemperatureSensorType"`).
+- `typeElementId` on an instance is a reference to the instance's Object Type — it holds the `elementId` of the corresponding Object Type definition. This is different from `sourceTypeId`, which appears on Object Type definitions themselves (not on instances) to identify the external namespace type being projected or implemented (e.g., an OPC UA type name like `"TemperatureSensorType"`).
 
 **Requirements:**
 
@@ -517,7 +517,7 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
-      "typeId": "string",
+      "sourceTypeId": "string",
       "version": "1.0.0",
       "schema": {...}
     }
@@ -530,7 +530,7 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
 | `elementId`    | string      | Yes      | Unique identifier                                                              |
 | `displayName`  | string      | Yes      | Friendly name                                                                  |
 | `namespaceUri` | string      | Yes      | Namespace that the type is associated with                                     |
-| `typeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
+| `sourceTypeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
 | `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
 | `schema`       | json schema | Yes      | The JSON Schema definition for the type                                        |
 
@@ -567,7 +567,7 @@ Returns one or more Object Types given a collection of elementIds.
         "elementId": "string",
         "displayName": "string",
         "namespaceUri": "string",
-        "typeId": "string",
+        "sourceTypeId": "string",
         "version": "1.0.0",
         "schema": {}
       }
@@ -713,7 +713,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "isComposition": false,
       "isExtended": true,
       "typeNamespaceUri": "string",
-      "typeId": "string",
+      "sourceTypeId": "string",
       "relationships": {
         "HasParent": "/",
         "HasChildren": ["child1", "child2"]
@@ -795,7 +795,7 @@ Returns one or more Objects without data/values given a collection of elementIds
         "parentId": "",
         "isComposition": false,
         "typeNamespaceUri": "string",
-        "typeId": "string",
+        "sourceTypeId": "string",
         "relationships": {
           "HasParent": "/",
           "HasChildren": [
@@ -899,7 +899,7 @@ Each returned Object always includes `sourceRelationship` to support graph trave
             ]
           },
           "typeNamespaceUri": "string",
-          "typeId": "string"
+          "sourceTypeId": "string"
         }
       ]
     },

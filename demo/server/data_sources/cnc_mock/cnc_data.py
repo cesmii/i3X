@@ -26,7 +26,7 @@ CNC_DATA = {
             "elementId": "work-center-type",
             "displayName": "WorkCenterType",
             "namespaceUri": ISA95_NAMESPACE,
-            "typeId": "WorkCenterType",
+            "sourceTypeId": "WorkCenterType",
             "schema": {
                 "type": "object",
                 "description": "A work center that organizes manufacturing equipment"
@@ -37,7 +37,7 @@ CNC_DATA = {
             "elementId": "cnc-base-type",
             "displayName": "CNCBaseType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "CNCBaseType",
+            "sourceTypeId": "CNCBaseType",
             "schema": {
                 "type": "object",
                 "description": "Base CNC type that aggregates key components of a CNC Machine"
@@ -48,7 +48,7 @@ CNC_DATA = {
             "elementId": "machine-status-type",
             "displayName": "MachineStatusType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "MachineStatusType",
+            "sourceTypeId": "MachineStatusType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -63,7 +63,7 @@ CNC_DATA = {
             "elementId": "spindle-type",
             "displayName": "SpindleType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "SpindleType",
+            "sourceTypeId": "SpindleType",
             "schema": {
                 "type": "object",
                 "description": "CNC Spindle with motor and operational attributes"
@@ -74,7 +74,7 @@ CNC_DATA = {
             "elementId": "motor-type",
             "displayName": "MotorType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "MotorType",
+            "sourceTypeId": "MotorType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -92,7 +92,7 @@ CNC_DATA = {
             "elementId": "axis-type",
             "displayName": "AxisType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "AxisType",
+            "sourceTypeId": "AxisType",
             "schema": {
                 "type": "object",
                 "description": "CNC Axis with position and motor attributes"
@@ -103,7 +103,7 @@ CNC_DATA = {
             "elementId": "position-type",
             "displayName": "PositionType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "PositionType",
+            "sourceTypeId": "PositionType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -118,7 +118,7 @@ CNC_DATA = {
             "elementId": "coolant-system-type",
             "displayName": "CoolantSystemType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "CoolantSystemType",
+            "sourceTypeId": "CoolantSystemType",
             "schema": {
                 "type": "object",
                 "description": "CNC Coolant System with tank, pump, and filter"
@@ -129,7 +129,7 @@ CNC_DATA = {
             "elementId": "coolant-tank-type",
             "displayName": "CoolantTankType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "CoolantTankType",
+            "sourceTypeId": "CoolantTankType",
             "schema": {
                 "type": "object",
                 "properties": {
@@ -144,7 +144,7 @@ CNC_DATA = {
             "elementId": "coolant-pump-type",
             "displayName": "CoolantPumpType",
             "namespaceUri": CNC_NAMESPACE,
-            "typeId": "CoolantPumpType",
+            "sourceTypeId": "CoolantPumpType",
             "schema": {
                 "type": "object",
                 "properties": {

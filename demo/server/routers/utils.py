@@ -7,7 +7,7 @@ def get_data_source(request: Request) -> Any:
     return request.app.state.data_source
 
 
-OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "typeId", "version", "schema"}
+OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "sourceTypeId", "version", "schema"}
 
 
 def formatObjectType(type_def: Any) -> Any:
@@ -52,7 +52,7 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
     metadata_object = dict(base)
     if type_info:
         metadata_object["typeNamespaceUri"] = type_info.get("namespaceUri")
-        metadata_object["typeId"] = type_info.get("typeId")
+        metadata_object["sourceTypeId"] = type_info.get("sourceTypeId")
     metadata_object["relationships"] = instance.get("relationships", {})
 
     if extra_attrs:

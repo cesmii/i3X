@@ -13,7 +13,7 @@ I3X_DATA = {
             "elementId": "work-center-type",    # A unique ID within the implementation's address space
             "displayName": "WorkCenterType",    # A human readable name the implementation may wish to localize
             "namespaceUri": "https://isa.org/isa95",    # A reference to a source of the namespace, which may be external to the implementation
-            "typeId": "WorkCenterType",                 # A reference to the member of the source namespace being used (or projected) for this type
+            "sourceTypeId": "WorkCenterType",                 # A reference to the member of the source namespace being used (or projected) for this type
             "schema": "Namespaces/isa95.json#types/work-center-type",   # A demo-implementation-specific pointer to the location of the type's schema
             "related": {"relationshipType": "HasChildren", "types": ["https://isa.org/isa95:work-unit-type"]},
         },
@@ -21,7 +21,7 @@ I3X_DATA = {
             "elementId": "work-unit-type",
             "displayName": "WorkUnitType",
             "namespaceUri": "https://isa.org/isa95",
-            "typeId": "WorkUnitType",
+            "sourceTypeId": "WorkUnitType",
             "schema": "Namespaces/isa95.json#types/work-unit-type",
             "related": {"relationshipType": "HasComponent"},
         },
@@ -29,21 +29,21 @@ I3X_DATA = {
             "elementId": "state-type",
             "displayName": "StateType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "StateType",
+            "sourceTypeId": "StateType",
             "schema": "Namespaces/abelara.json#types/state-type",
         },
         {
             "elementId": "product-type",
             "displayName": "ProductType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "ProductType",
+            "sourceTypeId": "ProductType",
             "schema": "Namespaces/abelara.json#types/product-type",
         },
         {
             "elementId": "production-type",
             "displayName": "ProductionType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "ProductionType",
+            "sourceTypeId": "ProductionType",
             "schema": "Namespaces/abelara.json#types/production-type",
             "related": {"relationshipType": "HasChildren", "types": ["https://abelara.com/equipment:product-type"]},
         },
@@ -51,7 +51,7 @@ I3X_DATA = {
             "elementId": "measurements-type",
             "displayName": "MeasurementsType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementsType",
+            "sourceTypeId": "MeasurementsType",
             "schema": "Namespaces/abelara.json#types/measurements-type",
             "related": {"relationshipType": "HasComponent", "types": ["https://abelara.com/equipment:measurement-type"]},
         },
@@ -59,7 +59,7 @@ I3X_DATA = {
             "elementId": "measurement-type",
             "displayName": "MeasurementType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementType",
+            "sourceTypeId": "MeasurementType",
             "schema": "Namespaces/abelara.json#types/measurement-type",
             "related": {"relationshipType": "HasComponent", "types": ["https://abelara.com/equipment:measurement-value-type", "https://abelara.com/equipment:measurement-health-type"]},
         },
@@ -67,28 +67,28 @@ I3X_DATA = {
             "elementId": "measurement-value-type",
             "displayName": "MeasurementValueType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementValueType",
+            "sourceTypeId": "MeasurementValueType",
             "schema": "Namespaces/abelara.json#types/measurement-value-type"
         },
         {
             "elementId": "measurement-health-type",
             "displayName": "MeasurementHealthType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementHealthType",
+            "sourceTypeId": "MeasurementHealthType",
             "schema": "Namespaces/abelara.json#types/measurement-health-type"
         },
         {
             "elementId": "sensor-type",
             "displayName": "SensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "typeId": "SensorType",
+            "sourceTypeId": "SensorType",
             "schema": "Namespaces/thinkiq.json#types/sensor-type"
         },
         {
             "elementId": "temperature-sensor-type",
             "displayName": "TemperatureSensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "typeId": "TemperatureSensorType",
+            "sourceTypeId": "TemperatureSensorType",
             "schema": "Namespaces/thinkiq.json#types/temperature-sensor-type"
         },
         {
