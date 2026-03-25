@@ -164,7 +164,7 @@ class StreamRequest(BaseModel):
 class SyncRequest(BaseModel):
     clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to sync")
-    through: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
+    lastSequenceNumber: Optional[int] = Field(None, description="Acknowledge all updates through this sequence number before returning new ones")
 
 
 class DeleteSubscriptionsRequest(BaseModel):

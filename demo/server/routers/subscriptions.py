@@ -203,16 +203,16 @@ async def stream_subscription(request: Request, req: StreamRequest):
 def sync_subscription(request: Request, req: SyncRequest):
     """Acknowledge previously received updates and return all pending updates in one call.
 
-    If `through` is provided, all queued updates with sequenceNumber <= through are removed first,
+    If `lastSequenceNumber` is provided, all queued updates with sequenceNumber <= lastSequenceNumber are removed first,
     then the remaining (newer) updates are returned. subscriptionId is passed in the request body.
     """
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    if req.through is not None:
-        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.through]
-        sub.lastAckedSequence = max(sub.lastAckedSequence, req.through)
+    if req.lastSequenceNumber is not None:
+        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.lastSequenceNumber]
+        sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
 
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return success_response(list(sub.pendingUpdates))

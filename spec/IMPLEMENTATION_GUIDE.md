@@ -1470,7 +1470,7 @@ Sync allows the client to control when value changes are received, and to explic
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/register`
-3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
+3. Server queues updates as they occur, each assigned a monotonically increasing sequence number specific to the subscriber
 4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
