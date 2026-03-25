@@ -42,7 +42,6 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
         "displayName": instance["displayName"],
         "typeElementId": instance["typeElementId"],
         "parentId": instance.get("parentId"),
-        "namespaceUri": instance.get("namespaceUri"),
         "isComposition": instance["isComposition"],
         "isExtended": is_extended,
     }

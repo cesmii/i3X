@@ -105,13 +105,16 @@ I3X_DATA = {
             "elementId": "pump-station",
             "displayName": "pump-station",
             "typeElementId": "work-center-type",
-            "namespaceUri": "https://isa.org/isa95",
-            # A "/" is unsed to indicate this object is attached to the root
+            # A "/" is used to indicate this object is attached to the root
             "parentId": "/",
             # A platform implementation would read its graph in order to populate these required response fields.
             #   This element has child objects, but they do not make up the data of this element, so this element is NOT complex
             #   We would expect a client would not want to recurse through these relationships by default
             "isComposition": False,
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "operationStartDate": "July 1, 1980",
+            "lastMaintainedDate": "August 1, 2001",
             # This is where we maintain the graph relationships used above and in the /related endpoints for the mock data
             "relationships": {
                 "HasParent": "/",
@@ -123,19 +126,19 @@ I3X_DATA = {
                     "sensor-003"
                 ],
             },
-            # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
-            "operationStartDate": "July 1, 1980",
-            "lastMaintainedDate": "August 1, 2001"
         },
         {
             "elementId": "pump-101",
             "displayName": "pump-101",
             "typeElementId": "work-unit-type",
-            "namespaceUri": "https://isa.org/isa95",
             "parentId": "pump-station",
             # This element's data is made up of the data of other elements, so this element IS complex
             #   We would expect a client would want to recurse a complex structure by default
             "isComposition": True,
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "operationStartDate": "July 1, 1980",
+            "lastMaintainedDate": "August 1, 2001",
             # This is where we maintain the graph relationships used above and in the /related endpoints for the mock data
             "relationships": {
                 "HasParent": "pump-station",
@@ -146,15 +149,11 @@ I3X_DATA = {
                 ],
                 "SuppliesTo": ["tank-201"],
             },
-            # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
-            "operationStartDate": "July 1, 1980",
-            "lastMaintainedDate": "August 1, 2001"
         },
         {
             "elementId": "pump-101-state",
             "displayName": "pump-101 State",
             "typeElementId": "state-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101",
             "isComposition": False,
             "relationships": {
@@ -235,7 +234,6 @@ I3X_DATA = {
             "elementId": "pump-101-production",
             "displayName": "pump-101 Production",
             "typeElementId": "production-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101",
             # This element has related data, but that data is not a part of the definition of this data, so it is not complex
             "isComposition": False,
@@ -251,7 +249,6 @@ I3X_DATA = {
             "elementId": "pump-101-production-product",
             "displayName": "pump-101 Product",
             "typeElementId": "product-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-production",
             "isComposition": False,
             "relationships": {
@@ -274,7 +271,6 @@ I3X_DATA = {
             "elementId": "pump-101-measurements",
             "displayName": "pump-101 Measurements",
             "typeElementId": "measurements-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101",
             # This element has related data, and that data IS a part of the definition of this data, so it IS complex
             "isComposition": True,
@@ -289,7 +285,6 @@ I3X_DATA = {
             "elementId": "pump-101-bearing-temperature",
             "displayName": "pump-101 Bearing Temperature",
             "typeElementId": "measurement-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-measurements",
             # This element has related data, and that data IS a part of the definition of this data, so it IS complex
             "isComposition": True,
@@ -320,12 +315,15 @@ I3X_DATA = {
             "elementId": "pump-101-measurements-bearing-temperature-value",
             "displayName": "Pump 101 Bearing Temperature Value",
             "typeElementId": "measurement-value-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-bearing-temperature",
             "isComposition": False,
             "relationships": {
                 "ComponentOf": "pump-101-bearing-temperature"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "°F",
+            "interpolation": "None",
             "records": [
                 {
                     "value": 70.34,
@@ -338,15 +336,11 @@ I3X_DATA = {
                     "timestamp": "2025-10-27T18:32:47Z"
                 }
             ],
-             # Optional Object Metadata (RFC 3.1.2)
-            "engUnit": "°F",
-            "interpolation": "None"
         },
         {
             "elementId": "pump-101-measurements-bearing-temperature-health",
             "displayName": "Pump 101 Bearing Health",
             "typeElementId": "measurement-health-type",
-            "namespaceUri": "https://abelara.com/equipment",
             "parentId": "pump-101-bearing-temperature",
             "isComposition": False,
             "relationships": {
@@ -369,7 +363,6 @@ I3X_DATA = {
             "elementId": "tank-201",
             "displayName": "tank-201",
             "typeElementId": "work-unit-type",
-            "namespaceUri": "https://isa.org/isa95",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
@@ -381,12 +374,15 @@ I3X_DATA = {
             "elementId": "sensor-001",
             "displayName": "TempSensor-101",
             "typeElementId": "sensor-type",
-            "namespaceUri": "https://thinkiq.com/equipment",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
                 "Monitors": "tank-201"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "CEL",
+            "calibrationDate": "2025-01-15",
             "records": [
                 {
                     "value": 67.1,
@@ -409,16 +405,12 @@ I3X_DATA = {
                     "localTimestamp": "2025-01-26T07:15:30-03:00",
                 },
             ],
-            # Optional Object Metadata (RFC 3.1.2)
-            "engUnit": "CEL",
-            "calibrationDate": "2025-01-15",
         },
         {
             # Example of allOf type extension: precision-temperature-sensor-type inherits
             # temperature-sensor-type and adds accuracy + calibrationDate to the value shape.
             "elementId": "sensor-002",
             "displayName": "PrecisionTempSensor-301",
-            "namespaceUri": "https://thinkiq.com/equipment",
             "typeElementId": "precision-temperature-sensor-type",
             "parentId": "pump-station",
             "isComposition": False,
@@ -426,6 +418,9 @@ I3X_DATA = {
                 "Monitors": "pump-101",
                 "InheritsFrom": "temperature-sensor-type"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "CEL",
             "records": [
                 {
                     "value": {
@@ -448,23 +443,24 @@ I3X_DATA = {
                     "timestamp": "2025-10-27T10:15:30Z",
                 },
             ],
-            "engUnit": "CEL",
         },
         {
-            # Example of apparent shape: this instance is typed as temperature-sensor-type
-            # (which declares only 'temperature' and 'unit'), but its actual value also carries
-            # vendor_serial and firmware_version — attributes not in the declared schema.
-            # GET /objects/sensor-003/apparentShape will surface these as extraAttributes.
+            # Example of an extended object: typed as temperature-sensor-type (which declares only
+            # 'temperature' and 'unit'), but its value also carries vendor_serial and firmware_version
+            # — attributes not in the declared schema. isExtended=true will be set on this object,
+            # and extendedAttributes will be populated when includeMetadata=true is requested.
             "elementId": "sensor-003",
             "displayName": "TempSensor-VendorX",
             "typeElementId": "temperature-sensor-type",
-            "namespaceUri": "https://thinkiq.com/equipment",
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
                 "HasParent": "pump-station",
                 "Monitors": "tank-201"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "CEL",
             "records": [
                 {
                     "value": {
@@ -487,7 +483,6 @@ I3X_DATA = {
                     "timestamp": "2025-10-27T10:15:30Z",
                 },
             ],
-            "engUnit": "CEL",
         },
     ],
     "relationshipTypes": [

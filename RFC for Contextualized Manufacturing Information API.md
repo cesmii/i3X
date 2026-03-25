@@ -67,7 +67,7 @@ The reader will observe that the API requires the underlying platform to support
 - DisplayName: a human-friendly name for the purpose of browsing or displaying objects within an address space
 - ParentId: the ElementId of the parent object
 - HasChildren: if the element value is complex, a boolean value indicating if the element is composed of one or more child objects
-- NamespaceURI: if the element value is an object, a URI indicating the Namespace of the object MUST be returned. If the value is an attribute, a URI indicating the Namespace SHOULD be returned.
+- TypeNamespaceURI: a URI indicating the Namespace of the object's Type MUST be returned. This identifies which namespace the ObjectType definition belongs to, allowing clients to resolve the type's schema without additional lookups.
 
 ### 3.1.2 Optional Object Metadata
 
@@ -102,7 +102,9 @@ ObjectTypes serve as the basis for instantiation and discovery through the I3X i
 
 ### 3.4 Namespaces
 
-A Namespace provides a logical scope within the address space that groups related types, instances, and relationships. Namespaces allow clients to explore and manage subsets of the overall model, such as those tied to a particular site, discipline, or version, without conflict or ambiguity.
+A Namespace provides a logical scope within the address space that groups related ObjectTypes and Relationship Types. Namespaces allow clients to explore and manage subsets of the type model, such as those tied to a particular standard, discipline, or vendor, without conflict or ambiguity.
+
+Object instances do not belong to a Namespace. They exist in the server's implicit address space and are associated with a namespace indirectly through their ObjectType (via `TypeNamespaceURI`). A single object instance may be composed of types from multiple namespaces.
 
 ### 3.5 ElementIds
 
