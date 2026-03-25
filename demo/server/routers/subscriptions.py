@@ -14,8 +14,7 @@ from models import (
     DeleteSubscriptionsRequest,
     ListSubscriptionsRequest,
 )
-from data_sources.data_interface import I3XDataSource
-from .utils import getSubscriptionValue, success_response, bulk_response
+from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source
 
 
 # Not required, but showing what information is stored for simulated subscriptions
@@ -43,11 +42,6 @@ class Subscription(BaseModel):
 
 
 subs = APIRouter(prefix="", tags=["Subscribe"])
-
-
-def get_data_source(request: Request) -> I3XDataSource:
-    """Dependency to inject data source"""
-    return request.app.state.data_source
 
 
 def _find_sub(request: Request, subscription_id: str, client_id: Optional[str] = None) -> Optional[Subscription]:
@@ -102,21 +96,20 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
         raise HTTPException(status_code=404, detail="Subscription not found")
 
     data_source = request.app.state.data_source
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "error": {"message": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
             item_id = item["elementId"]
             if item_id not in sub.monitoredObjects:
                 sub.monitoredObjects.append(item_id)
-        succeeded.append({"elementId": eid, "result": None})
+        results.append({"success": True, "elementId": eid, "result": None})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.3.2 - Unregister Monitored Items
@@ -132,21 +125,20 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
         raise HTTPException(status_code=404, detail="Subscription not found")
 
     data_source = request.app.state.data_source
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "error": {"message": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
             item_id = item["elementId"]
             if item_id in sub.monitoredObjects:
                 sub.monitoredObjects.remove(item_id)
-        succeeded.append({"elementId": eid, "result": None})
+        results.append({"success": True, "elementId": eid, "result": None})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # POST /subscriptions/stream - Open SSE stream
@@ -211,16 +203,16 @@ async def stream_subscription(request: Request, req: StreamRequest):
 def sync_subscription(request: Request, req: SyncRequest):
     """Acknowledge previously received updates and return all pending updates in one call.
 
-    If `through` is provided, all queued updates with sequenceNumber <= through are removed first,
+    If `lastSequenceNumber` is provided, all queued updates with sequenceNumber <= lastSequenceNumber are removed first,
     then the remaining (newer) updates are returned. subscriptionId is passed in the request body.
     """
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    if req.through is not None:
-        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.through]
-        sub.lastAckedSequence = max(sub.lastAckedSequence, req.through)
+    if req.lastSequenceNumber is not None:
+        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.lastSequenceNumber]
+        sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
 
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return success_response(list(sub.pendingUpdates))
@@ -234,8 +226,7 @@ def sync_subscription(request: Request, req: SyncRequest):
 )
 def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     """Delete one or more subscriptions by ID. subscriptionIds are passed in the request body."""
-    succeeded = []
-    failed = []
+    results = []
 
     for sub_id in req.subscriptionIds:
         index = next(
@@ -249,11 +240,11 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
         )
         if index is not None:
             request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
-            succeeded.append({"subscriptionId": sub_id, "result": None})
+            results.append({"success": True, "subscriptionId": sub_id, "result": None})
         else:
-            failed.append({"subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # POST /subscriptions/list - Get one or more subscriptions by ID
@@ -264,27 +255,28 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
 )
 def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
     """Get one or more subscriptions by ID to check their existence and current configuration."""
-    succeeded = []
-    failed = []
+    results = []
 
     for sub_id in req.subscriptionIds:
         sub = _find_sub(request, sub_id, req.clientId)
         if sub:
-            succeeded.append({
-                "elementId": sub_id,
+            results.append({
+                "success": True,
+                "subscriptionId": sub_id,
                 "result": {
                     "subscriptionId": sub.subscriptionId,
                     "displayName": sub.displayName,
+                    "maxDepth": sub.maxDepth,
                     "monitoredObjects": [
-                        {"elementId": eid, "maxDepth": sub.maxDepth}
+                        {"elementId": eid}
                         for eid in sub.monitoredObjects
                     ],
                 },
             })
         else:
-            failed.append({"elementId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "error": {"message": f"Subscription not found: {sub_id}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # Subscription thread responsible for creating updates for items being monitored.
@@ -313,16 +305,11 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
                         sub.is_streaming = False
                         sub.handler = None
                 else:
-                    # Queue mode: store for later /sync retrieval in flat format with sequence number
-                    actual_value = value.get("value") if isinstance(value, dict) else value
-                    quality = value.get("quality", "Good") if isinstance(value, dict) else "Good"
-                    timestamp = value.get("timestamp") if isinstance(value, dict) else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+                    # Queue mode: store for later /sync retrieval
+                    update_value = getSubscriptionValue(instance, value, maxDepth=sub.maxDepth, data_source=data_source)
                     queued_item = {
                         "sequenceNumber": sub.nextSequence,
-                        "elementId": element_id,
-                        "value": actual_value,
-                        "quality": quality,
-                        "timestamp": timestamp,
+                        **update_value,
                     }
                     sub.nextSequence += 1
                     # Enforce FIFO with max queue size

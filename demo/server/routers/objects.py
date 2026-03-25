@@ -1,25 +1,17 @@
-from fastapi import APIRouter, Path, Query, HTTPException, Request, Body, Depends
+from fastapi import APIRouter, Path, Query, HTTPException, Body, Depends
 from typing import Optional, Any
 from urllib.parse import unquote
 from models import (
-    ObjectInstanceMinimal,
-    ObjectInstance,
     GetObjectsRequest,
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
 )
-from data_sources.data_interface import I3XDataSource
-from .utils import getObject, success_response, error_response, bulk_response, transform_value_result
+from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
 update = APIRouter(prefix="", tags=["Update"])
-
-
-def get_data_source(request: Request) -> I3XDataSource:
-    """Dependency to inject data source"""
-    return request.app.state.data_source
 
 
 # RFC 4.1.5 - Instances of an Object Type
@@ -27,13 +19,14 @@ def get_data_source(request: Request) -> I3XDataSource:
 def get_objects(
     typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Return all Objects. Optionally filter by typeElementId"""
     result = []
     for i in data_source.get_instances(typeElementId):
         type_info = data_source.get_object_type_by_id(i["typeElementId"]) if includeMetadata and i.get("typeElementId") else None
-        result.append(getObject(i, includeMetadata, type_info))
+        extra_attrs = data_source.get_instance_extra_attributes(i["elementId"])
+        result.append(getObject(i, includeMetadata, type_info, extra_attrs))
     return success_response(result)
 
 
@@ -41,7 +34,7 @@ def get_objects(
 @explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById")
 def query_objects_by_id(
     request_body: GetObjectsRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return one or more Objects by elementId.
@@ -51,25 +44,26 @@ def query_objects_by_id(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
-        instance = data_source.get_instance_by_id(eid)
+        eid_decoded = unquote(eid)
+        instance = data_source.get_instance_by_id(eid_decoded)
         if instance:
             type_info = data_source.get_object_type_by_id(instance["typeElementId"]) if request_body.includeMetadata and instance.get("typeElementId") else None
-            succeeded.append({"elementId": eid, "result": getObject(instance, request_body.includeMetadata, type_info)})
+            extra_attrs = data_source.get_instance_extra_attributes(eid_decoded)
+            results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info, extra_attrs)})
         else:
-            failed.append({"elementId": eid, "error": {"message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.1.6 - Objects linked by Relationship Type
 @explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects")
 def query_related_objects(
     request_body: GetRelatedObjectsRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return related objects for one or more elementIds.
@@ -79,8 +73,7 @@ def query_related_objects(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -93,22 +86,23 @@ def query_related_objects(
             related_result = []
             for obj in related_objects:
                 type_info = data_source.get_object_type_by_id(obj["typeElementId"]) if request_body.includeMetadata and obj.get("typeElementId") else None
-                related_result.append(getObject(obj, request_body.includeMetadata, type_info))
-            succeeded.append({
-                "elementId": eid_decoded,
-                "result": related_result
-            })
+                extra_attrs = data_source.get_instance_extra_attributes(obj["elementId"])
+                formatted = getObject(obj, request_body.includeMetadata, type_info, extra_attrs)
+                if obj.get("sourceRelationship"):
+                    formatted["sourceRelationship"] = obj["sourceRelationship"]
+                related_result.append(formatted)
+            results.append({"success": True, "elementId": eid_decoded, "result": related_result})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.1.1 - Object Element LastKnown Value
 @query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues")
 def query_last_known_values(
     request_body: GetObjectValueRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Return last known value for one or more Objects.
@@ -121,8 +115,7 @@ def query_last_known_values(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -135,20 +128,20 @@ def query_last_known_values(
             )
             if value:
                 transformed = transform_value_result(eid_decoded, value, instance, is_history=False)
-                succeeded.append({"elementId": eid_decoded, "result": transformed})
+                results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                failed.append({"elementId": eid_decoded, "error": {"message": "No value available"}})
+                results.append({"success": False, "elementId": eid_decoded, "error": {"message": "No value available"}})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.1.2 - Object Element HistoricalValue
 @query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues")
 def query_historical_values(
     request_body: GetObjectHistoryRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Get the historical values for one or more Objects.
@@ -161,8 +154,7 @@ def query_historical_values(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -177,13 +169,13 @@ def query_historical_values(
             )
             if historical_values:
                 transformed = transform_value_result(eid_decoded, historical_values, instance, is_history=True)
-                succeeded.append({"elementId": eid_decoded, "result": transformed})
+                results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                failed.append({"elementId": eid_decoded, "error": {"message": "No historical data available"}})
+                results.append({"success": False, "elementId": eid_decoded, "error": {"message": "No historical data available"}})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.2.2.1 - Object Element LastKnownValue update
@@ -195,9 +187,11 @@ def query_historical_values(
 def update_object(
     elementId: str = Path(...),
     body: Any = Body(...),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Update the value of an Object"""
+    if not data_source.get_instance_by_id(elementId):
+        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
     try:
         # Unwrap VQT body: {value, quality, timestamp} -> extract inner value
         if isinstance(body, dict) and "value" in body:
@@ -218,7 +212,7 @@ def update_object(
 )
 def update_object_history(
     elementId: str = Path(...),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Update the historical values for one or more Objects"""
     raise HTTPException(status_code=501, detail="Operation not implemented")

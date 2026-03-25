@@ -97,3 +97,17 @@ class I3XDataSource(ABC):
     def get_all_instances(self) -> List[Dict[str, Any]]:
         """Return all instances (used by subscription worker)"""
         pass
+
+    @abstractmethod
+    def get_instance_extra_attributes(self, element_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Return extra (non-schema) attributes for an instance by ElementId.
+
+        Compares the declared ObjectType schema (with allOf resolved) against the
+        instance's current value to identify attributes not declared in the type.
+
+        Returns a dict of {attrName: inferred_schema_fragment} for any extra attributes.
+        Returns an empty dict if the instance is fully conformant.
+        Returns None if the element does not exist.
+        """
+        pass

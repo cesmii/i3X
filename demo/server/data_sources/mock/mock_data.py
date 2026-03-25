@@ -13,7 +13,7 @@ I3X_DATA = {
             "elementId": "work-center-type",    # A unique ID within the implementation's address space
             "displayName": "WorkCenterType",    # A human readable name the implementation may wish to localize
             "namespaceUri": "https://isa.org/isa95",    # A reference to a source of the namespace, which may be external to the implementation
-            "typeId": "WorkCenterType",                 # A reference to the member of the source namespace being used (or projected) for this type
+            "sourceTypeId": "WorkCenterType",                 # A reference to the member of the source namespace being used (or projected) for this type
             "schema": "Namespaces/isa95.json#types/work-center-type",   # A demo-implementation-specific pointer to the location of the type's schema
             "related": {"relationshipType": "HasChildren", "types": ["https://isa.org/isa95:work-unit-type"]},
         },
@@ -21,7 +21,7 @@ I3X_DATA = {
             "elementId": "work-unit-type",
             "displayName": "WorkUnitType",
             "namespaceUri": "https://isa.org/isa95",
-            "typeId": "WorkUnitType",
+            "sourceTypeId": "WorkUnitType",
             "schema": "Namespaces/isa95.json#types/work-unit-type",
             "related": {"relationshipType": "HasComponent"},
         },
@@ -29,21 +29,21 @@ I3X_DATA = {
             "elementId": "state-type",
             "displayName": "StateType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "StateType",
+            "sourceTypeId": "StateType",
             "schema": "Namespaces/abelara.json#types/state-type",
         },
         {
             "elementId": "product-type",
             "displayName": "ProductType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "ProductType",
+            "sourceTypeId": "ProductType",
             "schema": "Namespaces/abelara.json#types/product-type",
         },
         {
             "elementId": "production-type",
             "displayName": "ProductionType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "ProductionType",
+            "sourceTypeId": "ProductionType",
             "schema": "Namespaces/abelara.json#types/production-type",
             "related": {"relationshipType": "HasChildren", "types": ["https://abelara.com/equipment:product-type"]},
         },
@@ -51,7 +51,7 @@ I3X_DATA = {
             "elementId": "measurements-type",
             "displayName": "MeasurementsType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementsType",
+            "sourceTypeId": "MeasurementsType",
             "schema": "Namespaces/abelara.json#types/measurements-type",
             "related": {"relationshipType": "HasComponent", "types": ["https://abelara.com/equipment:measurement-type"]},
         },
@@ -59,7 +59,7 @@ I3X_DATA = {
             "elementId": "measurement-type",
             "displayName": "MeasurementType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementType",
+            "sourceTypeId": "MeasurementType",
             "schema": "Namespaces/abelara.json#types/measurement-type",
             "related": {"relationshipType": "HasComponent", "types": ["https://abelara.com/equipment:measurement-value-type", "https://abelara.com/equipment:measurement-health-type"]},
         },
@@ -67,34 +67,35 @@ I3X_DATA = {
             "elementId": "measurement-value-type",
             "displayName": "MeasurementValueType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementValueType",
+            "sourceTypeId": "MeasurementValueType",
             "schema": "Namespaces/abelara.json#types/measurement-value-type"
         },
         {
             "elementId": "measurement-health-type",
             "displayName": "MeasurementHealthType",
             "namespaceUri": "https://abelara.com/equipment",
-            "typeId": "MeasurementHealthType",
+            "sourceTypeId": "MeasurementHealthType",
             "schema": "Namespaces/abelara.json#types/measurement-health-type"
         },
         {
             "elementId": "sensor-type",
             "displayName": "SensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "typeId": "SensorType",
+            "sourceTypeId": "1001",
             "schema": "Namespaces/thinkiq.json#types/sensor-type"
         },
         {
             "elementId": "temperature-sensor-type",
             "displayName": "TemperatureSensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
-            "typeId": "TemperatureSensorType",
+            "sourceTypeId": "1002",
             "schema": "Namespaces/thinkiq.json#types/temperature-sensor-type"
         },
         {
             "elementId": "precision-temperature-sensor-type",
             "displayName": "PrecisionTemperatureSensorType",
             "namespaceUri": "https://thinkiq.com/equipment",
+            "sourceTypeId": "1003",
             "schema": "Namespaces/thinkiq.json#types/precision-temperature-sensor-type",
             "related": {"relationshipType": "InheritsFrom", "types": ["https://thinkiq.com/equipment:temperature-sensor-type"]},
         },
@@ -104,12 +105,16 @@ I3X_DATA = {
             "elementId": "pump-station",
             "displayName": "pump-station",
             "typeElementId": "work-center-type",
-            # A "/" is unsed to indicate this object is attached to the root
+            # A "/" is used to indicate this object is attached to the root
             "parentId": "/",
             # A platform implementation would read its graph in order to populate these required response fields.
             #   This element has child objects, but they do not make up the data of this element, so this element is NOT complex
             #   We would expect a client would not want to recurse through these relationships by default
             "isComposition": False,
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "operationStartDate": "July 1, 1980",
+            "lastMaintainedDate": "August 1, 2001",
             # This is where we maintain the graph relationships used above and in the /related endpoints for the mock data
             "relationships": {
                 "HasParent": "/",
@@ -117,12 +122,10 @@ I3X_DATA = {
                     "pump-101",
                     "tank-201",
                     "sensor-001",
-                    "sensor-002"
+                    "sensor-002",
+                    "sensor-003"
                 ],
             },
-            # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
-            "operationStartDate": "July 1, 1980",
-            "lastMaintainedDate": "August 1, 2001"
         },
         {
             "elementId": "pump-101",
@@ -132,6 +135,10 @@ I3X_DATA = {
             # This element's data is made up of the data of other elements, so this element IS complex
             #   We would expect a client would want to recurse a complex structure by default
             "isComposition": True,
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "operationStartDate": "July 1, 1980",
+            "lastMaintainedDate": "August 1, 2001",
             # This is where we maintain the graph relationships used above and in the /related endpoints for the mock data
             "relationships": {
                 "HasParent": "pump-station",
@@ -142,9 +149,6 @@ I3X_DATA = {
                 ],
                 "SuppliesTo": ["tank-201"],
             },
-            # Optional property or attribute metadata (extra fields, per RFC 3.1.2 bullet 4)
-            "operationStartDate": "July 1, 1980",
-            "lastMaintainedDate": "August 1, 2001"
         },
         {
             "elementId": "pump-101-state",
@@ -316,6 +320,10 @@ I3X_DATA = {
             "relationships": {
                 "ComponentOf": "pump-101-bearing-temperature"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "°F",
+            "interpolation": "None",
             "records": [
                 {
                     "value": 70.34,
@@ -328,9 +336,6 @@ I3X_DATA = {
                     "timestamp": "2025-10-27T18:32:47Z"
                 }
             ],
-             # Optional Object Metadata (RFC 3.1.2)
-            "engUnit": "°F",
-            "interpolation": "None"
         },
         {
             "elementId": "pump-101-measurements-bearing-temperature-health",
@@ -374,6 +379,10 @@ I3X_DATA = {
             "relationships": {
                 "Monitors": "tank-201"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "CEL",
+            "calibrationDate": "2025-01-15",
             "records": [
                 {
                     "value": 67.1,
@@ -396,16 +405,12 @@ I3X_DATA = {
                     "localTimestamp": "2025-01-26T07:15:30-03:00",
                 },
             ],
-            # Optional Object Metadata (RFC 3.1.2)
-            "engUnit": "CEL",
-            "calibrationDate": "2025-01-15",
         },
         {
             # Example of allOf type extension: precision-temperature-sensor-type inherits
             # temperature-sensor-type and adds accuracy + calibrationDate to the value shape.
             "elementId": "sensor-002",
             "displayName": "PrecisionTempSensor-301",
-            "namespaceUri": "https://thinkiq.com/equipment",
             "typeElementId": "precision-temperature-sensor-type",
             "parentId": "pump-station",
             "isComposition": False,
@@ -413,6 +418,9 @@ I3X_DATA = {
                 "Monitors": "pump-101",
                 "InheritsFrom": "temperature-sensor-type"
             },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
+            "engUnit": "CEL",
             "records": [
                 {
                     "value": {
@@ -435,7 +443,46 @@ I3X_DATA = {
                     "timestamp": "2025-10-27T10:15:30Z",
                 },
             ],
+        },
+        {
+            # Example of an extended object: typed as temperature-sensor-type (which declares only
+            # 'temperature' and 'unit'), but its value also carries vendor_serial and firmware_version
+            # — attributes not in the declared schema. isExtended=true will be set on this object,
+            # and extendedAttributes will be populated when includeMetadata=true is requested.
+            "elementId": "sensor-003",
+            "displayName": "TempSensor-VendorX",
+            "typeElementId": "temperature-sensor-type",
+            "parentId": "pump-station",
+            "isComposition": False,
+            "relationships": {
+                "HasParent": "pump-station",
+                "Monitors": "tank-201"
+            },
+            # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
+            # returned as-is when includeMetadata=true. These describe the object itself, not its value.
             "engUnit": "CEL",
+            "records": [
+                {
+                    "value": {
+                        "temperature": 72.4,
+                        "unit": "CEL",
+                        "vendor_serial": "SN-XYZ-9001",
+                        "firmware_version": "2.3.1"
+                    },
+                    "quality": "Good",
+                    "timestamp": "2025-10-28T10:15:30Z",
+                },
+                {
+                    "value": {
+                        "temperature": 71.8,
+                        "unit": "CEL",
+                        "vendor_serial": "SN-XYZ-9001",
+                        "firmware_version": "2.3.1"
+                    },
+                    "quality": "Good",
+                    "timestamp": "2025-10-27T10:15:30Z",
+                },
+            ],
         },
     ],
     "relationshipTypes": [

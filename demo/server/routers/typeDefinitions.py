@@ -1,26 +1,20 @@
-from fastapi import APIRouter, Query, Request, Depends
+from fastapi import APIRouter, Query, Depends
 from typing import Optional
 from urllib.parse import unquote
 from models import GetObjectTypesRequest, GetRelationshipTypesRequest
-from data_sources.data_interface import I3XDataSource
-from .utils import success_response, bulk_response
+from .utils import success_response, bulk_response, get_data_source, formatObjectType
 
 typeDefinitions = APIRouter(prefix="", tags=["Explore"])
-
-
-def get_data_source(request: Request) -> I3XDataSource:
-    """Dependency to inject data source"""
-    return request.app.state.data_source
 
 
 # RFC 4.1.3 - Object Types
 @typeDefinitions.get("/objecttypes", summary="Get Object Types", operation_id="getObjectTypes")
 def get_object_types(
     namespaceUri: Optional[str] = Query(default=None),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Get the schemas for all Types. Optionally filter by Namespace"""
-    return success_response(data_source.get_object_types(namespaceUri))
+    return success_response([formatObjectType(t) for t in data_source.get_object_types(namespaceUri)])
 
 
 # RFC 4.1.2 - Object Type Definition
@@ -31,7 +25,7 @@ def get_object_types(
 )
 def query_object_types_by_id(
     request_body: GetObjectTypesRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Get the schema for one or more Types by ElementID.
@@ -41,33 +35,27 @@ def query_object_types_by_id(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
         obj_type = data_source.get_object_type_by_id(eid_decoded)
         if obj_type:
-            succeeded.append({"elementId": eid_decoded, "result": obj_type})
+            results.append({"success": True, "elementId": eid_decoded, "result": formatObjectType(obj_type)})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Object type not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Object type not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)
 
 
 # RFC 4.1.4 - Relationship Types
 @typeDefinitions.get("/relationshiptypes", summary="Get Relationship Types", operation_id="getRelationshipTypes")
 def get_relationship_types(
     namespaceUri: Optional[str] = Query(default=None),
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """Get all Relationship Types. Optionally filtered by Namespace"""
-    relationship_types = data_source.get_relationship_types()
-
-    if namespaceUri:
-        relationship_types = [rt for rt in relationship_types if rt.get("namespaceUri") == namespaceUri]
-
-    return success_response(relationship_types)
+    return success_response(data_source.get_relationship_types(namespaceUri))
 
 
 # RFC 4.1.4 - Relationship Type
@@ -78,7 +66,7 @@ def get_relationship_types(
 )
 def query_relationship_types_by_id(
     request_body: GetRelationshipTypesRequest,
-    data_source: I3XDataSource = Depends(get_data_source),
+    data_source=Depends(get_data_source),
 ):
     """
     Get one or more Relationship Types by ElementID.
@@ -88,15 +76,14 @@ def query_relationship_types_by_id(
     Returns bulk response with succeeded/failed.
     """
     element_ids = request_body.get_element_ids()
-    succeeded = []
-    failed = []
+    results = []
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
         rel_type = data_source.get_relationship_type_by_id(eid_decoded)
         if rel_type:
-            succeeded.append({"elementId": eid_decoded, "result": rel_type})
+            results.append({"success": True, "elementId": eid_decoded, "result": rel_type})
         else:
-            failed.append({"elementId": eid_decoded, "error": {"message": f"Relationship type not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Relationship type not found: {eid_decoded}"}})
 
-    return bulk_response(succeeded, failed)
+    return bulk_response(results)

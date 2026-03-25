@@ -102,7 +102,8 @@ All servers MUST implement a `GET /info` endpoint that returns information about
 
 Clients SHOULD use `GET /info` to discover the `specVersion` and `capabilities` supported by a server before making other API calls.
 
-[TODO] define a versioning approach used if/when we need evolve features. Should we add v1/ (future v2, etc) to the endpoint URLs?
+The server MUST prefix API endpoints with `baseURL/v1/namespaces` where the `v1` is the version number. This version will only be incremented (ex. v2) if there is a future
+version of the API with a breaking change. `baseURL` is server dependent.
 
 ## Response Format
 
@@ -153,19 +154,18 @@ The Server's response MUST be in the same order and the same size as the request
   "results": [
     {
       "success": true,
-      "elementId": "pump-101", 
+      "elementId": "pump-101",
       "result": { ... }
     },
     {
       "success": false,
-      "elementId": "non-existent", 
-      "error": { 
-        "message": "Element not found: non-existent"
-      }
+      "elementId": "non-existent",
+      "error": { "message": "Element not found: non-existent" }
     }
   ]
 }
 ```
+
 ### Design Rationale
 
 **Why a consistent `{success, result}` envelope?**
@@ -227,7 +227,9 @@ The DisplayName the human readable name often used when displaying the Namespace
 
 ### Namespaces
 
-A Namespace provides a logical grouping of elements within the i3X address space. When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the external Namespace.
+A Namespace provides a logical grouping of *types* within the i3X address space — specifically ObjectTypes and Relationship Types. Object instances do not belong to a Namespace; they exist in the server's implicit address space. The namespace of an instance's type is accessible via `typeNamespaceUri` on the instance response when `includeMetadata=true`.
+
+When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the external Namespace.
 
 When an implementation of an external Namespace is in-exact, by convention, the Namespace URI SHOULD be suffixed with a `projection` query string indicating the source of the adaption.
 
@@ -247,7 +249,7 @@ The following is an example of a Namespace definition.
 **Requirements**
 - A server MUST have at least one Namespace
 - Each Namespace MUST have a unique URI
-- Objects, Object Types, and Relationship Types MUST belong to one and only one Namespace
+- Each ObjectType and Relationship Type MUST belong to one and only one Namespace
 
 Below are example URI patterns:
 
@@ -394,28 +396,39 @@ Here `Production Line A` is the parent object of type `Line`, and the machines a
 The definition of an Object looks as follows.
 
 ```json
- {
-    "elementId": "string",
-    "displayName": "string",
-    "typeElementId": "string",
-    "parentId": "string",
-    "isComposition": false,
-  }
+{
+  "elementId": "string",
+  "displayName": "string",
+  "typeElementId": "string",
+  "parentId": "string",
+  "isComposition": false,
+  "isExtended": false
+}
 ```
+
+The fields returned depend on whether `includeMetadata` is requested:
+
+**Always present (base fields):**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `elementId` | string | Unique identifier |
-| `displayName` | string | Human-friendly name |
-| `typeElementId` | string | ElementId of the Object Type |
-| `parentId` | string? | ElementId of parent (null if root) |
-| `isComposition` | boolean | True if the element encapsulates its children |
+| `elementId` | string | Unique identifier for this Object within the i3X address space |
+| `displayName` | string | Human-friendly name for display |
+| `typeElementId` | string | ElementId of the Object Type that defines this Object's schema |
+| `parentId` | string? | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object |
+| `isComposition` | boolean | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
+| `isExtended` | boolean | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `extendedAttributes` below. |
 
-When an Object is read via the `/objects/value` API it returns the value of the Object that conforms to the schema defined by the Object Type.
+**Additional fields present only when `includeMetadata=true`:**
 
-**Field clarifications:**
+| Field | Type | Description |
+|-------|------|-------------|
+| `typeNamespaceUri` | string | The namespace the ObjectType *definition* belongs to — identifies which namespace's schema this Object conforms to (e.g., an ISA-95 or OPC UA standard namespace, or a vendor namespace). An Object instance's type may come from any namespace; this field makes that provenance explicit. For example, if the external Namespace was the OPC UA for Machinery Companion spec, the typeNameSpacUri would be http://opcfoundation.org/UA/Machinery/. |
+| `sourceTypeId` | string | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`.|
+| `relationships` | object | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
+| `extendedAttributes` | object | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
 
-- `typeElementId` on an instance is a reference to the instance's Object Type — it holds the `elementId` of the corresponding Object Type definition. This is different from `typeId`, which appears on Object Type definitions themselves (not on instances) to identify the external namespace type being projected or implemented (e.g., an OPC UA type name like `"TemperatureSensorType"`).
+When an Object is read via the `/objects/value` API it returns the value of the Object. For conformant Objects the value matches the schema defined by the Object Type. For extended Objects (`isExtended=true`) the value may contain additional attributes beyond the declared schema; the schemas for those extra attributes are available via the exploratory endpoints with `includeMetadata=true`.
 
 **Requirements:**
 
@@ -518,7 +531,7 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
       "elementId": "string",
       "displayName": "string",
       "namespaceUri": "string",
-      "typeId": "string",
+      "sourceTypeId": "string",
       "version": "1.0.0",
       "schema": {...}
     }
@@ -531,7 +544,7 @@ Note the JSON Schema definition for the Object Type is placed under the `schema`
 | `elementId`    | string      | Yes      | Unique identifier                                                              |
 | `displayName`  | string      | Yes      | Friendly name                                                                  |
 | `namespaceUri` | string      | Yes      | Namespace that the type is associated with                                     |
-| `typeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
+| `sourceTypeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
 | `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
 | `schema`       | json schema | Yes      | The JSON Schema definition for the type                                        |
 
@@ -568,7 +581,7 @@ Returns one or more Object Types given a collection of elementIds.
         "elementId": "string",
         "displayName": "string",
         "namespaceUri": "string",
-        "typeId": "string",
+        "sourceTypeId": "string",
         "version": "1.0.0",
         "schema": {}
       }
@@ -694,7 +707,8 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "displayName": "string",
       "typeElementId": "string",
       "parentId": "",
-      "isComposition": false
+      "isComposition": false,
+      "isExtended": false
     }
   ]
 }
@@ -709,14 +723,16 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "typeElementId": "string",
       "parentId": "",
       "isComposition": false,
+      "isExtended": true,
       "typeNamespaceUri": "string",
-      "typeId":"string",
+      "sourceTypeId": "string",
       "relationships": {
         "HasParent": "/",
-        "HasChildren": [
-          "child1",
-          "child2"
-        ]
+        "HasChildren": ["child1", "child2"]
+      },
+      "extendedAttributes": {
+        "vendor_serial": { "type": "string" },
+        "firmware_version": { "type": "string" }
       }
     }
   ]
@@ -725,31 +741,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 
 **Note on `parentId` vs `relationships`:** `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
 
-**Extended properties with `includeMetadata=true`:** When `includeMetadata=true`, the response includes the standard metadata fields (`typeNamespaceUri`, `typeId`, `relationships`) plus any additional implementation-specific properties on the instance (per RFC 3.1.2 optional metadata). These extended properties appear alongside the standard metadata fields. For example:
-
-```json
-// With metadata (including extended properties)
-{
-  "success": true,
-  "result": [
-    {
-      "elementId": "pump-101",
-      "displayName": "Pump 101",
-      "typeElementId": "PumpType",
-      "parentId": "production-line-a",
-      "isComposition": false,
-      "typeNamespaceUri": "https://example.com/ns/equipment",
-      "typeId": "PumpType",
-      "relationships": {
-        "HasParent": "production-line-a",
-        "HasChildren": []
-      },
-      "engUnit": "RPM",
-      "operationStartDate": "2023-06-15T00:00:00Z"
-    }
-  ]
-}
-```
+See the [Objects](#objects) section for a full description of all response fields.
 
 ---
 
@@ -788,7 +780,8 @@ Returns one or more Objects without data/values given a collection of elementIds
         "displayName": "string",
         "typeElementId": "string",
         "parentId": "",
-        "isComposition": false
+        "isComposition": false,
+        "isExtended": false
       }
     },
     {
@@ -812,20 +805,23 @@ Returns one or more Objects without data/values given a collection of elementIds
         "typeElementId": "string",
         "parentId": "",
         "isComposition": false,
+        "isExtended": true,
         "typeNamespaceUri": "string",
-        "typeId": "string",
+        "sourceTypeId": "string",
         "relationships": {
           "HasParent": "/",
-          "HasChildren": [
-            "child1",
-            "child2"
-          ]
+          "HasChildren": ["child1", "child2"]
+        },
+        "extendedAttributes": {
+          "vendor_serial": { "type": "string" }
         }
       }
     }
   ]
 }
 ```
+
+See the [Objects](#objects) section for a full description of all response fields.
 
 ---
 
@@ -855,10 +851,10 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
-Each returned Object always includes `relationships` and `sourceRelationship` to support graph traversal without additional API calls:
+Each returned Object always includes `sourceRelationship` to support graph traversal without additional API calls. When `includeMetadata=true`, `relationships` is also included:
 
-- `relationships` — the returned Object's own outgoing edges (same as on the Object definition), enabling clients to plan the next traversal step
-- `sourceRelationship` — the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
+- `sourceRelationship` — always present; the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
+- `relationships` — present only with `includeMetadata=true`; the returned Object's own outgoing edges, enabling clients to plan the next traversal step without an additional call
 
 ```json
 // No metadata
@@ -875,14 +871,8 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
           "typeElementId": "string",
           "parentId": "",
           "isComposition": false,
-          "sourceRelationship": "string",
-          "relationships": {
-            "HasParent": "/",
-            "HasChildren": [
-              "child1",
-              "child2"
-            ]
-          }
+          "isExtended": false,
+          "sourceRelationship": "string"
         }
       ]
     },
@@ -908,16 +898,14 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
           "typeElementId": "string",
           "parentId": "",
           "isComposition": false,
-          "sourceRelationship": "string",
+          "isExtended": false,
+          "typeNamespaceUri": "string",
+          "sourceTypeId": "string",
           "relationships": {
             "HasParent": "/",
-            "HasChildren": [
-              "child1",
-              "child2"
-            ]
+            "HasChildren": ["child1", "child2"]
           },
-          "typeNamespaceUri": "string",
-          "typeId": "string"
+          "sourceRelationship": "string"
         }
       ]
     },
@@ -929,6 +917,8 @@ Each returned Object always includes `relationships` and `sourceRelationship` to
   ]
 }
 ```
+
+See the [Objects](#objects) section for a full description of all response fields.
 
 > **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
@@ -1027,7 +1017,33 @@ Returns the last known value for one or more Objects.
 }
 ```
 
-> **Composition elements:** When `isComposition` is `true`, `quality` and `timestamp` are **not** present at the `result` level. Instead, each component — including `_value` for the parent's own data — carries its own VQT with individual `quality` and `timestamp` fields. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for the full response structure.
+**Result shape — simple (leaf) element:**
+
+```json
+{ "success": true, "elementId": "sensor-001", "result": { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" } }
+```
+
+**Result shape — composition element** (when `maxDepth > 1`):
+
+```json
+{
+  "success": true,
+  "elementId": "pump-101-measurements",
+  "result": {
+    "isComposition": true,
+    "value": null,
+    "quality": "GoodNoData",
+    "timestamp": "...",
+    "components": {
+      "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
+    }
+  }
+}
+```
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by `elementId`
+- See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for full recursion behavior
 
 ---
 
@@ -1066,28 +1082,13 @@ Returns the historical values for one or more Objects between a start and end ti
     {
       "success": true,
       "elementId": "object-elementid-1",
-      "result": [
-        {
-          "isComposition": false,
-          "value": {
-            "temperature": 1,
-            "inletPressure": "2",
-            "outletPressure": 0.11
-          },
-          "quality": "Good",
-          "timestamp": "2026-01-29T16:00:00Z"
-        },
-        {
-          "isComposition": false,
-          "value": {
-            "temperature": 3,
-            "inletPressure": "4",
-            "outletPressure": 0.22
-          },
-          "quality": "Good",
-          "timestamp": "2026-01-29T15:00:00Z"
-        }
-      ]
+      "result": {
+        "isComposition": false,
+        "values": [
+          { "value": { "temperature": 1, "inletPressure": "2", "outletPressure": 0.11 }, "quality": "Good", "timestamp": "2026-01-29T16:00:00Z" },
+          { "value": { "temperature": 3, "inletPressure": "4", "outletPressure": 0.22 }, "quality": "Good", "timestamp": "2026-01-29T15:00:00Z" }
+        ]
+      }
     },
     {
       "success": false,
@@ -1097,6 +1098,9 @@ Returns the historical values for one or more Objects between a start and end ti
   ]
 }
 ```
+
+- `isComposition` is at the `result` envelope level, not per value entry
+- `values` is an ordered array of VQT objects for the requested time range
 
 ---
 
@@ -1466,7 +1470,7 @@ Sync allows the client to control when value changes are received, and to explic
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/register`
-3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
+3. Server queues updates as they occur, each assigned a monotonically increasing sequence number specific to the subscriber
 4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
@@ -1609,12 +1613,10 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
       "elementId": "machine-001",
       "result": {
         "isComposition": true,
-        "value": {
-          "_value": {
-            "value": { "status": "running" },
-            "quality": "Good",
-            "timestamp": "2025-01-08T10:30:00Z"
-          },
+        "value": { "status": "running" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z",
+        "components": {
           "spindle-001": {
             "value": { "rpm": 12000 },
             "quality": "Good",
@@ -1634,9 +1636,9 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
 
 **Key Points:**
 
-- `_value` contains the parent element's own value
-- Child component values are keyed by their `elementId`
-- Each child value is in VQT format
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
 
 ---

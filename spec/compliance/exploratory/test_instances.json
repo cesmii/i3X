@@ -104,7 +104,7 @@
     "request": {
       "method": "GET",
       "path": "/objects",
-      "query": {"typeId": "MachineType"}
+      "query": {"sourceTypeId": "MachineType"}
     },
     "assertions": [
       {"type": "status", "value": 200},

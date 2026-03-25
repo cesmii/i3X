@@ -144,3 +144,7 @@ class DataSourceManager(I3XDataSource):
         # or use a specific subscription-optimized source
         source = self._get_source_for_operation("get_all_instances")
         return source.get_all_instances()
+
+    def get_instance_extra_attributes(self, element_id: str) -> Optional[Dict[str, Any]]:
+        source = self._get_source_for_operation("get_instance_by_id")
+        return source.get_instance_extra_attributes(element_id)

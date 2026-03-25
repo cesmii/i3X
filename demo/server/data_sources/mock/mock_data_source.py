@@ -507,6 +507,132 @@ class MockDataSource(I3XDataSource):
         else:
             return type(obj).__name__
 
+    def _load_schema_raw(self, type_definition: Dict[str, Any]) -> Any:
+        """Load schema from file without resolving $ref pointers — used for inheritance chain walking."""
+        schema_pointer = type_definition.get("schema", "")
+        if not isinstance(schema_pointer, str) or "#" not in schema_pointer:
+            return {}
+        file_path, json_pointer = schema_pointer.split("#", 1)
+        if file_path not in self._schema_cache:
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            full_path = os.path.join(current_dir, file_path)
+            try:
+                with open(full_path, 'r') as f:
+                    self._schema_cache[file_path] = json.load(f)
+            except Exception:
+                return {}
+        schema_data = self._schema_cache[file_path]
+        current = schema_data
+        for part in json_pointer.strip("/").split("/"):
+            if isinstance(current, dict) and part in current:
+                current = current[part]
+            else:
+                return {}
+        return current
+
+    def _collect_type_chain(self, type_id: str, _visited: frozenset = frozenset()) -> List[Dict[str, Any]]:
+        """
+        Walk the allOf inheritance chain for a type, returning an ordered list of
+        {typeElementId, namespaceUri} from most specific (first) to most general (last).
+        """
+        if type_id in _visited:
+            return []
+        type_def = next((t for t in self.data["objectTypes"] if t["elementId"] == type_id), None)
+        if not type_def:
+            return []
+
+        chain = [{"typeElementId": type_def["elementId"], "namespaceUri": type_def.get("namespaceUri")}]
+
+        schema_pointer = type_def.get("schema", "")
+        if not isinstance(schema_pointer, str) or "#" not in schema_pointer:
+            return chain
+        namespace_file = schema_pointer.split("#")[0]  # e.g. "Namespaces/thinkiq.json"
+
+        raw_schema = self._load_schema_raw(type_def)
+        for allof_entry in raw_schema.get("allOf", []):
+            if isinstance(allof_entry, dict) and "$ref" in allof_entry:
+                ref = allof_entry["$ref"]
+                if ref.startswith("#/types/"):
+                    parent_key = ref[len("#/types/"):]
+                    parent_schema_pointer = f"{namespace_file}#types/{parent_key}"
+                    parent_type = next(
+                        (t for t in self.data["objectTypes"] if t.get("schema") == parent_schema_pointer),
+                        None
+                    )
+                    if parent_type:
+                        chain.extend(self._collect_type_chain(parent_type["elementId"], _visited | {type_id}))
+        return chain
+
+    def _collect_schema_properties(self, schema: Any) -> Dict[str, Any]:
+        """
+        Recursively collect all property definitions from a JSON Schema,
+        resolving allOf chains so inherited properties are included.
+        Returns a flat {name: schema_fragment} dict.
+        """
+        props = {}
+        if not isinstance(schema, dict):
+            return props
+        for k, v in schema.get("properties", {}).items():
+            props[k] = v
+        for sub in schema.get("allOf", []):
+            props.update(self._collect_schema_properties(sub))
+        return props
+
+    def _infer_json_type(self, value: Any) -> Dict[str, Any]:
+        """Infer a minimal JSON Schema type fragment from a Python value."""
+        if isinstance(value, bool):
+            return {"type": "boolean"}
+        elif isinstance(value, int):
+            return {"type": "integer"}
+        elif isinstance(value, float):
+            return {"type": "number"}
+        elif isinstance(value, str):
+            return {"type": "string"}
+        elif isinstance(value, list):
+            return {"type": "array"}
+        elif isinstance(value, dict):
+            return {"type": "object"}
+        return {}
+
+    def _compute_extra_attributes(self, instance: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Return a {attrName: schema_fragment} dict for attributes present in the
+        instance's most recent value that are not declared in its ObjectType schema.
+        Returns an empty dict if the instance is fully conformant.
+        """
+        type_id = instance.get("typeElementId")
+        type_def = self.get_object_type_by_id(type_id) if type_id else None
+        declared_schema = type_def.get("schema", {}) if type_def else {}
+        declared_props = self._collect_schema_properties(declared_schema)
+
+        # Find most recent value
+        most_recent_value = None
+        most_recent_dt = None
+        for record in instance.get("records", []):
+            ts = record.get("timestamp")
+            if ts:
+                try:
+                    dt = datetime.fromisoformat(ts.replace("Z", "+00:00"))
+                    if most_recent_dt is None or dt > most_recent_dt:
+                        most_recent_dt = dt
+                        most_recent_value = record.get("value")
+                except ValueError:
+                    pass
+
+        extra = {}
+        if isinstance(most_recent_value, dict):
+            for k, v in most_recent_value.items():
+                if k not in declared_props:
+                    extra[k] = self._infer_json_type(v)
+        return extra
+
+    def get_instance_extra_attributes(self, element_id: str) -> Optional[Dict[str, Any]]:
+        """Return extra (non-schema) attributes for an instance, or None if not found."""
+        instance = self.get_instance_by_id(element_id, values=True)
+        if not instance:
+            return None
+        return self._compute_extra_attributes(instance)
+
     def get_all_instances(self) -> List[Dict[str, Any]]:
         # Filter out records member from each instance before returning (unique to mock data)
         filtered_results = []

@@ -217,7 +217,7 @@
     {
       "elementId": "cnc-machine-001",
       "displayName": "CNC Machine 001",
-      "typeId": "W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvQ05DQmFzZVR5cGU",
+      "sourceTypeId": "W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvQ05DQmFzZVR5cGU",
       "parentId": "cnc-shop-floor",
       "isComposition": true,
       "namespaceUri": "http://cesmii.net/profiles/CNC"
@@ -225,7 +225,7 @@
     {
       "elementId": "machine-status",
       "displayName": "Machine Status",
-      "typeId": "W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvTWFjaGluZVN0YXR1c1R5cGU",
+      "sourceTypeId": "W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvTWFjaGluZVN0YXR1c1R5cGU",
       "parentId": "machine-info",
       "isComposition": false,
       "namespaceUri": "http://cesmii.net/profiles/CNC"
@@ -233,7 +233,7 @@
     {
       "elementId": "spindle-001",
       "displayName": "Spindle 001",
-      "typeId": "W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvU3BpbmRsZVR5cGU",
+      "sourceTypeId": "W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvU3BpbmRsZVR5cGU",
       "parentId": "cnc-machine-001",
       "isComposition": true,
       "namespaceUri": "http://cesmii.net/profiles/CNC"
