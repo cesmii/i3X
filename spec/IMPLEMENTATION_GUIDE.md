@@ -1467,11 +1467,11 @@ Sync allows the client to control when value changes are received, and to explic
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers items via `POST /subscriptions/register`
 3. Server queues updates as they occur, each assigned a monotonically increasing sequence number
-4. Client polls via `POST /subscriptions/sync` (no `ackUpTo` on first call)
+4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
 5. Server returns all pending updates
 6. Client processes the updates
-7. Client calls `POST /subscriptions/sync` again with `{"clientId": "...", "subscriptionId": "...", "ackUpTo": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
-8. Server removes acknowledged updates (sequenceNumber ≤ `ackUpTo`) then returns the remaining queue
+7. Client calls `POST /subscriptions/sync` again with `{"clientId": "...", "subscriptionId": "...", "lastSequenceNumber": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
+8. Server removes acknowledged updates (sequenceNumber ≤ `lastSequenceNumber`) then returns the remaining queue
 9. Continue this process
 
 This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
@@ -1483,10 +1483,10 @@ This approach ensures updates are not lost if the client crashes between receivi
 Returns all pending updates, acknowledging a previously received batch in the same call.
 
 - Each queued update includes a `sequenceNumber`
-- If `ackUpTo` is provided, the server removes all updates with sequenceNumber ≤ `ackUpTo` before returning the remaining queue
-- Server MUST NOT clear the queue if `ackUpTo` is omitted
-- Clients SHOULD omit `ackUpTo` only on the first call, when there is nothing yet to acknowledge
-- Clients SHOULD provide `ackUpTo` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
+- If `lastSequenceNumber` is provided, the server removes all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
+- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted
+- Clients SHOULD omit `lastSequenceNumber` only on the first call, when there is nothing yet to acknowledge
+- Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
 
 **Body Parameters:**
 
@@ -1494,7 +1494,7 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 |-------|------|----------|-------------|
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
-| `ackUpTo` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
+| `lastSequenceNumber` | integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
 
 First call (nothing to acknowledge yet):
 ```json
@@ -1509,7 +1509,7 @@ All subsequent calls (ack previous batch, fetch new):
 {
   "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
   "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
-  "ackUpTo": 2
+  "lastSequenceNumber": 2
 }
 ```
 
