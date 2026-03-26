@@ -63,9 +63,10 @@ Below are the required capabilities for all i3X compliant Clients and Servers.
 **Requirements**
 * MUST support all [Exploratory Methods](#exploratory-methods)
 * MUST support Current Value (`objects/value`) in [Query Methods](#query-methods)
-* MUST support all [Subscribe Methods](#subscribe-methods) except `/subscriptions/stream`
-  * SHOULD support Subscription Streams
-* MAY support [Update Methods](#update-methods) and [Query Methods](#query-methods) history
+* MUST support all [Subscribe Methods](#subscribe-methods) 
+  * MUST support Sync (`/subscriptions/sync`)
+  * SHOULD support Stream (`/subscriptions/stream`)
+* MAY support [Update Methods](#update-methods) and History [Query Methods](#query-methods)
 
 ## Transport & Encoding
 
