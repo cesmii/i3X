@@ -34,7 +34,7 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
     extra_attrs: dict of {attrName: schema_fragment} for attributes present in the
     instance's value but not declared in its ObjectType. Pass None to skip the check.
     """
-    STANDARD_FIELDS = {"elementId", "displayName", "typeElementId", "parentId", "isComposition", "namespaceUri", "relationships", "records"}
+    STANDARD_FIELDS = {"elementId", "displayName", "description", "typeElementId", "parentId", "isComposition", "namespaceUri", "relationships", "records"}
 
     is_extended = bool(extra_attrs)
     base = {
@@ -52,6 +52,8 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
     if type_info:
         metadata["typeNamespaceUri"] = type_info.get("namespaceUri")
         metadata["sourceTypeId"] = type_info.get("sourceTypeId")
+    if instance.get("description") is not None:
+        metadata["description"] = instance["description"]        
     metadata["relationships"] = instance.get("relationships", {})
 
     if extra_attrs:
