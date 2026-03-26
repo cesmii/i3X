@@ -2,7 +2,7 @@
 
 ## Status of This Effort
 
-i3X is in a pre-release Alpha state.
+i3X is in a *pre-release* Alpha state.
 
 **This branch represents the February 2026 Community Preview and is kept stable to support community engagement. To review the current progress toward a release specification, please switch to the [1.0](tree/1.0) branch.**
 
