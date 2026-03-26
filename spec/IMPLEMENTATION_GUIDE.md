@@ -58,11 +58,21 @@ i3X consists of the following high level capabilities.
 - **Update** write current or historical data to Objects
 - **Subscribe** subscribe to data changes for Objects
 
-**Requirements**
-* MUST support `Exploratory` and `Query` methods for current value
-* SHOULD support `Subscribe` methods
-* MAY support `Update` methods and historical `Query` and `Update` methods
+Below are the required capabilities for all i3X compliant Clients and Servers.
 
+**Requirements**
+* Exploratory
+  * MUST support all [Exploratory Methods](#exploratory-methods)
+* Query
+  * MUST support Current Value (`objects/value`) as defined in [Query Methods](#query-methods)
+  * MAY support History Value (`objects/history`)
+* Update
+  * MAY support [Update Methods](#update-methods)
+* Subscribe
+  * MUST support base [Subscribe Methods](#subscribe-methods) (create, delete, list, register objects, unregister objects)
+  * MUST support Sync (`/subscriptions/sync`)
+  * SHOULD support Stream (`/subscriptions/stream`)
+  
 ## Transport & Encoding
 
 i3X is RESTful HTTP-based API and relies on HTTP for transport. It includes typical request/response patterns as well as SSE (Server Sent Events) for Subscribe capabilities.
@@ -424,29 +434,30 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
   "serverName": "myi3XServer",
   "capabilities": {
     "query": {
-      "history": true
-    },
-    "update": {
-      "current": true,
       "history": false
     },
-    "subscribe": true
+    "update": {
+      "current": false,
+      "history": false
+    },
+    "subscribe": {
+      "stream": true
+    }
   }
 }
 ```
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `specVersion` | string | Yes | The i3X specification version implemented, e.g., `"1.0"` |
-| `serverVersion` | string | No | The server implementation's own version. Format is vendor-defined. |
-| `serverName` | string | No | Human-readable name for this server or deployment |
-| `capabilities` | object | Yes | Declares which optional features this server supports |
-| `capabilities.query.history` | boolean | Yes | True if `POST /objects/history` is supported |
-| `capabilities.update.current` | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported |
-| `capabilities.update.history` | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported |
-| `capabilities.subscribe` | boolean | Yes | True if subscription endpoints are supported |
+| Field                           | Type | Required | Description                                                        |
+|---------------------------------|------|----------|--------------------------------------------------------------------|
+| `specVersion`                   | string | Yes | The i3X specification version implemented, e.g., `"1.0"`           |
+| `serverVersion`                 | string | No | The server implementation's own version. Format is vendor-defined. |
+| `serverName`                    | string | No | Human-readable name for this server or deployment                  |
+| `capabilities`                  | object | Yes | Declares which optional features this server supports              |
+| `capabilities.query.history`    | boolean | Yes | True if `POST /objects/history` is supported                       |
+| `capabilities.update.current`   | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
+| `capabilities.update.history`   | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
+| `capabilities.subscribe.stream` | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
 
-[TODO] what are the minimum capabilities? What is optional?
 
 ### Namespace Endpoints
 
