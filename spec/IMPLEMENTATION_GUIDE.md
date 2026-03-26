@@ -6,16 +6,6 @@ This document provides guidance for implementing i3X (Industrial Information Int
 
 This document is a working draft, and should not be considered complete or normative. This guide is derived from RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to change.
 
-> **Work in Progress Notes**
-> - Define a versioning scheme to introduce changes over time
-> - Define a version endpoint clients can use to discover server version and capabilities
-> - Define optional pagination on the GET/LIST routes that could return a lot of data
-> - Add acknowledgement as part of subscription /sync
-> - Define a subscription keep alive on the creation to allow servers to recover from clients that stop asking for data
-> - Define error returns/handling on all the API endpoints
-> - Review and make consistent JSON input/output for all endpoints
-> - Consider adding partial update/write support to PUT object/{id}/value
-
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -24,11 +14,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Security & Authentication](#security--authentication)
   - [Versioning](#versioning)
 - [Response Format](#response-format)
-  - [Success Response](#success-response)
   - [Bulk Response](#bulk-response)
-  - [Error Response](#error-response)
-  - [SSE Stream Events](#sse-stream-events)
-  - [Sync Response](#sync-response)
 - [Address Space](#address-space)
   - [ElementId and DisplayName](#elementid-and-displayname)
   - [Namespaces](#namespaces)
@@ -36,6 +22,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Relationship Types](#relationship-types)
   - [Objects](#objects)
 - [Exploratory Methods](#exploratory-methods)
+  - [Server Capabilities Endpoints](#server-capabilities-endpoints)
   - [Namespace Endpoints](#namespace-endpoints)
   - [Object Type Endpoints](#object-type-endpoints)
   - [Relationship Type Endpoints](#relationship-type-endpoints)
@@ -44,13 +31,14 @@ This document is a working draft, and should not be considered complete or norma
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
   - [Subscriptions](#subscriptions)
-  - [Listing Subscriptions](#listing-subscriptions)
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
   - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
+    - [HasParent / HasChildren](#hasparent--haschildren)
+    - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
   - [Error Handling](#error-handling)
   - [Pagination](#pagination)
@@ -86,12 +74,11 @@ In addition to an HTTP based transport, i3X uses JSON encoding to exchange data 
 
 ### Security & Authentication
 
-i3X relies on HTTP security best practices to secure communication between the client and server. This includes the use of HTTPs and Basic Auth.
+i3X relies on HTTP security best practices to secure communication between the client and server. This includes the use of HTTPs.
 
 - Implementations MUST support encrypted transport (HTTPS) in production
 - TLS 1.2 or higher SHOULD be used
 - Self-signed certificates MAY be used for development
-- All i3X client requests must include the `Authorization: Bearer <token>` in the request header.
 - Servers SHOULD limit client access based on the token
 
 ### Versioning
@@ -191,6 +178,8 @@ The i3X server address space consists of the following elements.
 - **Relationship Types** 
   - Objects can be related to one another via Relationship Types. The simplest example is parent and child relationship, but graph and other relationship types are supported.
 
+The example response payloads used in this section are meant to be representative but not exhaustive, and are used to provide a general overview of the address space. See the corresponding Method sections below for full descriptions of request/response.
+
 ### ElementId and DisplayName
 All elements in the namespace must have an ElementId and DisplayName.
 
@@ -215,7 +204,7 @@ MachineType
 HasParent
 ```
 
-The DisplayName the human readable name often used when displaying the Namespace, Object, etc to a user. For example a Boiler Object might have the following definition, where the elementId makes it unique in the server, and the displayName makes it easy to display to a user.
+DisplayName is the human readable name often used when displaying the Namespace, Object, etc to a user. For example a Boiler Object might have the following definition, where the elementId makes it unique in the server, and the displayName makes it easy to display to a user.
 
 ```json
 {
@@ -406,34 +395,10 @@ The definition of an Object looks as follows.
 }
 ```
 
-The fields returned depend on whether `includeMetadata` is requested:
-
-**Always present (base fields):**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `elementId` | string | Unique identifier for this Object within the i3X address space |
-| `displayName` | string | Human-friendly name for display |
-| `typeElementId` | string | ElementId of the Object Type that defines this Object's schema |
-| `parentId` | string? | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object |
-| `isComposition` | boolean | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
-| `isExtended` | boolean | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `extendedAttributes` below. |
-
-**Additional fields present only when `includeMetadata=true`:**
-
-| Field | Type | Description |
-|-------|------|-------------|
-| `typeNamespaceUri` | string | The namespace the ObjectType *definition* belongs to — identifies which namespace's schema this Object conforms to (e.g., an ISA-95 or OPC UA standard namespace, or a vendor namespace). An Object instance's type may come from any namespace; this field makes that provenance explicit. For example, if the external Namespace was the OPC UA for Machinery Companion spec, the typeNameSpacUri would be http://opcfoundation.org/UA/Machinery/. |
-| `sourceTypeId` | string | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`.|
-| `relationships` | object | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
-| `extendedAttributes` | object | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
-
-When an Object is read via the `/objects/value` API it returns the value of the Object. For conformant Objects the value matches the schema defined by the Object Type. For extended Objects (`isExtended=true`) the value may contain additional attributes beyond the declared schema; the schemas for those extra attributes are available via the exploratory endpoints with `includeMetadata=true`.
-
 **Requirements:**
 
-- An Object SHOULD have a `typeElementId`
-- When the `typeElementId` is set, the Object's value MUST conform to the Object Type schema.
+- The Object's value, which is queried in the `objects/value` endpoint MUST conform to the ObjectType schema set by the `typeElementId` attribute. 
+- If `isExtended=true` the Object may have additional attributes not included in the `typeElementId` schema. Use `includeMetadata=true` to see the additional attributes.
 - Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
 
 ## Exploratory Methods
@@ -698,22 +663,6 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 **Response:**
 
 ```json
-// No metadata
-{
-  "success": true,
-  "result": [
-    {
-      "elementId": "string",
-      "displayName": "string",
-      "typeElementId": "string",
-      "parentId": "",
-      "isComposition": false,
-      "isExtended": false
-    }
-  ]
-}
-
-// With metadata
 {
   "success": true,
   "result": [
@@ -724,24 +673,49 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "parentId": "",
       "isComposition": false,
       "isExtended": true,
-      "typeNamespaceUri": "string",
-      "sourceTypeId": "string",
-      "relationships": {
-        "HasParent": "/",
-        "HasChildren": ["child1", "child2"]
-      },
-      "extendedAttributes": {
-        "vendor_serial": { "type": "string" },
-        "firmware_version": { "type": "string" }
+      "metadata": {
+        "typeNamespaceUri": "string",
+        "sourceTypeId": "string",
+        "relationships": {
+          "HasParent": "/",
+          "HasChildren": ["child1", "child2"]
+        },
+        "extendedAttributes": {
+          "serial_number": { "type": "string" },
+          "firmware_version": { "type": "string" }
+        },
+        "system": {
+          "<vendor-key-1>": "string",
+          "<vendor-key-2>": 123,
+          "<vendor-key-3>": true
+        }
       }
     }
   ]
 }
 ```
 
-**Note on `parentId` vs `relationships`:** `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
+| Field           | Type    | Required | Description                                                                                                                                                                                                            |
+|-----------------|---------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `elementId`     | string  | Yes      | Unique identifier for this Object within the i3X address space                                                                                                                                                         |
+| `displayName`   | string  | Yes      | Human-friendly name for display                                                                                                                                                                                        |
+| `typeElementId` | string  | Yes      | ElementId of the Object Type that defines this Object's schema                                                                                                                                                         |
+| `parentId`      | string? | Yes      | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object                                                                                                                        |
+| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
+| `isExtended`    | boolean | Yes      | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `extendedAttributes` below in the `metadata`.                   |
 
-See the [Objects](#objects) section for a full description of all response fields.
+The `metadata` key is included if `includeMetadata=true` in the request.
+
+| Field                         | Type    | Required                 | Description |
+|-------------------------------|---------|--------------------------|-------------|
+| `metadata.typeNamespaceUri`   | string  | Yes                      | The namespace the ObjectType *definition* belongs to — identifies which namespace's schema this Object conforms to (e.g., an ISA-95 or OPC UA standard namespace, or a vendor namespace). An Object instance's type may come from any namespace; this field makes that provenance explicit. For example, if the external Namespace was the OPC UA for Machinery Companion spec, the typeNamespaceUri would be `http://opcfoundation.org/UA/Machinery/`. |
+| `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
+| `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
+| `metadata.extendedAttributes` | object  | No                       | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
+|  `metadata.system`            | object | Yes if `isExtended=true` | Vendor-defined key/value pairs for platform-specific metadata not covered by the standard fields. Keys are vendor-defined strings; values are limited to strings, numbers, and booleans.|
+
+
+- Note on `parentId` vs `relationships`: `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
 
 ---
 
@@ -768,7 +742,6 @@ Returns one or more Objects without data/values given a collection of elementIds
 **Response:**
 
 ```json
-// No metadata
 {
   "success": false,
   "results": [
@@ -791,37 +764,10 @@ Returns one or more Objects without data/values given a collection of elementIds
     }
   ]
 }
-
-// With metadata
-{
-  "success": true,
-  "results": [
-    {
-      "success": true,
-      "elementId": "string",
-      "result": {
-        "elementId": "string",
-        "displayName": "string",
-        "typeElementId": "string",
-        "parentId": "",
-        "isComposition": false,
-        "isExtended": true,
-        "typeNamespaceUri": "string",
-        "sourceTypeId": "string",
-        "relationships": {
-          "HasParent": "/",
-          "HasChildren": ["child1", "child2"]
-        },
-        "extendedAttributes": {
-          "vendor_serial": { "type": "string" }
-        }
-      }
-    }
-  ]
-}
 ```
-
-See the [Objects](#objects) section for a full description of all response fields.
+| Field              | Type    | Required | Description                                                                                                   |
+|--------------------|---------|----------|---------------------------------------------------------------------------------------------------------------|
+| `results[].result` | Object  | Yes | See the [Objects](#objects) section for a full description of the Object response fields including `metadata`. |
 
 ---
 
@@ -851,13 +797,7 @@ Returns related Objects, with the option to filter on a Relationship Type.
 
 Returns a bulk response with the related Objects for each queried elementId.
 
-Each returned Object always includes `sourceRelationship` to support graph traversal without additional API calls. When `includeMetadata=true`, `relationships` is also included:
-
-- `sourceRelationship` — always present; the relationship type traversed **from the queried element to reach this Object** (e.g. `HasParent`), identifying why this Object appears in the result
-- `relationships` — present only with `includeMetadata=true`; the returned Object's own outgoing edges, enabling clients to plan the next traversal step without an additional call
-
 ```json
-// No metadata
 {
   "success": false,
   "results": [
@@ -866,46 +806,15 @@ Each returned Object always includes `sourceRelationship` to support graph trave
       "elementId": "string",
       "result": [
         {
-          "elementId": "string",
-          "displayName": "string",
-          "typeElementId": "string",
-          "parentId": "",
-          "isComposition": false,
-          "isExtended": false,
-          "sourceRelationship": "string"
-        }
-      ]
-    },
-    {
-      "success": false,
-      "elementId": "string",
-      "error": { "message": "Element not found: string" }
-    }
-  ]
-}
-
-// With metadata
-{
-  "success": false,
-  "results": [
-    {
-      "success": true,
-      "elementId": "string",
-      "result": [
-        {
-          "elementId": "string",
-          "displayName": "string",
-          "typeElementId": "string",
-          "parentId": "",
-          "isComposition": false,
-          "isExtended": false,
-          "typeNamespaceUri": "string",
-          "sourceTypeId": "string",
-          "relationships": {
-            "HasParent": "/",
-            "HasChildren": ["child1", "child2"]
-          },
-          "sourceRelationship": "string"
+          "sourceRelationship": "string",
+          "object": {
+            "elementId": "string",
+            "displayName": "string",
+            "typeElementId": "string",
+            "parentId": "",
+            "isComposition": false,
+            "isExtended": false
+          }
         }
       ]
     },
@@ -918,9 +827,14 @@ Each returned Object always includes `sourceRelationship` to support graph trave
 }
 ```
 
-See the [Objects](#objects) section for a full description of all response fields.
+| Field                          | Type   | Required | Description                                                                                                                                                                                                                                    |
+|--------------------------------|--------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `elementId`                    | string | Yes      | The elementId from the request                                                                                                                                                                                                                 |
+| `results[].sourceRelationship` | string | Yes      | The name of the relationship that links this Object to the Object in the request, or inbound edge. For example, if it's a parent/child relationship this would be `hasChild`. This helps support graph traversal without additional API calls. |
+| `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
 
-> **Note for implementors:** Implementations MUST ensure that all relationship types used in Object `relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
+
+- **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
 ---
 
