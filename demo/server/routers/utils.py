@@ -48,21 +48,25 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
     if not includeMetadata:
         return base
 
-    metadata_object = dict(base)
+    metadata = {}
     if type_info:
-        metadata_object["typeNamespaceUri"] = type_info.get("namespaceUri")
-        metadata_object["sourceTypeId"] = type_info.get("sourceTypeId")
-    metadata_object["relationships"] = instance.get("relationships", {})
+        metadata["typeNamespaceUri"] = type_info.get("namespaceUri")
+        metadata["sourceTypeId"] = type_info.get("sourceTypeId")
+    metadata["relationships"] = instance.get("relationships", {})
 
     if extra_attrs:
-        metadata_object["extendedAttributes"] = extra_attrs
+        metadata["extendedAttributes"] = extra_attrs
 
-    # Include any extra instance-level properties (RFC 3.1.2 optional metadata)
-    for key, value in instance.items():
-        if key not in STANDARD_FIELDS:
-            metadata_object[key] = value
+    # Collect vendor/server-defined instance-level properties (RFC 3.1.2 optional metadata)
+    # into metadata.system. Values are limited to primitives (string, number, boolean).
+    system = {
+        k: v for k, v in instance.items()
+        if k not in STANDARD_FIELDS and isinstance(v, (str, int, float, bool))
+    }
+    if system:
+        metadata["system"] = system
 
-    return metadata_object
+    return {**base, "metadata": metadata}
 
 
 
