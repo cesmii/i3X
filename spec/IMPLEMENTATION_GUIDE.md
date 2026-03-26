@@ -1108,7 +1108,9 @@ Returns the historical values for one or more Objects between a start and end ti
 
 Update methods allow clients to write current and historical values to an Object. Update methods have the following limitations.
 
-- Clients MUST write the full value to the Object. Partial updates are currently not supported
+- Clients MUST write the full value to the Object. Partial updates are currently not supported.
+
+It is the responsibility of the implementing platform to validate the input, including verification of the schema, and return the appropriate error if the input fails.
 
 ---
 
