@@ -34,6 +34,11 @@ The manufacturing information ecosystem benefits from the contributions of many 
 ## Proposed Solution
 i3X proposes a [common API](spec/IMPLEMENTATION_GUIDE.md), consisting of a base set of server primitives that a wide array of platforms can implement to commoditize this access to data. Such a common API does not prevent platform vendors from differentiating on their capabilities, but it will encourage a proliferation of portable apps to help spur adoption of such platforms, and enable a vibrant marketplace of apps bringing value to end-users. The analogies in other industries should be obvious: Apple and Android users benefit from common APIs for access to device and platform capabilities exposed to app developers that have led to App Stores full of creative, useful, and enjoyable app experiences. Those platform vendors have benefited, but more importantly, the user has benefited.
 
+## Call to Action
+Without a common approach to accessing platform-contextualized data, we run the risk of needing and entirely new library of "drivers" to communicate with our modern platforms -- in the same way comms protocols proliferated in the 90s. A growing chorus of end-users, solution providers and vendors, has unified behind a simple, common API definition that is easy to implement and adopt.
+
+With a stable 1.0 release, platform vendors and application developers, must work together to prevent fragmentation and encourage interoperability. Review the inciting [RFC](/RFC for Contextualized Manufacturing Information API.md), read the [Implementation Guide](spec/IMPLEMENTATION_GUIDE.md), visit the [SDK](https://www.i3x.dev), and [Get Started](https://www.i3x.dev/sdk/quickstart) supporting this open, industry-wide effort.
+
 ## Trying it Out
 A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v1/](https://api.i3x.dev/v1/) with a Swagger page at [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs).
 
@@ -42,11 +47,6 @@ If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) has pro
 <img src="https://www.acetechnologies.net/i3X/screenshots/subscriptions.png" height=200 style="height:200px">
 
 The Demo data includes an exploration of the complex relationships supported by i3X. [Review the demo readme](demo/README.md) for an explanation of how these relationships work.
-
-## Call to Action
-While the market has plenty of platforms that can connect to, gather, model, and contextualize information, each solution has a unique interface for accessing the result. Without a common approach, we run the risk of needing and entirely new library of "drivers" to communicate with these data sources -- in the same way comms protocols proliferated in the 90s. A growing chorus of end-users, solution providers and vendors, has unified behind a simple, common API definition that is easy to implement and adopt.
-
-With a stable 1.0 release, platform vendors and application developers, need to work together to prevent fragmentation and encourage interoperability. Review the inciting [RFC](RFC for Contextualized Manufacturing Information API.md), read the [Implementation Guide](spec/IMPLEMENTATION_GUIDE.md), visit the [SDK](https://www.i3x.dev), and [Get Started](https://www.i3x.dev/sdk/quickstart) supporting this open, industry-wide effort.
 
 ## Background
 This proposal has been created by industry participants with experience developing or using manufacturing information platforms such as those provided by Rockwell Automation, OSI Pi, ThinkIQ, Inductive Automation, ThingWorx and HighByte, are deep users and often contributors to related technology and standards efforts, and have more than 50 years of combined experience in designing, developing, implementing and using manufacturing information software. 
