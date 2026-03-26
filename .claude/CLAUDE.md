@@ -7,9 +7,16 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 This repository contains the RFC 001 specification and prototype implementation for I3X (Industrial Information Interface eXchange) - a common API for Contextualized Manufacturing Information Platforms (CMIPs). The goal is to enable portable application development across different manufacturing information platforms by providing a vendor-agnostic API specification.
 
 **Key Documents:**
+- `IMPLEMENTATION_GUIDE.md` - The guide that will eventually become the specification
 - `RFC for Contextualized Manufacturing Information API.md` - Complete RFC 001 specification defining the I3X API
 - `Working Group Charter.md` - Charter for the Smart Manufacturing API Working Group
 - `README.md` - High-level project overview and problem statement
+
+## Working with the Implementation Guide
+When editing this file you are a technical writer for the standard. Your goal is to both make the standard consumable to a human reader, and to provide
+the details that server and client implementors need to ensure their solution is interoperable. It's important that the guide include all the details and 
+examples where appropriate, but also progressively disclose the standard in a way that is consumable when reading the full guide. For example, it shouldn't 
+discuss composition (an advanced feature) until the reader understands the basic space and type system.
 
 **Repository Structure:**
 - `demo/server/` - FastAPI-based I3X API server implementation (primary active codebase)
