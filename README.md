@@ -39,6 +39,9 @@ Without a common approach to accessing platform-contextualized data, we run the 
 
 With a stable 1.0 release, platform vendors and application developers, must work together to prevent fragmentation and encourage interoperability. Review the inciting [RFC](RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md), read the [Implementation Guide](spec/IMPLEMENTATION_GUIDE.md), visit the [SDK](https://www.i3x.dev), and [Get Started](https://www.i3x.dev/sdk/quickstart) supporting this open, industry-wide effort.
 
+## Background
+This proposal has been created by industry participants with experience developing or using manufacturing information platforms such as those provided by Rockwell Automation, HighByte, ThinkIQ, Inductive Automation, ThingWorx and Siemens, are deep users and often contributors to related technology and standards efforts, and have more than 50 years of combined experience in designing, developing, implementing and using manufacturing information software.
+
 ## Trying it Out
 A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v1/](https://api.i3x.dev/v1/) with a Swagger page at [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs).
 
@@ -46,10 +49,7 @@ If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) has pro
 
 <img src="https://www.acetechnologies.net/i3X/screenshots/subscriptions.png" height=200 style="height:200px">
 
-The Demo data includes an exploration of the complex relationships supported by i3X. [Review the demo readme](demo/README.md) for an explanation of how these relationships work.
-
-## Background
-This proposal has been created by industry participants with experience developing or using manufacturing information platforms such as those provided by Rockwell Automation, OSI Pi, ThinkIQ, Inductive Automation, ThingWorx and HighByte, are deep users and often contributors to related technology and standards efforts, and have more than 50 years of combined experience in designing, developing, implementing and using manufacturing information software. 
+The Demo data includes an exploration of the complex relationships supported by i3X. [Review the demo readme](demo/README.md) for an explanation of how these relationships work. 
 
 ## API Usage
 The block diagram below shows where the i3X API is most applicable, namely within the realm of software applications running on top of operating systems on PCs or servers. Information being accessed through the API are assumed to have already been processed by contexualization functions to make it ready for consumption by other applications.
