@@ -37,7 +37,7 @@ i3X proposes a [common API](spec/IMPLEMENTATION_GUIDE.md), consisting of a base 
 ## Call to Action
 Without a common approach to accessing platform-contextualized data, we run the risk of needing and entirely new library of "drivers" to communicate with our modern platforms -- in the same way comms protocols proliferated in the 90s. A growing chorus of end-users, solution providers and vendors, has unified behind a simple, common API definition that is easy to implement and adopt.
 
-With a stable 1.0 release, platform vendors and application developers, must work together to prevent fragmentation and encourage interoperability. Review the inciting [RFC](./RFC for Contextualized Manufacturing Information API.md), read the [Implementation Guide](spec/IMPLEMENTATION_GUIDE.md), visit the [SDK](https://www.i3x.dev), and [Get Started](https://www.i3x.dev/sdk/quickstart) supporting this open, industry-wide effort.
+With a stable 1.0 release, platform vendors and application developers, must work together to prevent fragmentation and encourage interoperability. Review the inciting [RFC](RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md), read the [Implementation Guide](spec/IMPLEMENTATION_GUIDE.md), visit the [SDK](https://www.i3x.dev), and [Get Started](https://www.i3x.dev/sdk/quickstart) supporting this open, industry-wide effort.
 
 ## Trying it Out
 A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v1/](https://api.i3x.dev/v1/) with a Swagger page at [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs).
