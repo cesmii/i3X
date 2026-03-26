@@ -61,13 +61,18 @@ i3X consists of the following high level capabilities.
 Below are the required capabilities for all i3X compliant Clients and Servers.
 
 **Requirements**
-* MUST support all [Exploratory Methods](#exploratory-methods)
-* MUST support Current Value (`objects/value`) in [Query Methods](#query-methods)
-* MUST support all [Subscribe Methods](#subscribe-methods) 
+* Exploratory
+  * MUST support all [Exploratory Methods](#exploratory-methods)
+* Query
+  * MUST support Current Value (`objects/value`) as defined in [Query Methods](#query-methods)
+  * MAY support History Value (`objects/history`)
+* Update
+  * MAY support [Update Methods](#update-methods)
+* Subscribe
+  * MUST support base [Subscribe Methods](#subscribe-methods) (create, delete, list, register objects, unregister objects)
   * MUST support Sync (`/subscriptions/sync`)
   * SHOULD support Stream (`/subscriptions/stream`)
-* MAY support [Update Methods](#update-methods) and History [Query Methods](#query-methods)
-
+  
 ## Transport & Encoding
 
 i3X is RESTful HTTP-based API and relies on HTTP for transport. It includes typical request/response patterns as well as SSE (Server Sent Events) for Subscribe capabilities.
