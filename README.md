@@ -2,11 +2,11 @@
 
 ## Status of This Effort
 
-i3X is in a _pre-release_ Alpha state. 
+i3X is in a _pre-release_ Beta state. 
 
 **This branch represents the effort to progress to a 1.0 specification. It contains breaking changes from the Alpha (main) branch.**
 
-While the API signature is largely stable, expect significant changes to response structures, and minor changes to method calls over the first quarter of 2026 while we stabilize a 1.0 release. If you want to help, please see [Contributing.md](#Contributing.md)
+While the API signature is largely stable, expect significant changes to response structures, and minor changes to method calls over the first quarter of 2026 while we stabilize a 1.0 release. If you want to help, please see [Contributing.md](#Contributing.md).
 
 ## What is i3X?
 
@@ -18,15 +18,15 @@ i3X is a Common API for Contextual Manufacturing Information Platforms (i.e. tim
 
 CESMII is the United States' institute for Smart Manufacturing. We are a not-for-profit consortia of manufacturing ecosystem members focused on improving access to clean, contextual information to help manufacturers make better decisions. 
 
-Learn more about CESMII at [cesmii.org](https://www.cesmii.org)
+Learn more about CESMII at [cesmii.org](https://www.cesmii.org).
 
 ## Where to Learn More
 
 This repo is focused on the development of a specification for the API, including issues, PRs and tasks for the Working Group. This effort is open and collaborative, all are welcome to read and participate -- but this is not the best place to learn the high level details.
 
-For general information about i3X, please visit [https://www.i3x.dev](https://www.i3x.dev)
+For general information about i3X, please visit [https://www.i3x.dev](https://www.i3x.dev).
 
-For implementation information for Client and Server developers, please visit [https://www.i3x.dev/sdk](https://www.i3x.dev/sdk)
+For implementation information for Client and Server developers, please visit [https://www.i3x.dev/sdk](https://www.i3x.dev/sdk).
 
 ## Problem Statement
 The manufacturing information ecosystem benefits from the contributions of many players, over multiple decades of technology evolution. While this diversity creates a lot of platform choice for manufacturers, it has the opposite effect on the creation of app value. Application developers must choose which platforms to build against, and therefore are forced to develop against proprietary, or open but competing, API implementations with no hope of portability between them. Apps create information value by consuming and producing the data available in a platform, and rendering it in ways that are helpful to end users -- analytics, visualization, notification, machine learning... all of these need contextualized data, and all end up abstracted by an underlying platform (be it an Historian, MES, MOM, EMI, or broker or server).
