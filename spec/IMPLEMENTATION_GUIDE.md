@@ -6,16 +6,6 @@ This document provides guidance for implementing i3X (Industrial Information Int
 
 This document is a working draft, and should not be considered complete or normative. This guide is derived from RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to change.
 
-> **Work in Progress Notes**
-> - Define a versioning scheme to introduce changes over time
-> - Define a version endpoint clients can use to discover server version and capabilities
-> - Define optional pagination on the GET/LIST routes that could return a lot of data
-> - Add acknowledgement as part of subscription /sync
-> - Define a subscription keep alive on the creation to allow servers to recover from clients that stop asking for data
-> - Define error returns/handling on all the API endpoints
-> - Review and make consistent JSON input/output for all endpoints
-> - Consider adding partial update/write support to PUT object/{id}/value
-
 ## Table of Contents
 
 - [Introduction](#introduction)
@@ -24,11 +14,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Security & Authentication](#security--authentication)
   - [Versioning](#versioning)
 - [Response Format](#response-format)
-  - [Success Response](#success-response)
   - [Bulk Response](#bulk-response)
-  - [Error Response](#error-response)
-  - [SSE Stream Events](#sse-stream-events)
-  - [Sync Response](#sync-response)
 - [Address Space](#address-space)
   - [ElementId and DisplayName](#elementid-and-displayname)
   - [Namespaces](#namespaces)
@@ -36,6 +22,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Relationship Types](#relationship-types)
   - [Objects](#objects)
 - [Exploratory Methods](#exploratory-methods)
+  - [Server Capabilities Endpoints](#server-capabilities-endpoints)
   - [Namespace Endpoints](#namespace-endpoints)
   - [Object Type Endpoints](#object-type-endpoints)
   - [Relationship Type Endpoints](#relationship-type-endpoints)
@@ -44,13 +31,14 @@ This document is a working draft, and should not be considered complete or norma
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
   - [Subscriptions](#subscriptions)
-  - [Listing Subscriptions](#listing-subscriptions)
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
   - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
+    - [HasParent / HasChildren](#hasparent--haschildren)
+    - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
   - [Error Handling](#error-handling)
   - [Pagination](#pagination)
@@ -86,12 +74,11 @@ In addition to an HTTP based transport, i3X uses JSON encoding to exchange data 
 
 ### Security & Authentication
 
-i3X relies on HTTP security best practices to secure communication between the client and server. This includes the use of HTTPs and Basic Auth.
+i3X relies on HTTP security best practices to secure communication between the client and server. This includes the use of HTTPs.
 
 - Implementations MUST support encrypted transport (HTTPS) in production
 - TLS 1.2 or higher SHOULD be used
 - Self-signed certificates MAY be used for development
-- All i3X client requests must include the `Authorization: Bearer <token>` in the request header.
 - Servers SHOULD limit client access based on the token
 
 ### Versioning
@@ -191,7 +178,7 @@ The i3X server address space consists of the following elements.
 - **Relationship Types** 
   - Objects can be related to one another via Relationship Types. The simplest example is parent and child relationship, but graph and other relationship types are supported.
 
-The example response payloads used in this section are not meant to representive but not exhaustive, and are used to provide a general overview of the address space. See the corresponding Method sections below for full descriptions of request/response.
+The example response payloads used in this section are meant to be representative but not exhaustive, and are used to provide a general overview of the address space. See the corresponding Method sections below for full descriptions of request/response.
 
 ### ElementId and DisplayName
 All elements in the namespace must have an ElementId and DisplayName.
