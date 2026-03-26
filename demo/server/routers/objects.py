@@ -88,9 +88,10 @@ def query_related_objects(
                 type_info = data_source.get_object_type_by_id(obj["typeElementId"]) if request_body.includeMetadata and obj.get("typeElementId") else None
                 extra_attrs = data_source.get_instance_extra_attributes(obj["elementId"])
                 formatted = getObject(obj, request_body.includeMetadata, type_info, extra_attrs)
-                if obj.get("sourceRelationship"):
-                    formatted["sourceRelationship"] = obj["sourceRelationship"]
-                related_result.append(formatted)
+                related_result.append({
+                    "sourceRelationship": obj.get("sourceRelationship", ""),
+                    "object": formatted,
+                })
             results.append({"success": True, "elementId": eid_decoded, "result": related_result})
         else:
             results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
