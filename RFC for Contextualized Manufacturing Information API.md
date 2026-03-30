@@ -71,6 +71,7 @@ The reader will observe that the API requires the underlying platform to support
 
 ### 3.1.2 Optional Object Metadata
 
+- AlternateNames: a list of strings containing alternative names/ID numbers for this asset
 - Interpolation: if the element value is interpolated, rather than stored, indicate the interpolation method
 - EngUnit: a string indicating the engineering unit for measuring the element value. Where present, the definitions found in [UNECE Recommendation Number 20](https://unece.org/trade/documents/2021/06/uncefact-rec20-0) MUST be used.
 - Quality: a data quality indicator following the standard established by the [OPC UA standard status codes](https://reference.opcfoundation.org/Core/Part8/v104/docs/A.3.2.3#_Ref377938607). If data quality is not available, a CMIP may omit this metadata field.
