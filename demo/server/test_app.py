@@ -193,12 +193,10 @@ class TestI3XEndpoints(unittest.TestCase):
         self.assertIn("metadata", result)
         metadata = result["metadata"]
 
-        # description — LocalizedText format (RFC 3.1.2)
+        # description
         self.assertIn("description", metadata)
-        self.assertIn("locale", metadata["description"])
-        self.assertIn("text", metadata["description"])
-        self.assertEqual(metadata["description"]["locale"], "en-US")
-        self.assertEqual(metadata["description"]["text"], "Primary centrifugal pump supplying coolant to Tank 201 on the west production line")
+        self.assertIsInstance(metadata["description"], str)
+        self.assertEqual(metadata["description"], "Primary centrifugal pump supplying coolant to Tank 201 on the west production line")
 
         # type provenance fields
         self.assertIn("typeNamespaceUri", metadata)

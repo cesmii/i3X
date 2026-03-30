@@ -685,7 +685,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "isComposition": false,
       "isExtended": true,
       "metadata": {
-        "description": { "locale": "en-US", "text": "A human-readable description of this Object." },
+        "description": "A human-readable description of this Object.",
         "typeNamespaceUri": "string",
         "sourceTypeId": "string",
         "relationships": {
@@ -720,7 +720,7 @@ The `metadata` key is included if `includeMetadata=true` in the request.
 
 | Field                         | Type    | Required                 | Description |
 |-------------------------------|---------|--------------------------|-------------|
-| `metadata.description`        | LocalizedText \| LocalizedText[] | No | A localizable, human-readable description of this Object. SHOULD be used to convey context or intent beyond what `displayName` communicates. Represented as a `LocalizedText` object `{ "locale": "<BCP 47 tag>", "text": "<string>" }`. Servers MAY return an array of `LocalizedText` objects to provide translations for multiple locales. Servers SHOULD include at least one locale. Clients SHOULD select the best matching locale for display. |
+| `metadata.description`        | string | No | A human-readable description of this Object. SHOULD be used to convey context or intent beyond what `displayName` communicates. |
 | `metadata.typeNamespaceUri`   | string  | Yes                      | The namespace the ObjectType *definition* belongs to — identifies which namespace's schema this Object conforms to (e.g., an ISA-95 or OPC UA standard namespace, or a vendor namespace). An Object instance's type may come from any namespace; this field makes that provenance explicit. For example, if the external Namespace was the OPC UA for Machinery Companion spec, the typeNamespaceUri would be `http://opcfoundation.org/UA/Machinery/`. |
 | `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
 | `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
@@ -796,7 +796,7 @@ Returns one or more Objects without data/values given a collection of elementIds
         "isComposition": false,
         "isExtended": false,
         "metadata": {
-          "description": { "locale": "en-US", "text": "A human-readable description of this Object." },
+          "description": "A human-readable description of this Object.",
           "typeNamespaceUri": "string",
           "sourceTypeId": "string",
           "relationships": {

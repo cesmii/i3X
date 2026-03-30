@@ -104,7 +104,7 @@ I3X_DATA = {
         {
             "elementId": "pump-station",
             "displayName": "pump-station",
-            "description": {"locale": "en-US", "text": "West facility pump station supplying coolant to the primary production area"},
+            "description": "West facility pump station supplying coolant to the primary production area",
             "typeElementId": "work-center-type",
             # A "/" is used to indicate this object is attached to the root
             "parentId": "/",
@@ -131,7 +131,7 @@ I3X_DATA = {
         {
             "elementId": "pump-101",
             "displayName": "pump-101",
-            "description": {"locale": "en-US", "text": "Primary centrifugal pump supplying coolant to Tank 201 on the west production line"},
+            "description": "Primary centrifugal pump supplying coolant to Tank 201 on the west production line",
             "typeElementId": "work-unit-type",
             "parentId": "pump-station",
             # This element's data is made up of the data of other elements, so this element IS complex
@@ -367,7 +367,7 @@ I3X_DATA = {
             "typeElementId": "work-unit-type",
             "parentId": "pump-station",
             "isComposition": False,
-            "description": {"locale": "en-US", "text": "Primary coolant storage tank on the west production line, capacity 500L"},
+            "description": "Primary coolant storage tank on the west production line, capacity 500L",
             "relationships": {
                 "SuppliedBy": "pump-101",
                 "MonitoredBy": "sensor-001",
@@ -379,7 +379,7 @@ I3X_DATA = {
             "typeElementId": "sensor-type",
             "parentId": "pump-station",
             "isComposition": False,
-            "description": {"locale": "en-US", "text": "Temperature sensor monitoring coolant level in Tank 201"},
+            "description": "Temperature sensor monitoring coolant level in Tank 201",
             "relationships": {
                 "Monitors": "tank-201"
             },
