@@ -224,11 +224,13 @@ async def get_relationships(
     base_url: str = None,
     element_id: str = None,
     relationship_type: str = None,
+    include_metadata: bool = False,
 ):
     """get_relationships calls Query Related Objects (RFC 4.1.6)
     :param base_url: base URL of API method being called
     :param element_id: element id
     :param relationship_type: relationship type
+    :param include_metadata: boolean, if true include object metadata, default false
     :return: relationships array"""
     if base_url is None:
         raise TypeError("base_url cannot be None")
@@ -239,7 +241,8 @@ async def get_relationships(
     url = f"{base_url}/objects/related"
     payload = {
         "elementIds": [element_id],
-        "relationshipType": relationship_type
+        "relationshipType": relationship_type,
+        "includeMetadata": include_metadata
     }
     response = await post(url, payload)
     # Response is an array of related objects
@@ -260,7 +263,8 @@ async def get_object(
         raise ValueError("element_id is required to run get_object")
     url = f"{base_url}/objects/list"
     payload = {
-        "elementIds": [element_id]
+        "elementIds": [element_id],
+        "includeMetadata": include_metadata        
     }
     response = await post(url, payload)
     # Response is an array of matching objects

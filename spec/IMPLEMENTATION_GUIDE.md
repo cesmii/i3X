@@ -685,6 +685,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
       "isComposition": false,
       "isExtended": true,
       "metadata": {
+        "description": "A human-readable description of this Object.",
         "typeNamespaceUri": "string",
         "sourceTypeId": "string",
         "relationships": {
@@ -719,6 +720,7 @@ The `metadata` key is included if `includeMetadata=true` in the request.
 
 | Field                         | Type    | Required                 | Description |
 |-------------------------------|---------|--------------------------|-------------|
+| `metadata.description`        | string | No | A human-readable description of this Object. SHOULD be used to convey context or intent beyond what `displayName` communicates. |
 | `metadata.typeNamespaceUri`   | string  | Yes                      | The namespace the ObjectType *definition* belongs to — identifies which namespace's schema this Object conforms to (e.g., an ISA-95 or OPC UA standard namespace, or a vendor namespace). An Object instance's type may come from any namespace; this field makes that provenance explicit. For example, if the external Namespace was the OPC UA for Machinery Companion spec, the typeNamespaceUri would be `http://opcfoundation.org/UA/Machinery/`. |
 | `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
 | `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
@@ -754,7 +756,7 @@ Returns one or more Objects without data/values given a collection of elementIds
 
 ```json
 {
-  "success": false,
+  "success": true,
   "results": [
     {
       "success": true,
@@ -766,6 +768,42 @@ Returns one or more Objects without data/values given a collection of elementIds
         "parentId": "",
         "isComposition": false,
         "isExtended": false
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "error": { "message": "Element not found: string" }
+    }
+  ]
+}
+```
+
+**Response (with `includeMetadata=true`):**
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "elementId": "string",
+        "displayName": "string",
+        "typeElementId": "string",
+        "parentId": "",
+        "isComposition": false,
+        "isExtended": false,
+        "metadata": {
+          "description": "A human-readable description of this Object.",
+          "typeNamespaceUri": "string",
+          "sourceTypeId": "string",
+          "relationships": {
+            "HasParent": "/",
+            "HasChildren": ["child1", "child2"]
+          }
+        }
       }
     },
     {

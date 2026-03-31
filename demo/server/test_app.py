@@ -176,6 +176,50 @@ class TestI3XEndpoints(unittest.TestCase):
         self.assertIsInstance(data, dict)
         self.assertIn("results", data)
 
+    def test_include_metadata(self):
+        """Test RFC 3.1.2 - Optional Object Metadata returned when includeMetadata=true"""
+        # Without metadata: base fields only, no metadata block
+        response = self.client.post("/objects/list", json={"elementIds": ["pump-101"], "includeMetadata": False})
+        data = response.json()
+        self.assertTrue(data["success"])
+        result = data["results"][0]["result"]
+        self.assertNotIn("metadata", result)
+
+        # With metadata: all metadata fields present
+        response = self.client.post("/objects/list", json={"elementIds": ["pump-101"], "includeMetadata": True})
+        data = response.json()
+        self.assertTrue(data["success"])
+        result = data["results"][0]["result"]
+        self.assertIn("metadata", result)
+        metadata = result["metadata"]
+
+        # description
+        self.assertIn("description", metadata)
+        self.assertIsInstance(metadata["description"], str)
+        self.assertEqual(metadata["description"], "Primary centrifugal pump supplying coolant to Tank 201 on the west production line")
+
+        # type provenance fields
+        self.assertIn("typeNamespaceUri", metadata)
+        self.assertEqual(metadata["typeNamespaceUri"], "https://isa.org/isa95")
+        self.assertIn("sourceTypeId", metadata)
+        self.assertEqual(metadata["sourceTypeId"], "WorkUnitType")
+
+        # relationships
+        self.assertIn("relationships", metadata)
+
+        # vendor/system fields go into metadata.system
+        self.assertIn("system", metadata)
+        self.assertIn("operationStartDate", metadata["system"])
+        self.assertIn("lastMaintainedDate", metadata["system"])
+
+        # Objects without description should omit metadata.description
+        response = self.client.post("/objects/list", json={"elementIds": ["pump-101-state"], "includeMetadata": True})
+        data = response.json()
+        self.assertTrue(data["success"])
+        result = data["results"][0]["result"]
+        self.assertIn("metadata", result)
+        self.assertNotIn("description", result["metadata"])
+
     def test_request_validation_errors(self):
         """Test request validation - must provide elementIds array"""
         # elementIds not provided
