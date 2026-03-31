@@ -400,6 +400,7 @@ The definition of an Object looks as follows.
 - The Object's value, which is queried in the `objects/value` endpoint MUST conform to the ObjectType schema set by the `typeElementId` attribute. 
 - If `isExtended=true` the Object may have additional attributes not included in the `typeElementId` schema. Use `includeMetadata=true` to see the additional attributes.
 - Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
+- The Server MUST have at least one root Object which is queried using the `/objects?root=true` endpoint. This allows clients to progressively browse the address space from one or more root objects.
 
 ## Exploratory Methods
 
@@ -655,10 +656,11 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 
 **Parameters:**
 
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `typeElementId` | string | No | When set, returns Objects of the given typeElementId. If not set, all Objects are returned. |
-| `includeMetadata` | boolean | No | Optionally include metadata in the response. |
+| Name              | Type | Required | Description                                                                                 |
+|-------------------|------|----------|---------------------------------------------------------------------------------------------|
+| `typeElementId`   | string | No | When set, returns Objects of the given typeElementId. If not set, all Objects are returned. |
+| `includeMetadata` | boolean | No | Optionally include metadata in the response.                                                |
+| `root`            | boolean | No | Returns the root Objects for the server when set to true.                                   |
 
 **Response:**
 
