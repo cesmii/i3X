@@ -283,10 +283,35 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 
 When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` in their type registry and use its `elementId` as the `typeElementId` on all affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. The `UnknownType` schema should be `{"type": "object"}`. The choice of `elementId` is implementation-specific.
 
+**Nullable fields**
+
+By default, a field declared in an ObjectType schema is non-nullable — `"type": "number"` means the field must be a number, never `null`. To permit a field to be null, declare it using a JSON Schema type union:
+
+```json
+{
+  "elementId": "PumpType",
+  "displayName": "Pump",
+  "namespaceUri": "https://example.com/ns/equipment",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "flowRate":   { "type": "number" },
+      "outletTemp": { "type": ["number", "null"] },
+      "alarmCode":  { "type": ["string", "null"] }
+    },
+    "required": ["flowRate"]
+  }
+}
+```
+
+Here `flowRate` is required and non-nullable. `outletTemp` and `alarmCode` are nullable — the platform may not always have a value for them. See [Null Value Handling](#null-value-handling) for how nulls appear in read responses and write requests.
+
 **Requirements**
 - An Object Type MUST have a JSON Schema definition
 - An Object Type MUST belong to one Namespace
 - An Object Type SHOULD have a version in Semantic Versioning format (e.g. `"1.0.0"`)
+- Fields not declared nullable in the schema MUST NOT carry `null` values in read responses or write requests
+- Field nullability MUST be declared in the ObjectType schema; it MUST NOT be inferred from observed values
 
 The standard creates the necessary hooks to identify the version of an object type, but it is up to implementations to manage multiple versions if necessary.
 
@@ -932,6 +957,54 @@ Below is an example of a temperature sensor value return.
 }
 ```
 
+### Null Value Handling
+
+The top-level `value` field in a VQT is always nullable. A `null` value means the underlying platform currently has no valid data for this element — the element was reached and queried successfully, but the platform cannot provide a value at this time. This is a platform-level condition, not an API error.
+
+**Rules for null values on reads:**
+
+- `value` MAY be `null`
+- When `value` is `null`, `quality` MUST be `Bad`, `Uncertain`, or `GoodNoData`
+- `value: null` paired with `quality: "Good"` is invalid
+- `quality` and `timestamp` are never `null`
+
+```json
+// Sensor is connected but has not yet reported a value
+{ "value": null, "quality": "GoodNoData", "timestamp": "2025-01-08T10:30:00Z" }
+
+// Communication failure — last known timestamp preserved
+{ "value": null, "quality": "Bad", "timestamp": "2025-01-08T09:00:00Z" }
+```
+
+**Null fields within structured values**
+
+When an Object's value is a structured object, individual fields may be `null` if the ObjectType schema declares them nullable (see [Object Types](#object-types)). A null field and an absent field are semantically equivalent on reads — clients MUST treat an absent nullable field as `null`.
+
+```json
+// These two responses are semantically equivalent when alarmCode is declared nullable:
+{ "value": { "flowRate": 12.5, "alarmCode": null }, "quality": "Good", "timestamp": "..." }
+{ "value": { "flowRate": 12.5 },                    "quality": "Good", "timestamp": "..." }
+```
+
+Implementations MAY omit null fields from structured values to reduce payload size. Clients MUST NOT rely on the presence or absence of a null field to infer whether the field was queried.
+
+**Non-nullable API fields**
+
+The following API-level fields are never `null` regardless of platform state: `elementId`, `displayName`, `typeElementId`, `quality`, `timestamp`. These are structural fields required for correct API operation.
+
+**Rules for null values on writes**
+
+A client MAY write `null` to any field declared nullable in the ObjectType schema. The server MUST pass the `null` through to the underlying platform without coercion or substitution. The platform determines whether a null write is accepted; if it is not, the server MUST return an error response.
+
+```json
+// Write null to clear a nullable field
+{
+  "value": { "flowRate": 12.5, "alarmCode": null },
+  "quality": "Good",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
+
 #### `POST` /objects/value
 
 Returns the last known value for one or more Objects.
@@ -1094,7 +1167,7 @@ The value to write in VQT format. The value will replace the current Object valu
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. |
+| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. `null` is permitted for nullable fields — see [Null Value Handling](#null-value-handling). |
 | `quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
 | `timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
 
