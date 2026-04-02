@@ -81,9 +81,6 @@ class LastKnownValue(BaseModel):
     elementId: str = Field(..., description="Unique string identifier for the element")
     value: Dict[str, Any] = Field(..., description="Current attribute values")
     parentId: Optional[str] = Field(None, description="ElementId of the parent object")
-    isComposition: bool = Field(
-        ..., description="Boolean indicating if element has child objects"
-    )
     namespaceUri: str = Field(..., description="Namespace URI")
     dataType: Optional[str] = Field(
         None, description="Data type (when includeMetadata=true)"
@@ -102,9 +99,6 @@ class HistoricalValue(BaseModel):
     )
     timestamp: str = Field(..., description="ISO 8601 timestamp when data was recorded")
     parentId: Optional[str] = Field(None, description="ElementId of the parent object")
-    isComposition: bool = Field(
-        ..., description="Boolean indicating if element has child objects"
-    )
     namespaceUri: str = Field(..., description="Namespace URI")
     dataType: Optional[str] = Field(
         None, description="Data type (when includeMetadata=true)"

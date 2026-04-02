@@ -78,23 +78,21 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
     to the response format described in the Implementation Guide.
 
     For current value (is_history=False):
-      Simple:      {isComposition, value, quality, timestamp}
-      Composition: {isComposition, value, quality, timestamp, components: {childId: {value, quality, timestamp}}}
+      Simple:      {value, quality, timestamp}
+      Composition: {value, quality, timestamp, components: {childId: {value, quality, timestamp}}}
 
     For history (is_history=True):
-      {isComposition, values: [{value, quality, timestamp}, ...]}
+      {values: [{value, quality, timestamp}, ...]}
     """
     if element_id not in ds_result:
         return None
 
     element_data = ds_result[element_id]
-    is_composition = instance.get("isComposition", False) if instance else False
     child_keys = [k for k in element_data.keys() if k != "data"]
 
     if is_history:
         data_list = element_data.get("data", [])
         return {
-            "isComposition": is_composition,
             "values": [
                 {"value": vqt.get("value"), "quality": vqt.get("quality"), "timestamp": vqt.get("timestamp")}
                 for vqt in data_list
@@ -119,7 +117,6 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
                 components[child_key] = child_data
 
         return {
-            "isComposition": True,
             "value": parent_vqt.get("value"),
             "quality": parent_vqt.get("quality"),
             "timestamp": parent_vqt.get("timestamp"),
@@ -131,7 +128,6 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
         vqt = data_list[0] if data_list else {}
 
         return {
-            "isComposition": is_composition,
             "value": vqt.get("value"),
             "quality": vqt.get("quality"),
             "timestamp": vqt.get("timestamp"),
