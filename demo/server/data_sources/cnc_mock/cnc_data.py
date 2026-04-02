@@ -162,10 +162,9 @@ CNC_DATA = {
             "displayName": "CNC Work Center",
             "namespaceUri": ISA95_NAMESPACE,
             "typeElementId": "work-center-type",
-            "parentId": "/",
+            "parentId": None,
             "isComposition": False,
             "relationships": {
-                "HasParent": "/",
                 "HasChildren": ["cnc-001", "cnc-002"]
             },
             "location": "Building A, Floor 2",
