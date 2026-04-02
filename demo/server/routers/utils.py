@@ -7,6 +7,11 @@ def get_data_source(request: Request) -> Any:
     return request.app.state.data_source
 
 
+def get_capabilities(request: Request) -> dict:
+    """Shared FastAPI dependency — injects server capabilities config into route handlers."""
+    return getattr(request.app.state, "capabilities_config", {})
+
+
 OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "sourceTypeId", "version", "schema"}
 
 
@@ -74,21 +79,27 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
 
 def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_history: bool = False) -> Any:
     """
-    Converts data source {elementId: {data: [VQT...], childId: {...}}}
+    Converts data source {elementId: {data: [VQT...], _truncated: bool, childId: {...}}}
     to the response format described in the Implementation Guide.
 
     For current value (is_history=False):
       Simple:      {value, quality, timestamp}
       Composition: {value, quality, timestamp, components: {childId: {value, quality, timestamp}}}
+      Truncated:   above shapes with truncated: true where server limits were applied
 
     For history (is_history=True):
       {values: [{value, quality, timestamp}, ...]}
+
+    Internal _truncated keys are stripped and promoted to public truncated fields.
     """
+    INTERNAL_KEYS = {"data", "_truncated"}
+
     if element_id not in ds_result:
         return None
 
     element_data = ds_result[element_id]
-    child_keys = [k for k in element_data.keys() if k != "data"]
+    child_keys = [k for k in element_data.keys() if k not in INTERNAL_KEYS]
+    top_truncated = element_data.get("_truncated", False)
 
     if is_history:
         data_list = element_data.get("data", [])
@@ -98,7 +109,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
                 for vqt in data_list
             ]
         }
-    elif child_keys:
+    elif child_keys or top_truncated:
         # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])
         parent_vqt = parent_data[0] if parent_data else {}
@@ -108,20 +119,27 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             child_data = element_data[child_key]
             if isinstance(child_data, dict) and "data" in child_data:
                 child_vqt = child_data["data"][0] if child_data["data"] else {}
-                components[child_key] = {
+                child_entry = {
                     "value": child_vqt.get("value"),
                     "quality": child_vqt.get("quality"),
                     "timestamp": child_vqt.get("timestamp"),
                 }
+                if child_data.get("_truncated"):
+                    child_entry["truncated"] = True
             else:
-                components[child_key] = child_data
+                child_entry = child_data
+            components[child_key] = child_entry
 
-        return {
+        result = {
             "value": parent_vqt.get("value"),
             "quality": parent_vqt.get("quality"),
             "timestamp": parent_vqt.get("timestamp"),
-            "components": components,
         }
+        if top_truncated:
+            result["truncated"] = True
+        if components:
+            result["components"] = components
+        return result
     else:
         # Simple leaf element
         data_list = element_data.get("data", [{}])

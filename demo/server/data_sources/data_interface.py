@@ -63,6 +63,8 @@ class I3XDataSource(ABC):
         endTime: Optional[str] = None,
         maxDepth: int = 1,
         returnHistory: bool = False,
+        serverMaxDepth: Optional[int] = None,
+        serverMaxComponents: Optional[int] = None,
     ) -> Optional[Dict[str, Any]]:
         """
         Return instance values by ElementId.
@@ -76,6 +78,12 @@ class I3XDataSource(ABC):
                       1 = no recursion (just this element's value)
                       N = recurse up to N levels deep
             returnHistory: If True and no time range specified, returns all historical values. If False, returns only most recent value.
+            serverMaxDepth: Server-enforced depth ceiling (None = no server limit). When the
+                            server limit is hit and more children exist, _truncated=True is set
+                            on the result so the caller can signal truncation to the client.
+            serverMaxComponents: Server-enforced ceiling on total composed children included
+                            across the entire expansion (None = no limit). When exceeded,
+                            _truncated=True is set and further children are omitted.
         """
         pass
 

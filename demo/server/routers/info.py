@@ -14,13 +14,16 @@ def get_info(request: Request):
     app_config = getattr(request.app.state, "app_config", {})
     capabilities_config = getattr(request.app.state, "capabilities_config", {})
 
+    query_config = capabilities_config.get("query", {})
     return success_response({
         "specVersion": I3X_SPEC_VERSION,
         "serverVersion": app_config.get("version"),
         "serverName": app_config.get("title"),
         "capabilities": {
             "query": {
-                "history": capabilities_config.get("query", {}).get("history", True),
+                "history": query_config.get("history", True),
+                "maxDepth": query_config.get("maxDepth", None),
+                "maxComponents": query_config.get("maxComponents", None),
             },
             "update": {
                 "current": capabilities_config.get("update", {}).get("current", True),

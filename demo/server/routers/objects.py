@@ -7,7 +7,7 @@ from models import (
     GetObjectValueRequest,
     GetObjectHistoryRequest,
 )
-from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source
+from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source, get_capabilities
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
@@ -105,6 +105,7 @@ def query_related_objects(
 def query_last_known_values(
     request_body: GetObjectValueRequest,
     data_source=Depends(get_data_source),
+    capabilities=Depends(get_capabilities),
 ):
     """
     Return last known value for one or more Objects.
@@ -118,6 +119,9 @@ def query_last_known_values(
     """
     element_ids = request_body.get_element_ids()
     results = []
+    query_caps = capabilities.get("query", {})
+    server_max_depth = query_caps.get("maxDepth")
+    server_max_components = query_caps.get("maxComponents")
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -126,7 +130,9 @@ def query_last_known_values(
             value = data_source.get_instance_values_by_id(
                 eid_decoded,
                 maxDepth=request_body.maxDepth,
-                returnHistory=False
+                returnHistory=False,
+                serverMaxDepth=server_max_depth,
+                serverMaxComponents=server_max_components,
             )
             if value:
                 transformed = transform_value_result(eid_decoded, value, instance, is_history=False)
@@ -144,6 +150,7 @@ def query_last_known_values(
 def query_historical_values(
     request_body: GetObjectHistoryRequest,
     data_source=Depends(get_data_source),
+    capabilities=Depends(get_capabilities),
 ):
     """
     Get the historical values for one or more Objects.
@@ -157,6 +164,9 @@ def query_historical_values(
     """
     element_ids = request_body.get_element_ids()
     results = []
+    query_caps = capabilities.get("query", {})
+    server_max_depth = query_caps.get("maxDepth")
+    server_max_components = query_caps.get("maxComponents")
 
     for eid in element_ids:
         eid_decoded = unquote(eid)
@@ -167,7 +177,9 @@ def query_historical_values(
                 request_body.startTime,
                 request_body.endTime,
                 request_body.maxDepth,
-                returnHistory=True
+                returnHistory=True,
+                serverMaxDepth=server_max_depth,
+                serverMaxComponents=server_max_components,
             )
             if historical_values:
                 transformed = transform_value_result(eid_decoded, historical_values, instance, is_history=True)
