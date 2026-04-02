@@ -169,7 +169,7 @@ class MockDataSource(I3XDataSource):
                 return obj_type
         return None
 
-    def get_instances(self, type_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_instances(self, type_id: Optional[str] = None, root: bool = False) -> List[Dict[str, Any]]:
         instances = self.data["instances"]
         results = []
         if type_id:
@@ -178,6 +178,9 @@ class MockDataSource(I3XDataSource):
                     results.append(instance)
         else:
             results = instances
+
+        if root:
+            results = [i for i in results if i.get("parentId") == "/"]
 
         # Filter out records member from each instance before returning (unique to mock data)
         filtered_results = []

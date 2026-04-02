@@ -19,11 +19,12 @@ update = APIRouter(prefix="", tags=["Update"])
 def get_objects(
     typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
+    root: Optional[bool] = Query(default=None),
     data_source=Depends(get_data_source),
 ):
-    """Return all Objects. Optionally filter by typeElementId"""
+    """Return all Objects. Optionally filter by typeElementId or set root=true to get root Objects."""
     result = []
-    for i in data_source.get_instances(typeElementId):
+    for i in data_source.get_instances(typeElementId, root=bool(root)):
         type_info = data_source.get_object_type_by_id(i["typeElementId"]) if includeMetadata and i.get("typeElementId") else None
         extra_attrs = data_source.get_instance_extra_attributes(i["elementId"])
         result.append(getObject(i, includeMetadata, type_info, extra_attrs))

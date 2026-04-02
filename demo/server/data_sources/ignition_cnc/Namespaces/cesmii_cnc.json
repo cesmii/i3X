@@ -24,7 +24,7 @@
                     "description": "Machine manufacturer"
                 }
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvQ2hhbm5lbFR5cGU",
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvTWFjaGluZUluZm9ybWF0aW9uVHlwZQ",
@@ -41,7 +41,7 @@
                 "UAPrefix": null,
                 "UAServer": null
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvSWRlbnRpZmljYXRpb24",
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvTWFjaGluZVN0YXR1c1R5cGU",
@@ -117,7 +117,7 @@
                 "UAPrefix": null,
                 "UAServer": null
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvSUNvb2xhbnRQdW1wVHlwZQ",
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvSUNvb2xhbnRUYW5rVHlwZQ",
@@ -200,7 +200,7 @@
                 "UAPrefix": null,
                 "UAServer": null
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvSVRvb2xJbmZvcm1hdGlvblR5cGU",
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvVG9vbFN0YXR1c1R5cGU"
@@ -292,7 +292,7 @@
                     "type": "string"
                 }
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvUG9zaXRpb25UeXBl"
                 ]
@@ -306,7 +306,7 @@
                 "UAPrefix": null,
                 "UAServer": null
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvQ29tbWFuZFR5cGU"
                 ]
@@ -356,7 +356,7 @@
                     "type": "string"
                 }
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvTW90b3JUeXBl",
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvQ29tbWFuZFR5cGU"
@@ -388,7 +388,7 @@
                     "type": "string"
                 }
             },
-            "!related": {
+            "related": {
                 "HasComponent": [
                     "http://cesmii.net/profiles/CNC:W2RlZmF1bHRdX3R5cGVzXy9wcm9maWxlcy9DTkMvTW90b3JUeXBl"
                 ]

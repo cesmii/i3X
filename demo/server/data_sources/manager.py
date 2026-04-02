@@ -109,10 +109,10 @@ class DataSourceManager(I3XDataSource):
         source = self._get_source_for_operation("get_relationship_type_by_id")
         return source.get_relationship_type_by_id(element_id)
 
-    def get_instances(self, type_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_instances(self, type_id: Optional[str] = None, root: bool = False) -> List[Dict[str, Any]]:
         """Return array of instance objects, optionally filtered by Type ElementId"""
         source = self._get_source_for_operation("get_instances")
-        return source.get_instances(type_id)
+        return source.get_instances(type_id, root=root)
 
     def get_instance_by_id(self, element_id: str) -> Optional[Dict[str, Any]]:
         """Return instance object by ElementId"""

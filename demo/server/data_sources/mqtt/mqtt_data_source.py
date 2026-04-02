@@ -309,14 +309,17 @@ class MQTTDataSource(I3XDataSource):
         self.logger.warning(f"Type not found: {type_id}")
         return None
 
-    def get_instances(self, type_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    def get_instances(self, type_id: Optional[str] = None, root: bool = False) -> List[Dict[str, Any]]:
         """Return array of instance objects, optionally filtered by type"""
         all_instances = self.get_all_instances()
-        
+
+        if root:
+            all_instances = [i for i in all_instances if i.get("parentId") == "/"]
+
         # If no type filter specified, return all instances
         if type_id is None:
             return all_instances
-        
+
         # Filter by typeElementId
         filtered_instances = [instance for instance in all_instances if instance["typeElementId"] == type_id]
         self.logger.info(f"Filtered {len(all_instances)} instances to {len(filtered_instances)} matching typeElementId: {type_id}")

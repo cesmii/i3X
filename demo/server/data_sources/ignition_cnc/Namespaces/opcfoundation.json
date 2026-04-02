@@ -5,7 +5,7 @@
         "folder-type": {
             "description": "Represents a folder",
             "type": "object",
-            "!related": {
+            "related": {
                 "HasComponent": []
             }
         },

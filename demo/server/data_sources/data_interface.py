@@ -46,8 +46,8 @@ class I3XDataSource(ABC):
         pass
 
     @abstractmethod
-    def get_instances(self, type_id: Optional[str] = None) -> List[Dict[str, Any]]:
-        """Return array of instance objects, optionally filtered by Type ElementId"""
+    def get_instances(self, type_id: Optional[str] = None, root: bool = False) -> List[Dict[str, Any]]:
+        """Return array of instance objects, optionally filtered by Type ElementId. If root=True, return only root objects (those with no parent)."""
         pass
 
     @abstractmethod
