@@ -246,11 +246,10 @@ IGNITION_CNC_DATA = {
             "displayName": "CNC Shop Floor",
             "namespaceUri": "http://opcfoundation.org/UA/",
             "typeElementId": TYPE_IDS["folder-type"],
-            "parentId": "/",
+            "parentId": None,
             "isComposition": False,
             "static": True,
             "relationships": {
-                "HasParent": "/",
                 "HasChildren": ["cnc-machine-001"]
             }
         },

@@ -180,7 +180,7 @@ class MockDataSource(I3XDataSource):
             results = instances
 
         if root:
-            results = [i for i in results if i.get("parentId") == "/"]
+            results = [i for i in results if i.get("parentId") is None]
 
         # Filter out records member from each instance before returning (unique to mock data)
         filtered_results = []

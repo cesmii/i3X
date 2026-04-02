@@ -106,8 +106,7 @@ I3X_DATA = {
             "displayName": "pump-station",
             "description": "West facility pump station supplying coolant to the primary production area",
             "typeElementId": "work-center-type",
-            # A "/" is used to indicate this object is attached to the root
-            "parentId": "/",
+            "parentId": None,
             # A platform implementation would read its graph in order to populate these required response fields.
             #   This element has child objects, but they do not make up the data of this element, so this element is NOT complex
             #   We would expect a client would not want to recurse through these relationships by default
@@ -118,7 +117,6 @@ I3X_DATA = {
             "lastMaintainedDate": "August 1, 2001",
             # This is where we maintain the graph relationships used above and in the /related endpoints for the mock data
             "relationships": {
-                "HasParent": "/",
                 "HasChildren": [
                     "pump-101",
                     "tank-201",
