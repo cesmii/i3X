@@ -197,12 +197,11 @@ An ElementId is a platform-specific unique string identifier. Each element in th
 
 **Requirements:**
 - ElementIds MUST be strings with the following constraints
-  - [TODO] - put some limits around ElementIds?
-  - MUST be case insensitive
+  - MUST be case-insensitive
   - MUST not contain leading or trailing white spaces
+  - MUST not contain non-printable characters
 - ElementIds MUST be unique within the scope of the platform
 - ElementIds SHOULD be persistent (the same element always has the same ID)
-  - [TODO] SHOULD or MUST be persistent?
 - ElementIds SHOULD be human-readable when practical
 
 Below are examples of ElementIds.
