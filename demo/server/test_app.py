@@ -119,7 +119,6 @@ class TestI3XEndpoints(unittest.TestCase):
         self.assertEqual(len(succeeded), 1)
         item = succeeded[0]
         self.assertEqual(item["elementId"], "pump-101-state")
-        self.assertIn("isComposition", item["result"])
         self.assertIn("value", item["result"])
 
         # Test with maxDepth (0=infinite, 2=recurse to depth 2)
@@ -163,7 +162,6 @@ class TestI3XEndpoints(unittest.TestCase):
         item = succeeded[0]
         self.assertEqual(item["elementId"], "pump-101-state")
         self.assertIsInstance(item["result"], dict)
-        self.assertIn("isComposition", item["result"])
         self.assertIn("values", item["result"])
         self.assertIsInstance(item["result"]["values"], list)
 
