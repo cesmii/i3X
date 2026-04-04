@@ -18,7 +18,7 @@
 
         if (titleElement && !titleElement.querySelector('img.i3x-icon')) {
             const icon = document.createElement('img');
-            icon.src = '../static/icon.png';
+            icon.src = '/../static/icon.png';
             icon.alt = 'I3X';
             icon.className = 'i3x-icon';
             icon.style.cssText = 'height: 40px; margin-right: 12px; vertical-align: middle;';
