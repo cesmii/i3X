@@ -263,8 +263,6 @@ For example, by default the project MAY be called i3X: http://opcfoundation.org/
 
 The following is an example of a Namespace definition.
 
-[TODO] - should a namespace also have an elementId to make it consistent with everything else? What if we add a GET /namesapce/{id} route?
-
 ```json
   {
     "uri": "https://cesmii.org/i3X",
