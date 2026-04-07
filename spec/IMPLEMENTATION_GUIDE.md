@@ -225,7 +225,6 @@ An ElementId is a platform-specific unique string identifier. Each element in th
 
 **Requirements:**
 - ElementIds MUST be strings with the following constraints
-  - MUST be case-insensitive
   - MUST not contain leading or trailing white spaces
   - MUST not contain non-printable characters
 - ElementIds MUST be unique within the scope of the platform
