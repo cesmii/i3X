@@ -160,33 +160,16 @@ class IgnitionCNCDataSource(I3XDataSource):
         endTime: Optional[str] = None,
         maxDepth: int = 1,
         returnHistory: bool = False,
-        serverMaxDepth: Optional[int] = None,
-        serverMaxComponents: Optional[int] = None,
     ):
         """
         Returns nested structure: {elementId: {data: [VQT...], childId: {...}, ...}}
         - 'data' is the reserved key for this element's VQT array
         - Other keys are child elementIds (HasComponent relationships)
-        - '_truncated' set to True when server limits prevented full expansion
         """
-        component_counter = [0]
-        return self._get_values_recursive(
-            element_id, startTime, endTime, returnHistory,
-            maxDepth, serverMaxDepth, component_counter, serverMaxComponents
-        )
+        return self._get_values_recursive(element_id, startTime, endTime, returnHistory, maxDepth)
 
-    def _get_values_recursive(
-        self,
-        element_id: str,
-        startTime,
-        endTime,
-        returnHistory: bool,
-        max_depth: int,
-        server_depth_remaining: Optional[int],
-        component_counter: list,
-        server_max_components: Optional[int],
-    ):
-        """Recursive helper for get_instance_values_by_id with server-limit enforcement."""
+    def _get_values_recursive(self, element_id: str, startTime, endTime, returnHistory: bool, max_depth: int):
+        """Recursive helper for get_instance_values_by_id."""
         instance = self.get_instance_by_id(element_id, values=True)
 
         if not instance:
@@ -211,29 +194,13 @@ class IgnitionCNCDataSource(I3XDataSource):
         else:
             inner_result["data"] = []
 
-        # Check if client wants recursion
-        client_wants_recurse = (max_depth == 0 or max_depth > 1)
-
-        if client_wants_recurse and composed_of:
-            # Check server depth limit
-            if server_depth_remaining is not None and server_depth_remaining <= 1:
-                inner_result["_truncated"] = True
-            else:
-                next_max_depth = 0 if max_depth == 0 else max_depth - 1
-                next_server_depth = (server_depth_remaining - 1) if server_depth_remaining is not None else None
-
-                for child_id in composed_of:
-                    if server_max_components is not None and component_counter[0] >= server_max_components:
-                        inner_result["_truncated"] = True
-                        break
-                    component_counter[0] += 1
-                    child_result = self._get_values_recursive(
-                        child_id, startTime, endTime, returnHistory,
-                        next_max_depth, next_server_depth, component_counter, server_max_components
-                    )
-                    if child_result is not None:
-                        child_inner = child_result.get(child_id, {})
-                        inner_result[child_id] = child_inner
+        # Recurse into HasComponent children if requested
+        if (max_depth == 0 or max_depth > 1) and composed_of:
+            next_max_depth = 0 if max_depth == 0 else max_depth - 1
+            for child_id in composed_of:
+                child_result = self._get_values_recursive(child_id, startTime, endTime, returnHistory, next_max_depth)
+                if child_result is not None:
+                    inner_result[child_id] = child_result.get(child_id, {})
 
         return {element_id: inner_result}
 

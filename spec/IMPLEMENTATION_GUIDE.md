@@ -161,7 +161,8 @@ The following HTTP error codes are suggested.
 | Code | Meaning | When to Use |
 |------|---------|-------------|
 | 200 | OK | Successful request |
-| 400 | Bad Request | Invalid parameters, malformed request body |
+| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits (e.g., depth cap on a composition query) |
+| 400 | Bad Request | Invalid parameters, malformed request body, or request the server cannot fulfill at all |
 | 401 | Unauthorized | Missing or invalid authentication |
 | 403 | Forbidden | Authenticated but not authorized |
 | 404 | Not Found | ElementId or resource doesn't exist |
@@ -460,9 +461,7 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
   "serverName": "myi3XServer",
   "capabilities": {
     "query": {
-      "history": false,
-      "maxDepth": 10,
-      "maxComponents": 100
+      "history": false
     },
     "update": {
       "current": false,
@@ -482,8 +481,6 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
 | `serverName`                    | string | No | Human-readable name for this server or deployment                  |
 | `capabilities`                       | object | Yes | Declares which optional features this server supports              |
 | `capabilities.query.history`         | boolean | Yes | True if `POST /objects/history` is supported                       |
-| `capabilities.query.maxDepth`        | integer\|null | Yes | Maximum depth the server will recurse for composition queries. `null` means no server-imposed limit. Clients SHOULD use this value to set `maxDepth` in requests rather than relying on `maxDepth=0`. |
-| `capabilities.query.maxComponents`   | integer\|null | Yes | Maximum number of components returned per level in a composition response. `null` means no server-imposed limit. |
 | `capabilities.update.current`        | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
 | `capabilities.update.history`        | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
 | `capabilities.subscribe.stream`      | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
@@ -986,7 +983,7 @@ Returns the last known value for one or more Objects.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | One or more elementIds to query |
-| `maxDepth` | integer | No | Controls recursion through `HasComponent` relationships. `0` = infinite (server limit applies), `1` = no recursion (default), `N` = recurse up to N levels. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics). |
+| `maxDepth` | integer | No | Controls recursion through `HasComponent` relationships. `0` = infinite, `1` = no recursion (default), `N` = recurse up to N levels. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics). |
 
 ```json
 {
@@ -1052,31 +1049,9 @@ Returns the last known value for one or more Objects.
 }
 ```
 
-**Result shape — truncated composition** (server depth or component limit applied):
-
-```json
-{
-  "success": true,
-  "elementId": "plant-floor",
-  "result": {
-    "value": null,
-    "quality": "GoodNoData",
-    "timestamp": "...",
-    "truncated": true,
-    "components": {
-      "line-1": { "value": null, "quality": "GoodNoData", "timestamp": "...", "truncated": true },
-      "line-2": { "value": { "status": "running" }, "quality": "Good", "timestamp": "..." }
-    }
-  }
-}
-```
-
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
 - `components` is present only on composition elements and contains child values keyed by `elementId`
-- `truncated: true` on the result means the server did not return the full composition tree
-- `truncated: true` on an individual component means that component has further children that were not fetched
-- Clients that receive `truncated: true` SHOULD follow up with targeted requests using the truncated component's `elementId`
-- See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for full recursion and truncation behavior
+- If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
 
 ---
 
@@ -1642,14 +1617,11 @@ Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChil
 
 **Server Limits**
 
-Servers MAY impose a maximum recursion depth (`capabilities.query.maxDepth`) and a maximum number of components per level (`capabilities.query.maxComponents`). Clients SHOULD check `GET /info` before issuing deep queries and use the advertised limits to avoid unnecessary truncation.
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
 
-When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently truncate the result. Instead:
-- The server MUST include `"truncated": true` on any result or component where children exist but were not fetched due to a server limit
-- A top-level `"truncated": true` on the result indicates the overall response is incomplete
-- A `"truncated": true` on an individual component entry indicates that component has further children that were not returned
-
-Silent truncation is a protocol violation. Clients that receive `truncated: true` SHOULD issue follow-up requests targeting the truncated element's `elementId` directly.
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
 
 **Response Structure with maxDepth:**
 
@@ -1684,46 +1656,13 @@ When `maxDepth > 1` and the element has components:
 }
 ```
 
-When the server truncates due to depth or component limits:
-
-```json
-{
-  "success": true,
-  "results": [
-    {
-      "success": true,
-      "elementId": "plant-floor",
-      "result": {
-        "value": null,
-        "quality": "GoodNoData",
-        "timestamp": "2025-01-08T10:30:00Z",
-        "truncated": true,
-        "components": {
-          "line-1": {
-            "value": null,
-            "quality": "GoodNoData",
-            "timestamp": "2025-01-08T10:30:00Z",
-            "truncated": true
-          },
-          "line-2": {
-            "value": { "status": "running" },
-            "quality": "Good",
-            "timestamp": "2025-01-08T10:30:00Z"
-          }
-        }
-      }
-    }
-  ]
-}
-```
-
 **Key Points:**
 
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
 - `components` is present only on composition elements and contains child values keyed by their `elementId`
-- Each child value is in VQT format (`value`, `quality`, `timestamp`), optionally with `truncated`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
-- `truncated: true` is only present when truncation occurred — its absence means the result is complete
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
 
 ---
 

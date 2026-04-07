@@ -38,9 +38,7 @@
     },
     "capabilities": {
         "query": {
-            "history": true,
-            "maxDepth": 10,
-            "maxComponents": 100
+            "history": true
         },
         "update": {
             "current": true,

@@ -7,11 +7,6 @@ def get_data_source(request: Request) -> Any:
     return request.app.state.data_source
 
 
-def get_capabilities(request: Request) -> dict:
-    """Shared FastAPI dependency — injects server capabilities config into route handlers."""
-    return getattr(request.app.state, "capabilities_config", {})
-
-
 OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "sourceTypeId", "version", "schema"}
 
 
@@ -77,29 +72,29 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
 
 
 
-def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_history: bool = False) -> Any:
+def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_history: bool = False) -> tuple:
     """
     Converts data source {elementId: {data: [VQT...], _truncated: bool, childId: {...}}}
     to the response format described in the Implementation Guide.
 
+    Returns (result, was_truncated) where was_truncated is True if server limits caused
+    the result to be incomplete. The caller MUST return HTTP 206 when was_truncated is True.
+
     For current value (is_history=False):
       Simple:      {value, quality, timestamp}
       Composition: {value, quality, timestamp, components: {childId: {value, quality, timestamp}}}
-      Truncated:   above shapes with truncated: true where server limits were applied
 
     For history (is_history=True):
       {values: [{value, quality, timestamp}, ...]}
-
-    Internal _truncated keys are stripped and promoted to public truncated fields.
     """
     INTERNAL_KEYS = {"data", "_truncated"}
 
     if element_id not in ds_result:
-        return None
+        return None, False
 
     element_data = ds_result[element_id]
     child_keys = [k for k in element_data.keys() if k not in INTERNAL_KEYS]
-    top_truncated = element_data.get("_truncated", False)
+    was_truncated = element_data.get("_truncated", False)
 
     if is_history:
         data_list = element_data.get("data", [])
@@ -108,8 +103,8 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
                 {"value": vqt.get("value"), "quality": vqt.get("quality"), "timestamp": vqt.get("timestamp")}
                 for vqt in data_list
             ]
-        }
-    elif child_keys or top_truncated:
+        }, was_truncated
+    elif child_keys:
         # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])
         parent_vqt = parent_data[0] if parent_data else {}
@@ -125,23 +120,19 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
                     "timestamp": child_vqt.get("timestamp"),
                 }
                 if child_data.get("_truncated"):
-                    child_entry["truncated"] = True
+                    was_truncated = True
             else:
                 child_entry = child_data
             components[child_key] = child_entry
 
-        result = {
+        return {
             "value": parent_vqt.get("value"),
             "quality": parent_vqt.get("quality"),
             "timestamp": parent_vqt.get("timestamp"),
-        }
-        if top_truncated:
-            result["truncated"] = True
-        if components:
-            result["components"] = components
-        return result
+            "components": components,
+        }, was_truncated
     else:
-        # Simple leaf element
+        # Simple leaf element (or composition element where all children were server-truncated)
         data_list = element_data.get("data", [{}])
         vqt = data_list[0] if data_list else {}
 
@@ -149,7 +140,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             "value": vqt.get("value"),
             "quality": vqt.get("quality"),
             "timestamp": vqt.get("timestamp"),
-        }
+        }, was_truncated
 
 
 def getSubscriptionValue(instance: Any, record: Any, maxDepth: int = 1, data_source: Any = None) -> Any:
@@ -174,7 +165,7 @@ def getSubscriptionValue(instance: Any, record: Any, maxDepth: int = 1, data_sou
             element_id, maxDepth=maxDepth, returnHistory=False
         )
         if ds_result and element_id in ds_result:
-            transformed = transform_value_result(element_id, ds_result, instance, is_history=False)
+            transformed, _ = transform_value_result(element_id, ds_result, instance, is_history=False)
             if isinstance(transformed, dict):
                 result = {
                     "elementId": element_id,
