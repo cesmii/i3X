@@ -14,6 +14,8 @@ This document is a working draft, and should not be considered complete or norma
   - [Security & Authentication](#security--authentication)
   - [Versioning](#versioning)
 - [Response Format](#response-format)
+  - [Success](#success)
+  - [Failure](#failure)
   - [Bulk Response](#bulk-response)
 - [Address Space](#address-space)
   - [ElementId and DisplayName](#elementid-and-displayname)
@@ -40,7 +42,6 @@ This document is a working draft, and should not be considered complete or norma
     - [HasParent / HasChildren](#hasparent--haschildren)
     - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
-  - [Error Handling](#error-handling)
   - [Pagination](#pagination)
 
 ## Introduction
@@ -104,9 +105,11 @@ version of the API with a breaking change. `baseURL` is server dependent.
 
 ## Response Format
 
-All i3X responses follow a consistent response shape.
+i3X supports standard success and failure response shapes to make it easy for clients to handle success and failure regardless of the 
+endpoint. The below sections cover success, failure, and bulk responses.
 
-Successful responses return an HTTP 200 with the following response shape. The result shape is specific to the endpoint.
+### Success
+Successful responses return an HTTP 200 with the following shape. Note the `result` shape is specific to the endpoint being called.
 
 ```json
 {
@@ -115,16 +118,10 @@ Successful responses return an HTTP 200 with the following response shape. The r
 }
 ```
 
-Error responses return HTTP 4xx/5xx (see [Error Handling](#error-handling)) with the following shape. The message contains Server specific details on the cause of the failure.
-
-```json
-{
-  "success": false,
-  "error": {
-    "message": "failure message"
-  }
-}
-```
+| Field                           | Type    | Required | Description                                                 |
+|---------------------------------|---------|----------|-------------------------------------------------------------|
+| `success`                       | boolean | Yes      | True if the request is successful. HTTP return must be 200. |
+| `result`                        | any     | Yes      | Endpoint specific result.                                   |
 
 Examples:
 
@@ -137,6 +134,46 @@ Examples:
 
 // PUT /objects/{elementId}/value (write succeeded)
 { "success": true, "result": null }
+```
+
+### Failure
+
+Failures return an HTTP error code with the following shape.
+
+```json
+{
+  "success": false,
+  "error": {
+    "code": 400,
+    "message": "error message"
+  }
+}
+```
+
+| Field        | Type    | Required | Description                                                           |
+|--------------|---------|----------|-----------------------------------------------------------------------|
+| `success`    | boolean | Yes      | False if the request is not successful. HTTP return must be none 200. |
+| `error.code` | Number  | Yes      | The HTTP error code.                                                  |
+| `error.message` | String  | Yes      | Server specific error message to add context for the caller.          |
+
+The following HTTP error codes are suggested.
+
+| Code | Meaning | When to Use |
+|------|---------|-------------|
+| 200 | OK | Successful request |
+| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits (e.g., depth cap on a composition query) |
+| 400 | Bad Request | Invalid parameters, malformed request body, or request the server cannot fulfill at all |
+| 401 | Unauthorized | Missing or invalid authentication |
+| 403 | Forbidden | Authenticated but not authorized |
+| 404 | Not Found | ElementId or resource doesn't exist |
+| 500 | Internal Server Error | Server-side error |
+| 501 | Not Implemented | Optional feature not supported 
+
+Examples:
+
+```json
+// GET /namespaces
+{ "success": false, "error": { "code": 401, "message": "User does not have access"}}
 ```
 
 ### Bulk Response
@@ -157,22 +194,14 @@ The Server's response MUST be in the same order and the same size as the request
     {
       "success": false,
       "elementId": "non-existent",
-      "error": { "message": "Element not found: non-existent" }
+      "error": {
+        "code": 404,
+        "message": "Element not found: non-existent"
+      }
     }
   ]
 }
 ```
-
-### Design Rationale
-
-**Why a consistent `{success, result}` envelope?**
-- Clients can always check `success` before reading `result`
-- Error shape is predictable regardless of which endpoint failed
-- Bulk operations surface partial failures without using HTTP error codes
-
-**Why return bulk results in a flat array with succes/failure included in each row?**
-- `success: false` at the top level signals that action is needed without forcing clients to iterate all items first
-- Clients rely on the results being in the same order as the request, making lookups for a specific elementid faster
 
 ---
 
@@ -234,8 +263,6 @@ When an implementation of an external Namespace is in-exact, by convention, the 
 For example, by default the project MAY be called i3X: http://opcfoundation.org/UA/Robotics/?projection=i3X
 
 The following is an example of a Namespace definition.
-
-[TODO] - should a namespace also have an elementId to make it consistent with everything else? What if we add a GET /namesapce/{id} route?
 
 ```json
   {
@@ -477,11 +504,11 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
 | `specVersion`                   | string | Yes | The i3X specification version implemented, e.g., `"1.0"`           |
 | `serverVersion`                 | string | No | The server implementation's own version. Format is vendor-defined. |
 | `serverName`                    | string | No | Human-readable name for this server or deployment                  |
-| `capabilities`                  | object | Yes | Declares which optional features this server supports              |
-| `capabilities.query.history`    | boolean | Yes | True if `POST /objects/history` is supported                       |
-| `capabilities.update.current`   | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
-| `capabilities.update.history`   | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
-| `capabilities.subscribe.stream` | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
+| `capabilities`                       | object | Yes | Declares which optional features this server supports              |
+| `capabilities.query.history`         | boolean | Yes | True if `POST /objects/history` is supported                       |
+| `capabilities.update.current`        | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
+| `capabilities.update.history`        | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
+| `capabilities.subscribe.stream`      | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
 
 
 ### Namespace Endpoints
@@ -590,7 +617,10 @@ Returns one or more Object Types given a collection of elementIds.
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Object type not found: string" }
+      "error": { 
+        "code": 404,
+        "message": "Object type not found: string"
+      }
     }
   ]
 }
@@ -675,7 +705,10 @@ Returns one or more Relationship Types given a collection of elementIds.
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Relationship type not found: string" }
+      "error": { 
+        "code": 404,
+        "message": "Relationship type not found: string"
+      }
     }
   ]
 }
@@ -799,7 +832,10 @@ Returns one or more Objects without data/values given a collection of elementIds
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Element not found: string" }
+      "error": {
+        "code": 404,
+        "message": "Element not found: string"
+      }
     }
   ]
 }
@@ -835,7 +871,10 @@ Returns one or more Objects without data/values given a collection of elementIds
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Element not found: string" }
+      "error": { 
+        "code": 404,
+        "message": "Element not found: string"
+      }
     }
   ]
 }
@@ -896,7 +935,10 @@ Returns a bulk response with the related Objects for each queried elementId.
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Element not found: string" }
+      "error": { 
+        "code": 404,
+        "message": "Element not found: string"
+      }
     }
   ]
 }
@@ -1014,7 +1056,7 @@ Returns the last known value for one or more Objects.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | One or more elementIds to query |
-| `maxDepth` | integer | No | [TODO] - need to define this with clear examples. Can you filter this on a relationship type or does it traverse all relationships? MGP: I believe it only traverses hasComponent relationships.  vNext could add a relationship type parameter to deviate from default of hasComponent |
+| `maxDepth` | integer | No | Controls recursion through `HasComponent` relationships. `0` = infinite, `1` = no recursion (default), `N` = recurse up to N levels. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics). |
 
 ```json
 {
@@ -1048,7 +1090,10 @@ Returns the last known value for one or more Objects.
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Element not found: string" }
+      "error": { 
+        "code": 404,
+        "message": "Element not found: string"
+      }
     }
   ]
 }
@@ -1067,7 +1112,6 @@ Returns the last known value for one or more Objects.
   "success": true,
   "elementId": "pump-101-measurements",
   "result": {
-    "isComposition": true,
     "value": null,
     "quality": "GoodNoData",
     "timestamp": "...",
@@ -1080,7 +1124,7 @@ Returns the last known value for one or more Objects.
 
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
 - `components` is present only on composition elements and contains child values keyed by `elementId`
-- See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for full recursion behavior
+- If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
 
 ---
 
@@ -1130,7 +1174,10 @@ Returns the historical values for one or more Objects between a start and end ti
     {
       "success": false,
       "elementId": "string",
-      "error": { "message": "Element not found: string" }
+      "error": { 
+        "code": 404,
+        "message": "Element not found: string"
+      }
     }
   ]
 }
@@ -1635,13 +1682,23 @@ The `maxDepth` parameter controls recursion through HasComponent relationships:
 
 | Value | Behavior |
 |-------|----------|
-| `0` | Infinite recursion - include all nested composed elements |
-| `1` | No recursion - return only this element's direct value (default) |
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
 | `N` | Recurse up to N levels deep through HasComponent relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
 
 **Response Structure with maxDepth:**
 
-When `maxDepth > 1` and the element has components, the full `POST /objects/value` response looks like:
+When `maxDepth > 1` and the element has components:
 
 ```json
 {
@@ -1651,7 +1708,6 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
       "success": true,
       "elementId": "machine-001",
       "result": {
-        "isComposition": true,
         "value": { "status": "running" },
         "quality": "Good",
         "timestamp": "2025-01-08T10:30:00Z",
@@ -1679,24 +1735,7 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
 - `components` is present only on composition elements and contains child values keyed by their `elementId`
 - Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
-
----
-
-### Error Handling
-
-**HTTP Status Codes:**
-
-| Code | Meaning | When to Use |
-|------|---------|-------------|
-| 200 | OK | Successful request |
-| 400 | Bad Request | Invalid parameters, malformed request body |
-| 401 | Unauthorized | Missing or invalid authentication |
-| 403 | Forbidden | Authenticated but not authorized |
-| 404 | Not Found | ElementId or resource doesn't exist |
-| 500 | Internal Server Error | Server-side error |
-| 501 | Not Implemented | Optional feature not supported |
-
-See [Error Response](#error-response) for the error response body format.
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
 
 ---
 

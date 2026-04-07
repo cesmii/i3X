@@ -72,10 +72,13 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
 
 
 
-def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_history: bool = False) -> Any:
+def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_history: bool = False) -> tuple:
     """
-    Converts data source {elementId: {data: [VQT...], childId: {...}}}
+    Converts data source {elementId: {data: [VQT...], _truncated: bool, childId: {...}}}
     to the response format described in the Implementation Guide.
+
+    Returns (result, was_truncated) where was_truncated is True if server limits caused
+    the result to be incomplete. The caller MUST return HTTP 206 when was_truncated is True.
 
     For current value (is_history=False):
       Simple:      {value, quality, timestamp}
@@ -84,11 +87,14 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
     For history (is_history=True):
       {values: [{value, quality, timestamp}, ...]}
     """
+    INTERNAL_KEYS = {"data", "_truncated"}
+
     if element_id not in ds_result:
-        return None
+        return None, False
 
     element_data = ds_result[element_id]
-    child_keys = [k for k in element_data.keys() if k != "data"]
+    child_keys = [k for k in element_data.keys() if k not in INTERNAL_KEYS]
+    was_truncated = element_data.get("_truncated", False)
 
     if is_history:
         data_list = element_data.get("data", [])
@@ -97,7 +103,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
                 {"value": vqt.get("value"), "quality": vqt.get("quality"), "timestamp": vqt.get("timestamp")}
                 for vqt in data_list
             ]
-        }
+        }, was_truncated
     elif child_keys:
         # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])
@@ -108,22 +114,25 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             child_data = element_data[child_key]
             if isinstance(child_data, dict) and "data" in child_data:
                 child_vqt = child_data["data"][0] if child_data["data"] else {}
-                components[child_key] = {
+                child_entry = {
                     "value": child_vqt.get("value"),
                     "quality": child_vqt.get("quality"),
                     "timestamp": child_vqt.get("timestamp"),
                 }
+                if child_data.get("_truncated"):
+                    was_truncated = True
             else:
-                components[child_key] = child_data
+                child_entry = child_data
+            components[child_key] = child_entry
 
         return {
             "value": parent_vqt.get("value"),
             "quality": parent_vqt.get("quality"),
             "timestamp": parent_vqt.get("timestamp"),
             "components": components,
-        }
+        }, was_truncated
     else:
-        # Simple leaf element
+        # Simple leaf element (or composition element where all children were server-truncated)
         data_list = element_data.get("data", [{}])
         vqt = data_list[0] if data_list else {}
 
@@ -131,7 +140,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             "value": vqt.get("value"),
             "quality": vqt.get("quality"),
             "timestamp": vqt.get("timestamp"),
-        }
+        }, was_truncated
 
 
 def getSubscriptionValue(instance: Any, record: Any, maxDepth: int = 1, data_source: Any = None) -> Any:
@@ -156,7 +165,7 @@ def getSubscriptionValue(instance: Any, record: Any, maxDepth: int = 1, data_sou
             element_id, maxDepth=maxDepth, returnHistory=False
         )
         if ds_result and element_id in ds_result:
-            transformed = transform_value_result(element_id, ds_result, instance, is_history=False)
+            transformed, _ = transform_value_result(element_id, ds_result, instance, is_history=False)
             if isinstance(transformed, dict):
                 result = {
                     "elementId": element_id,
