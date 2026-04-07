@@ -980,10 +980,10 @@ Values in i3X have the following definition.
 
 | Quality | Description | When to Use |
 |---------|-------------|-------------|
-| `Good` | Value is valid and current | Normal operation, value is reliable |
-| `GoodNoData` | No data available but connection is good | Sensor connected but hasn't reported yet |
-| `Bad` | Value is invalid or connection failed | Communication failure, sensor malfunction |
-| `Uncertain` | Value quality cannot be determined | Sensor in calibration, stale data |
+| `Good` | Value is valid and current | Normal operation, value is reliable. Value is never `null`. |
+| `GoodNoData` | Connection is good but no data exists | Source connected but has never reported a value; historical query returned no data points in the requested range. Value is `null`. |
+| `Bad` | Value is unavailable due to an error | Communication failure, sensor malfunction, source unreachable. Value is `null`. |
+| `Uncertain` | Value exists but reliability is in question | Sensor in calibration, source temporarily degraded, stale value being held. Value is present (not `null`). |
 
 Below is an example of a temperature sensor value return.
 
@@ -1006,8 +1006,8 @@ The top-level `value` field in a VQT is always nullable. A `null` value means th
 **Rules for null values on reads:**
 
 - `value` MAY be `null`
-- When `value` is `null`, `quality` MUST be `Bad`, `Uncertain`, or `GoodNoData`
-- `value: null` paired with `quality: "Good"` is invalid
+- When `value` is `null`, `quality` MUST be `Bad` or `GoodNoData`
+- `value: null` paired with `quality: "Good"` or `quality: "Uncertain"` is invalid — both imply a value is present
 - `quality` and `timestamp` are never `null`
 
 ```json
