@@ -161,7 +161,8 @@ The following HTTP error codes are suggested.
 | Code | Meaning | When to Use |
 |------|---------|-------------|
 | 200 | OK | Successful request |
-| 400 | Bad Request | Invalid parameters, malformed request body |
+| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits (e.g., depth cap on a composition query) |
+| 400 | Bad Request | Invalid parameters, malformed request body, or request the server cannot fulfill at all |
 | 401 | Unauthorized | Missing or invalid authentication |
 | 403 | Forbidden | Authenticated but not authorized |
 | 404 | Not Found | ElementId or resource doesn't exist |
@@ -308,10 +309,35 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 
 When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` in their type registry and use its `elementId` as the `typeElementId` on all affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. The `UnknownType` schema should be `{"type": "object"}`. The choice of `elementId` is implementation-specific.
 
+**Nullable fields**
+
+By default, a field declared in an ObjectType schema is non-nullable — `"type": "number"` means the field must be a number, never `null`. To permit a field to be null, declare it using a JSON Schema type union:
+
+```json
+{
+  "elementId": "PumpType",
+  "displayName": "Pump",
+  "namespaceUri": "https://example.com/ns/equipment",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "flowRate":   { "type": "number" },
+      "outletTemp": { "type": ["number", "null"] },
+      "alarmCode":  { "type": ["string", "null"] }
+    },
+    "required": ["flowRate"]
+  }
+}
+```
+
+Here `flowRate` is required and non-nullable. `outletTemp` and `alarmCode` are nullable — the platform may not always have a value for them. See [Null Value Handling](#null-value-handling) for how nulls appear in read responses and write requests.
+
 **Requirements**
 - An Object Type MUST have a JSON Schema definition
 - An Object Type MUST belong to one Namespace
 - An Object Type SHOULD have a version in Semantic Versioning format (e.g. `"1.0.0"`)
+- Fields not declared nullable in the schema MUST NOT carry `null` values in read responses or write requests
+- Field nullability MUST be declared in the ObjectType schema; it MUST NOT be inferred from observed values
 
 The standard creates the necessary hooks to identify the version of an object type, but it is up to implementations to manage multiple versions if necessary.
 
@@ -477,11 +503,11 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
 | `specVersion`                   | string | Yes | The i3X specification version implemented, e.g., `"1.0"`           |
 | `serverVersion`                 | string | No | The server implementation's own version. Format is vendor-defined. |
 | `serverName`                    | string | No | Human-readable name for this server or deployment                  |
-| `capabilities`                  | object | Yes | Declares which optional features this server supports              |
-| `capabilities.query.history`    | boolean | Yes | True if `POST /objects/history` is supported                       |
-| `capabilities.update.current`   | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
-| `capabilities.update.history`   | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
-| `capabilities.subscribe.stream` | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
+| `capabilities`                       | object | Yes | Declares which optional features this server supports              |
+| `capabilities.query.history`         | boolean | Yes | True if `POST /objects/history` is supported                       |
+| `capabilities.update.current`        | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
+| `capabilities.update.history`        | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
+| `capabilities.subscribe.stream`      | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
 
 
 ### Namespace Endpoints
@@ -953,10 +979,10 @@ Values in i3X have the following definition.
 
 | Quality | Description | When to Use |
 |---------|-------------|-------------|
-| `Good` | Value is valid and current | Normal operation, value is reliable |
-| `GoodNoData` | No data available but connection is good | Sensor connected but hasn't reported yet |
-| `Bad` | Value is invalid or connection failed | Communication failure, sensor malfunction |
-| `Uncertain` | Value quality cannot be determined | Sensor in calibration, stale data |
+| `Good` | Value is valid and current | Normal operation, value is reliable. Value is never `null`. |
+| `GoodNoData` | Connection is good but no data exists | Source connected but has never reported a value; historical query returned no data points in the requested range. Value is `null`. |
+| `Bad` | Value is unavailable due to an error | Communication failure, sensor malfunction, source unreachable. Value is `null`. |
+| `Uncertain` | Value exists but reliability is in question | Sensor in calibration, source temporarily degraded, stale value being held. Value is present (not `null`). |
 
 Below is an example of a temperature sensor value return.
 
@@ -972,6 +998,54 @@ Below is an example of a temperature sensor value return.
 }
 ```
 
+### Null Value Handling
+
+The top-level `value` field in a VQT is always nullable. A `null` value means the underlying platform currently has no valid data for this element — the element was reached and queried successfully, but the platform cannot provide a value at this time. This is a platform-level condition, not an API error.
+
+**Rules for null values on reads:**
+
+- `value` MAY be `null`
+- When `value` is `null`, `quality` MUST be `Bad` or `GoodNoData`
+- `value: null` paired with `quality: "Good"` or `quality: "Uncertain"` is invalid — both imply a value is present
+- `quality` and `timestamp` are never `null`
+
+```json
+// Sensor is connected but has not yet reported a value
+{ "value": null, "quality": "GoodNoData", "timestamp": "2025-01-08T10:30:00Z" }
+
+// Communication failure — last known timestamp preserved
+{ "value": null, "quality": "Bad", "timestamp": "2025-01-08T09:00:00Z" }
+```
+
+**Null fields within structured values**
+
+When an Object's value is a structured object, individual fields may be `null` if the ObjectType schema declares them nullable (see [Object Types](#object-types)). A null field and an absent field are semantically equivalent on reads — clients MUST treat an absent nullable field as `null`.
+
+```json
+// These two responses are semantically equivalent when alarmCode is declared nullable:
+{ "value": { "flowRate": 12.5, "alarmCode": null }, "quality": "Good", "timestamp": "..." }
+{ "value": { "flowRate": 12.5 },                    "quality": "Good", "timestamp": "..." }
+```
+
+Implementations MAY omit null fields from structured values to reduce payload size. Clients MUST NOT rely on the presence or absence of a null field to infer whether the field was queried.
+
+**Non-nullable API fields**
+
+The following API-level fields are never `null` regardless of platform state: `elementId`, `displayName`, `typeElementId`, `quality`, `timestamp`. These are structural fields required for correct API operation.
+
+**Rules for null values on writes**
+
+A client MAY write `null` to any field declared nullable in the ObjectType schema. The server MUST pass the `null` through to the underlying platform without coercion or substitution. The platform determines whether a null write is accepted; if it is not, the server MUST return an error response.
+
+```json
+// Write null to clear a nullable field
+{
+  "value": { "flowRate": 12.5, "alarmCode": null },
+  "quality": "Good",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
+
 #### `POST` /objects/value
 
 Returns the last known value for one or more Objects.
@@ -981,7 +1055,7 @@ Returns the last known value for one or more Objects.
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `elementIds` | string[] | Yes | One or more elementIds to query |
-| `maxDepth` | integer | No | [TODO] - need to define this with clear examples. Can you filter this on a relationship type or does it traverse all relationships? MGP: I believe it only traverses hasComponent relationships.  vNext could add a relationship type parameter to deviate from default of hasComponent |
+| `maxDepth` | integer | No | Controls recursion through `HasComponent` relationships. `0` = infinite, `1` = no recursion (default), `N` = recurse up to N levels. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics). |
 
 ```json
 {
@@ -1037,7 +1111,6 @@ Returns the last known value for one or more Objects.
   "success": true,
   "elementId": "pump-101-measurements",
   "result": {
-    "isComposition": true,
     "value": null,
     "quality": "GoodNoData",
     "timestamp": "...",
@@ -1050,7 +1123,7 @@ Returns the last known value for one or more Objects.
 
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
 - `components` is present only on composition elements and contains child values keyed by `elementId`
-- See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics) for full recursion behavior
+- If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
 
 ---
 
@@ -1140,7 +1213,7 @@ The value to write in VQT format. The value will replace the current Object valu
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. |
+| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. `null` is permitted for nullable fields — see [Null Value Handling](#null-value-handling). |
 | `quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
 | `timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
 
@@ -1608,13 +1681,23 @@ The `maxDepth` parameter controls recursion through HasComponent relationships:
 
 | Value | Behavior |
 |-------|----------|
-| `0` | Infinite recursion - include all nested composed elements |
-| `1` | No recursion - return only this element's direct value (default) |
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
 | `N` | Recurse up to N levels deep through HasComponent relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
 
 **Response Structure with maxDepth:**
 
-When `maxDepth > 1` and the element has components, the full `POST /objects/value` response looks like:
+When `maxDepth > 1` and the element has components:
 
 ```json
 {
@@ -1624,7 +1707,6 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
       "success": true,
       "elementId": "machine-001",
       "result": {
-        "isComposition": true,
         "value": { "status": "running" },
         "quality": "Good",
         "timestamp": "2025-01-08T10:30:00Z",
@@ -1652,6 +1734,7 @@ When `maxDepth > 1` and the element has components, the full `POST /objects/valu
 - `components` is present only on composition elements and contains child values keyed by their `elementId`
 - Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
 
 ---
 

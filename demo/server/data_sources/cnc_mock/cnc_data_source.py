@@ -102,6 +102,10 @@ class CNCDataSource(I3XDataSource):
         - 'data' is the reserved key for this element's VQT array
         - Other keys are child elementIds (HasComponent relationships)
         """
+        return self._get_values_recursive(element_id, startTime, endTime, returnHistory, maxDepth)
+
+    def _get_values_recursive(self, element_id: str, startTime, endTime, returnHistory: bool, max_depth: int):
+        """Recursive helper for get_instance_values_by_id."""
         instance = self.get_instance_by_id(element_id, values=True)
 
         if not instance:
@@ -114,44 +118,26 @@ class CNCDataSource(I3XDataSource):
         if isinstance(composed_of, str):
             composed_of = [composed_of]
 
-        # Build the inner result object (will be wrapped with elementId as key)
         inner_result = {}
 
-        # Process this element's own value if it has records
+        # Process this element's own value
         if records_array and isinstance(records_array, list):
             own_vqt = self._process_records(records_array, startTime, endTime, returnHistory)
             if own_vqt is not None:
-                if isinstance(own_vqt, list):
-                    inner_result["data"] = own_vqt
-                else:
-                    inner_result["data"] = [own_vqt]
+                inner_result["data"] = own_vqt if isinstance(own_vqt, list) else [own_vqt]
             else:
                 inner_result["data"] = []
         else:
             inner_result["data"] = []
 
-        # Check if we should recurse into HasComponent relationships
-        should_recurse = (maxDepth == 0 or maxDepth > 1)
-
-        if should_recurse and composed_of:
-            # Calculate next depth
-            next_depth = 0 if maxDepth == 0 else maxDepth - 1
-
-            # Recursively fetch each composed child's value
+        # Recurse into HasComponent children if requested
+        if (max_depth == 0 or max_depth > 1) and composed_of:
+            next_max_depth = 0 if max_depth == 0 else max_depth - 1
             for child_id in composed_of:
-                child_result = self.get_instance_values_by_id(
-                    child_id,
-                    startTime,
-                    endTime,
-                    next_depth,
-                    returnHistory
-                )
+                child_result = self._get_values_recursive(child_id, startTime, endTime, returnHistory, next_max_depth)
                 if child_result is not None:
-                    # Child result is {childId: {...}}, extract the inner part
-                    child_inner = child_result.get(child_id, {})
-                    inner_result[child_id] = child_inner
+                    inner_result[child_id] = child_result.get(child_id, {})
 
-        # Return wrapped with elementId as key
         return {element_id: inner_result}
 
     def _process_records(self, records_array, startTime, endTime, returnHistory):
