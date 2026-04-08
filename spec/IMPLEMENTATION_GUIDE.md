@@ -342,7 +342,7 @@ The standard creates the necessary hooks to identify the version of an object ty
 
 ### Relationship Types
 
-Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types can can include composition, inheritance, graph, etc.
+Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types include hierarchical, composition and graph.
 Every Relationship Type MUST define a `reverseOf` that is also registered in the address space.
 
 Below is an example of two Relationship Type definitions.
@@ -375,6 +375,8 @@ Below is an example of two Relationship Type definitions.
   }
 ]
 ```
+
+For more information on the types of Relationships supported in i3X, see the document [Understanding Relationships](UNDERSTANDING_RELATIONSHIPS.md).
 
 **Expressing type inheritance with `allOf`**
 
