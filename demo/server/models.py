@@ -274,7 +274,7 @@ class ObjectTypeResponse(BaseModel):
     version: Optional[str] = None
     sourceTypeId: Optional[str] = None
     type_schema: Optional[Dict[str, Any]] = Field(None, alias="schema")
-    related: Optional[List[Any]] = None
+    related: Optional[Dict[str, Any]] = None
 
 
 class ObjectInstanceMetadata(BaseModel):
