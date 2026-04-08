@@ -56,7 +56,7 @@ def query_objects_by_id(
             extra_attrs = data_source.get_instance_extra_attributes(eid_decoded)
             results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info, extra_attrs)})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -96,7 +96,7 @@ def query_related_objects(
                 })
             results.append({"success": True, "elementId": eid_decoded, "result": related_result})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -136,9 +136,9 @@ def query_last_known_values(
                     any_truncated = True
                 results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                results.append({"success": False, "elementId": eid_decoded, "error": {"message": "No value available"}})
+                results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": "No value available"}})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": f"Element not found: {eid_decoded}"}})
 
     response_body = bulk_response(results)
     if any_truncated:
@@ -183,9 +183,9 @@ def query_historical_values(
                     any_truncated = True
                 results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                results.append({"success": False, "elementId": eid_decoded, "error": {"message": "No historical data available"}})
+                results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": "No historical data available"}})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": f"Element not found: {eid_decoded}"}})
 
     response_body = bulk_response(results)
     if any_truncated:

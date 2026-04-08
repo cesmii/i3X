@@ -43,7 +43,7 @@ def query_object_types_by_id(
         if obj_type:
             results.append({"success": True, "elementId": eid_decoded, "result": formatObjectType(obj_type)})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Object type not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": f"Object type not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -84,6 +84,6 @@ def query_relationship_types_by_id(
         if rel_type:
             results.append({"success": True, "elementId": eid_decoded, "result": rel_type})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "error": {"message": f"Relationship type not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "error": {"code": 404, "message": f"Relationship type not found: {eid_decoded}"}})
 
     return bulk_response(results)
