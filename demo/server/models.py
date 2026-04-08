@@ -240,6 +240,11 @@ class ErrorDetail(BaseModel):
     message: str
 
 
+class ErrorResponse(BaseModel):
+    success: bool = False
+    error: ErrorDetail
+
+
 class SuccessResponse(BaseModel, Generic[T]):
     success: bool
     result: Optional[T] = None

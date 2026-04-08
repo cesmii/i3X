@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Request
 from models import SuccessResponse, ServerInfo
-from .utils import success_response
+from .utils import success_response, BASE_ERROR_RESPONSES
 
 info = APIRouter(prefix="", tags=["Info"])
 
@@ -8,7 +8,7 @@ I3X_SPEC_VERSION = "1.0"
 
 
 # RFC - Server Capabilities
-@info.get("/info", summary="Server Info", operation_id="getInfo", response_model=SuccessResponse[ServerInfo])
+@info.get("/info", summary="Server Info", operation_id="getInfo", response_model=SuccessResponse[ServerInfo], responses={**BASE_ERROR_RESPONSES})
 def get_info(request: Request):
     """Returns the server version and capabilities. May be used as a health check.
     This endpoint does not require authentication."""

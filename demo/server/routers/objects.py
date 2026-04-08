@@ -9,12 +9,13 @@ from models import (
     GetObjectHistoryRequest,
     SuccessResponse,
     BulkResponse,
+    ErrorResponse,
     ObjectInstanceResponse,
     RelatedObjectResult,
     CurrentValueResult,
     HistoricalValueResult,
 )
-from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source
+from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE, PARTIAL_CONTENT_DESCRIPTION
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
@@ -22,7 +23,7 @@ update = APIRouter(prefix="", tags=["Update"])
 
 
 # RFC 4.1.5 - Instances of an Object Type
-@explore.get("/objects", summary="Get Objects", operation_id="getObjects", response_model=SuccessResponse[List[ObjectInstanceResponse]])
+@explore.get("/objects", summary="Get Objects", operation_id="getObjects", response_model=SuccessResponse[List[ObjectInstanceResponse]], responses={**BASE_ERROR_RESPONSES})
 def get_objects(
     typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
@@ -39,7 +40,7 @@ def get_objects(
 
 
 # RFC 4.1.5 - Query Objects by ElementId
-@explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById", response_model=BulkResponse[ObjectInstanceResponse])
+@explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById", response_model=BulkResponse[ObjectInstanceResponse], responses={**BASE_ERROR_RESPONSES})
 def query_objects_by_id(
     request_body: GetObjectsRequest,
     data_source=Depends(get_data_source),
@@ -68,7 +69,7 @@ def query_objects_by_id(
 
 
 # RFC 4.1.6 - Objects linked by Relationship Type
-@explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects", response_model=BulkResponse[List[RelatedObjectResult]])
+@explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects", response_model=BulkResponse[List[RelatedObjectResult]], responses={**BASE_ERROR_RESPONSES})
 def query_related_objects(
     request_body: GetRelatedObjectsRequest,
     data_source=Depends(get_data_source),
@@ -108,7 +109,7 @@ def query_related_objects(
 
 
 # RFC 4.2.1.1 - Object Element LastKnown Value
-@query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues", response_model=BulkResponse[CurrentValueResult])
+@query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues", response_model=BulkResponse[CurrentValueResult], responses={206: {"model": BulkResponse[CurrentValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **BASE_ERROR_RESPONSES})
 def query_last_known_values(
     request_body: GetObjectValueRequest,
     data_source=Depends(get_data_source),
@@ -153,7 +154,7 @@ def query_last_known_values(
 
 
 # RFC 4.2.1.2 - Object Element HistoricalValue
-@query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues", response_model=BulkResponse[HistoricalValueResult])
+@query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues", response_model=BulkResponse[HistoricalValueResult], responses={206: {"model": BulkResponse[HistoricalValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **BASE_ERROR_RESPONSES})
 def query_historical_values(
     request_body: GetObjectHistoryRequest,
     data_source=Depends(get_data_source),
@@ -205,6 +206,7 @@ def query_historical_values(
     summary="Get Historical Values",
     operation_id="getHistoricalValues",
     response_model=SuccessResponse[HistoricalValueResult],
+    responses={206: {"model": SuccessResponse[HistoricalValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def get_historical_values(
     elementId: str = Path(...),
@@ -244,6 +246,7 @@ def get_historical_values(
     summary="Update Value of Object",
     operation_id="updateObjectValue",
     response_model=SuccessResponse[None],
+    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def update_object(
     elementId: str = Path(...),
@@ -270,6 +273,7 @@ def update_object(
     "/objects/{elementId}/history",
     summary="Update Historical Values of Object",
     operation_id="updateObjectHistory",
+    responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def update_object_history(
     elementId: str = Path(...),

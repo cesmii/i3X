@@ -9,13 +9,13 @@ from models import (
     SuccessResponse,
     BulkResponse,
 )
-from .utils import success_response, bulk_response, get_data_source, formatObjectType
+from .utils import success_response, bulk_response, get_data_source, formatObjectType, BASE_ERROR_RESPONSES
 
 typeDefinitions = APIRouter(prefix="", tags=["Explore"])
 
 
 # RFC 4.1.3 - Object Types
-@typeDefinitions.get("/objecttypes", summary="Get Object Types", operation_id="getObjectTypes", response_model=SuccessResponse[List[ObjectTypeResponse]])
+@typeDefinitions.get("/objecttypes", summary="Get Object Types", operation_id="getObjectTypes", response_model=SuccessResponse[List[ObjectTypeResponse]], responses={**BASE_ERROR_RESPONSES})
 def get_object_types(
     namespaceUri: Optional[str] = Query(default=None),
     data_source=Depends(get_data_source),
@@ -30,6 +30,7 @@ def get_object_types(
     summary="Query Object Types by ElementId",
     operation_id="queryObjectTypesById",
     response_model=BulkResponse[ObjectTypeResponse],
+    responses={**BASE_ERROR_RESPONSES},
 )
 def query_object_types_by_id(
     request_body: GetObjectTypesRequest,
@@ -57,7 +58,7 @@ def query_object_types_by_id(
 
 
 # RFC 4.1.4 - Relationship Types
-@typeDefinitions.get("/relationshiptypes", summary="Get Relationship Types", operation_id="getRelationshipTypes", response_model=SuccessResponse[List[RelationshipType]])
+@typeDefinitions.get("/relationshiptypes", summary="Get Relationship Types", operation_id="getRelationshipTypes", response_model=SuccessResponse[List[RelationshipType]], responses={**BASE_ERROR_RESPONSES})
 def get_relationship_types(
     namespaceUri: Optional[str] = Query(default=None),
     data_source=Depends(get_data_source),
@@ -72,6 +73,7 @@ def get_relationship_types(
     summary="Query Relationship Types by ElementId",
     operation_id="queryRelationshipTypesById",
     response_model=BulkResponse[RelationshipType],
+    responses={**BASE_ERROR_RESPONSES},
 )
 def query_relationship_types_by_id(
     request_body: GetRelationshipTypesRequest,

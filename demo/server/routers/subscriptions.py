@@ -19,7 +19,7 @@ from models import (
     SyncUpdate,
     SubscriptionDetail,
 )
-from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source
+from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE
 
 
 # Not required, but showing what information is stored for simulated subscriptions
@@ -66,6 +66,7 @@ def _find_sub(request: Request, subscription_id: str, client_id: Optional[str] =
     summary="Create Subscription",
     operation_id="createSubscription",
     response_model=SuccessResponse[CreateSubscriptionResponse],
+    responses={**BASE_ERROR_RESPONSES},
 )
 def create_subscription(request: Request, subscription: CreateSubscriptionRequest):
     """Create a new subscription. Returns a unique subscriptionId the client must cache.
@@ -94,6 +95,7 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
     summary="Register Monitored Items",
     operation_id="registerMonitoredItems",
     response_model=BulkResponse[None],
+    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     """Add objects to the subscription. subscriptionId is passed in the request body."""
@@ -124,6 +126,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     summary="Remove Monitored Items",
     operation_id="removeMonitoredItems",
     response_model=BulkResponse[None],
+    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
     """Remove objects from the subscription. subscriptionId is passed in the request body."""
@@ -152,6 +155,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
     "/subscriptions/stream",
     summary="Stream Values (SSE)",
     operation_id="streamSubscription",
+    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 async def stream_subscription(request: Request, req: StreamRequest):
     """Open a Server-Sent Events (SSE) stream. subscriptionId is passed in the request body."""
@@ -206,6 +210,7 @@ async def stream_subscription(request: Request, req: StreamRequest):
     summary="Sync Values",
     operation_id="syncSubscription",
     response_model=SuccessResponse[List[SyncUpdate]],
+    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def sync_subscription(request: Request, req: SyncRequest):
     """Acknowledge previously received updates and return all pending updates in one call.
@@ -231,6 +236,7 @@ def sync_subscription(request: Request, req: SyncRequest):
     summary="Delete Subscriptions",
     operation_id="deleteSubscriptions",
     response_model=BulkResponse[None],
+    responses={**BASE_ERROR_RESPONSES},
 )
 def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     """Delete one or more subscriptions by ID. subscriptionIds are passed in the request body."""
@@ -261,6 +267,7 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     summary="List Subscriptions",
     operation_id="listSubscriptions",
     response_model=BulkResponse[SubscriptionDetail],
+    responses={**BASE_ERROR_RESPONSES},
 )
 def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
     """Get one or more subscriptions by ID to check their existence and current configuration."""

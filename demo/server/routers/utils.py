@@ -1,5 +1,17 @@
 from typing import Any
 from fastapi import Request
+from models import ErrorResponse
+
+# Shared response schema dicts for use in route decorators
+BASE_ERROR_RESPONSES = {
+    "default": {"model": ErrorResponse, "description": "Error — see error.code for the HTTP status code (400, 401, 403, 404, 500, etc.)"},
+}
+
+NOT_FOUND_RESPONSE = {
+    404: {"model": ErrorResponse, "description": "Not Found — ElementId or resource does not exist"},
+}
+
+PARTIAL_CONTENT_DESCRIPTION = "Partial Content — server-imposed depth limit reached; response contains available data only"
 
 
 def get_data_source(request: Request) -> Any:
