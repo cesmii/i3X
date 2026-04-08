@@ -1,12 +1,18 @@
 from fastapi import APIRouter, Path, Query, HTTPException, Body, Depends
 from fastapi.responses import JSONResponse
-from typing import Optional, Any
+from typing import Optional, Any, List
 from urllib.parse import unquote
 from models import (
     GetObjectsRequest,
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
+    SuccessResponse,
+    BulkResponse,
+    ObjectInstanceResponse,
+    RelatedObjectResult,
+    CurrentValueResult,
+    HistoricalValueResult,
 )
 from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source
 
@@ -16,7 +22,7 @@ update = APIRouter(prefix="", tags=["Update"])
 
 
 # RFC 4.1.5 - Instances of an Object Type
-@explore.get("/objects", summary="Get Objects", operation_id="getObjects")
+@explore.get("/objects", summary="Get Objects", operation_id="getObjects", response_model=SuccessResponse[List[ObjectInstanceResponse]])
 def get_objects(
     typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
@@ -33,7 +39,7 @@ def get_objects(
 
 
 # RFC 4.1.5 - Query Objects by ElementId
-@explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById")
+@explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById", response_model=BulkResponse[ObjectInstanceResponse])
 def query_objects_by_id(
     request_body: GetObjectsRequest,
     data_source=Depends(get_data_source),
@@ -62,7 +68,7 @@ def query_objects_by_id(
 
 
 # RFC 4.1.6 - Objects linked by Relationship Type
-@explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects")
+@explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects", response_model=BulkResponse[List[RelatedObjectResult]])
 def query_related_objects(
     request_body: GetRelatedObjectsRequest,
     data_source=Depends(get_data_source),
@@ -102,7 +108,7 @@ def query_related_objects(
 
 
 # RFC 4.2.1.1 - Object Element LastKnown Value
-@query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues")
+@query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues", response_model=BulkResponse[CurrentValueResult])
 def query_last_known_values(
     request_body: GetObjectValueRequest,
     data_source=Depends(get_data_source),
@@ -147,7 +153,7 @@ def query_last_known_values(
 
 
 # RFC 4.2.1.2 - Object Element HistoricalValue
-@query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues")
+@query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues", response_model=BulkResponse[HistoricalValueResult])
 def query_historical_values(
     request_body: GetObjectHistoryRequest,
     data_source=Depends(get_data_source),
@@ -193,11 +199,51 @@ def query_historical_values(
     return response_body
 
 
+# RFC 4.2.1.2 - Historical values for a single Object (convenience GET form)
+@query.get(
+    "/objects/{elementId}/history",
+    summary="Get Historical Values",
+    operation_id="getHistoricalValues",
+    response_model=SuccessResponse[HistoricalValueResult],
+)
+def get_historical_values(
+    elementId: str = Path(...),
+    startTime: Optional[str] = Query(default=None, description="ISO 8601 start time"),
+    endTime: Optional[str] = Query(default=None, description="ISO 8601 end time"),
+    maxDepth: int = Query(default=1, ge=0, description="Recursion depth through HasComponent. 0=infinite, 1=no recursion"),
+    data_source=Depends(get_data_source),
+):
+    """Return historical values for a single Object. Optionally filter by time range."""
+    elementId = unquote(elementId)
+    instance = data_source.get_instance_by_id(elementId)
+    if not instance:
+        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
+
+    historical_values = data_source.get_instance_values_by_id(
+        elementId,
+        startTime,
+        endTime,
+        maxDepth,
+        returnHistory=True,
+    )
+    if not historical_values:
+        raise HTTPException(status_code=404, detail="No historical data available")
+
+    transformed, was_truncated = transform_value_result(elementId, historical_values, instance, is_history=True)
+    if transformed is None:
+        raise HTTPException(status_code=404, detail="No historical data available")
+
+    if was_truncated:
+        return JSONResponse(content={"success": True, "result": transformed}, status_code=206)
+    return {"success": True, "result": transformed}
+
+
 # RFC 4.2.2.1 - Object Element LastKnownValue update
 @update.put(
     "/objects/{elementId}/value",
     summary="Update Value of Object",
     operation_id="updateObjectValue",
+    response_model=SuccessResponse[None],
 )
 def update_object(
     elementId: str = Path(...),

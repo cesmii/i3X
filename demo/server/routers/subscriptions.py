@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from typing import List, Optional, Any, Callable
+from typing import List, Optional, Any, Callable, Dict
 from datetime import datetime, timezone
 import asyncio
 import json
@@ -13,6 +13,11 @@ from models import (
     StreamRequest, SyncRequest,
     DeleteSubscriptionsRequest,
     ListSubscriptionsRequest,
+    CreateSubscriptionResponse,
+    SuccessResponse,
+    BulkResponse,
+    SyncUpdate,
+    SubscriptionDetail,
 )
 from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source
 
@@ -60,6 +65,7 @@ def _find_sub(request: Request, subscription_id: str, client_id: Optional[str] =
     "/subscriptions",
     summary="Create Subscription",
     operation_id="createSubscription",
+    response_model=SuccessResponse[CreateSubscriptionResponse],
 )
 def create_subscription(request: Request, subscription: CreateSubscriptionRequest):
     """Create a new subscription. Returns a unique subscriptionId the client must cache.
@@ -87,6 +93,7 @@ def create_subscription(request: Request, subscription: CreateSubscriptionReques
     "/subscriptions/register",
     summary="Register Monitored Items",
     operation_id="registerMonitoredItems",
+    response_model=BulkResponse[None],
 )
 def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     """Add objects to the subscription. subscriptionId is passed in the request body."""
@@ -116,6 +123,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     "/subscriptions/unregister",
     summary="Remove Monitored Items",
     operation_id="removeMonitoredItems",
+    response_model=BulkResponse[None],
 )
 def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
     """Remove objects from the subscription. subscriptionId is passed in the request body."""
@@ -197,6 +205,7 @@ async def stream_subscription(request: Request, req: StreamRequest):
     "/subscriptions/sync",
     summary="Sync Values",
     operation_id="syncSubscription",
+    response_model=SuccessResponse[List[SyncUpdate]],
 )
 def sync_subscription(request: Request, req: SyncRequest):
     """Acknowledge previously received updates and return all pending updates in one call.
@@ -221,6 +230,7 @@ def sync_subscription(request: Request, req: SyncRequest):
     "/subscriptions/delete",
     summary="Delete Subscriptions",
     operation_id="deleteSubscriptions",
+    response_model=BulkResponse[None],
 )
 def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     """Delete one or more subscriptions by ID. subscriptionIds are passed in the request body."""
@@ -250,6 +260,7 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
     "/subscriptions/list",
     summary="List Subscriptions",
     operation_id="listSubscriptions",
+    response_model=BulkResponse[SubscriptionDetail],
 )
 def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
     """Get one or more subscriptions by ID to check their existence and current configuration."""

@@ -96,9 +96,12 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
     child_keys = [k for k in element_data.keys() if k not in INTERNAL_KEYS]
     was_truncated = element_data.get("_truncated", False)
 
+    is_composition = bool(instance.get("isComposition", False)) if instance else False
+
     if is_history:
         data_list = element_data.get("data", [])
         return {
+            "isComposition": is_composition,
             "values": [
                 {"value": vqt.get("value"), "quality": vqt.get("quality"), "timestamp": vqt.get("timestamp")}
                 for vqt in data_list
@@ -126,6 +129,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
             components[child_key] = child_entry
 
         return {
+            "isComposition": is_composition,
             "value": parent_vqt.get("value"),
             "quality": parent_vqt.get("quality"),
             "timestamp": parent_vqt.get("timestamp"),
@@ -137,6 +141,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
         vqt = data_list[0] if data_list else {}
 
         return {
+            "isComposition": is_composition,
             "value": vqt.get("value"),
             "quality": vqt.get("quality"),
             "timestamp": vqt.get("timestamp"),

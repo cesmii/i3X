@@ -1,14 +1,21 @@
 from fastapi import APIRouter, Query, Depends
-from typing import Optional
+from typing import Optional, List
 from urllib.parse import unquote
-from models import GetObjectTypesRequest, GetRelationshipTypesRequest
+from models import (
+    GetObjectTypesRequest,
+    GetRelationshipTypesRequest,
+    ObjectTypeResponse,
+    RelationshipType,
+    SuccessResponse,
+    BulkResponse,
+)
 from .utils import success_response, bulk_response, get_data_source, formatObjectType
 
 typeDefinitions = APIRouter(prefix="", tags=["Explore"])
 
 
 # RFC 4.1.3 - Object Types
-@typeDefinitions.get("/objecttypes", summary="Get Object Types", operation_id="getObjectTypes")
+@typeDefinitions.get("/objecttypes", summary="Get Object Types", operation_id="getObjectTypes", response_model=SuccessResponse[List[ObjectTypeResponse]])
 def get_object_types(
     namespaceUri: Optional[str] = Query(default=None),
     data_source=Depends(get_data_source),
@@ -22,6 +29,7 @@ def get_object_types(
     "/objecttypes/query",
     summary="Query Object Types by ElementId",
     operation_id="queryObjectTypesById",
+    response_model=BulkResponse[ObjectTypeResponse],
 )
 def query_object_types_by_id(
     request_body: GetObjectTypesRequest,
@@ -49,7 +57,7 @@ def query_object_types_by_id(
 
 
 # RFC 4.1.4 - Relationship Types
-@typeDefinitions.get("/relationshiptypes", summary="Get Relationship Types", operation_id="getRelationshipTypes")
+@typeDefinitions.get("/relationshiptypes", summary="Get Relationship Types", operation_id="getRelationshipTypes", response_model=SuccessResponse[List[RelationshipType]])
 def get_relationship_types(
     namespaceUri: Optional[str] = Query(default=None),
     data_source=Depends(get_data_source),
@@ -63,6 +71,7 @@ def get_relationship_types(
     "/relationshiptypes/query",
     summary="Query Relationship Types by ElementId",
     operation_id="queryRelationshipTypesById",
+    response_model=BulkResponse[RelationshipType],
 )
 def query_relationship_types_by_id(
     request_body: GetRelationshipTypesRequest,
