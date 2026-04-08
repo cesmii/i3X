@@ -1,6 +1,6 @@
-# Status
+# i3X 1.0 Specification
 
-This effort is currently in-development, and as such, this specification information should not be considered stable or reliable.
-
-You can view the WIP Open API specification at: [https://api.i3x.dev/v0/openapi.json](https://api.i3x.dev/v0/openapi.json)
+- View the OpenAPI specification at: [https://api.i3x.dev/v1/openapi.json](https://api.i3x.dev/v1/openapi.json)
+- View the OpenAPI Docs (Swagger) page at: [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs)
+- View the [Implementation Guide](IMPLEMENTATION_GUIDE.md)
 
