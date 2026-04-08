@@ -42,7 +42,6 @@ This document is a working draft, and should not be considered complete or norma
     - [HasParent / HasChildren](#hasparent--haschildren)
     - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
-  - [Pagination](#pagination)
 
 ## Introduction
 i3X is an HTTP-based API for interacting with industrial systems. It defines a standard interface between clients and servers for discovery, browsing, reading, writing, and subscribing to industrial data.
@@ -1407,8 +1406,6 @@ Once a Subscription is created, a client can add and remove Objects to the Subsc
 - Servers SHOULD queue the updates and deliver them FIFO to clients
 - Servers SHOULD have a limit on how many updates they can queue, and when reached, start dropping older updates first
 
-[TODO] - how does a server signal a client that data has been dropped?  MGP- Maybe through some additional data in the `GET` /subscription.  Add some timestamp for when data was last dropped?  Maybe something more creative, also?
-
 ---
 
 #### `POST` /subscriptions/register
@@ -1651,7 +1648,7 @@ Production Line A (parent)
 └── Machine 3 (child)
 ```
 
-**Requirements:**
+**Requirements:**s
 
 - If object A `HasParent` B, then B `HasChildren` A
 - `parentId` on instances MUST match the `HasParent` relationship
@@ -1735,29 +1732,6 @@ When `maxDepth > 1` and the element has components:
 - Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
 - When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
-
----
-
-### Pagination
-
-For endpoints returning arrays, implementations SHOULD support pagination.
-
-**Offset/Limit (Simple):**
-
-```
-GET /objects?offset=100&limit=50
-```
-
-**Response with pagination metadata:**
-
-```json
-{
-  "items": [...],
-  "total": 500,
-  "offset": 100,
-  "limit": 50
-}
-```
 
 ---
 

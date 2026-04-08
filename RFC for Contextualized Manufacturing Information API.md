@@ -65,17 +65,25 @@ The reader will observe that the API requires the underlying platform to support
 ### 3.1.1 Required Object Metadata
 
 - DisplayName: a human-friendly name for the purpose of browsing or displaying objects within an address space
-- ParentId: the ElementId of the parent object
-- HasChildren: if the element value is complex, a boolean value indicating if the element is composed of one or more child objects
-- TypeNamespaceURI: a URI indicating the Namespace of the object's Type MUST be returned. This identifies which namespace the ObjectType definition belongs to, allowing clients to resolve the type's schema without additional lookups.
+- ParentId: the ElementId of the parent object, or null if the object is a root
+- TypeElementId: the ElementId of the ObjectType that defines this object's schema
+- isComposition: a boolean indicating whether this element's value is composed of the values of its HasComponent children. This is distinct from organizational hierarchy — `isComposition: true` specifically means the children's data constitutes the parent's value (HasComponent), not merely that organizational children exist (HasChildren).
+- isExtended: a boolean indicating whether the object's current value contains attributes not declared in its ObjectType schema.
 
-### 3.1.2 Optional Object Metadata
+### 3.1.2 Object Metadata Block
 
-- Description: a string providing a more verbose, human-readable description of the element. This field SHOULD be used to convey context or intent beyond what the DisplayName communicates.
-- Interpolation: if the element value is interpolated, rather than stored, indicate the interpolation method
-- EngUnit: a string indicating the engineering unit for measuring the element value. Where present, the definitions found in [UNECE Recommendation Number 20](https://unece.org/trade/documents/2021/06/uncefact-rec20-0) MUST be used.
-- Quality: a data quality indicator following the standard established by the [OPC UA standard status codes](https://reference.opcfoundation.org/Core/Part8/v104/docs/A.3.2.3#_Ref377938607). If data quality is not available, a CMIP may omit this metadata field.
-- Property or Attribute Metadata: Additional metadata related to the object as required by an implementation. Granting that existing contextual information platforms may already have defined metadata, or have an option for users to create ad-hoc metadata, this additional "property bag" MAY optionally be implemented to contain this metadata. This kind of metadata SHOULD be minimal, as Relationships are more easily mappable to a Knowledge Graph, and thus provide for richer contextual information.
+When a client requests metadata, the server MUST return a `metadata` block alongside the base object fields. This separates fields the server is required to persist — but that clients only need on demand — from the base response. The metadata block has two tiers.
+
+**Required in the metadata block** — the server MUST persist and return these when metadata is requested:
+- typeNamespaceUri: the URI of the Namespace the object's ObjectType belongs to, allowing clients to resolve the type's schema without additional lookups
+- sourceTypeId: the identifier of the corresponding type within its source namespace (e.g., an OPC UA NodeId or BrowseName), for correlating back to external definitions
+- relationships: the object's outgoing relationship edges, keyed by relationship type. Only ElementIds are returned; use the related-objects query to retrieve full related object records.
+
+**Optional in the metadata block** — the server MAY include these where available:
+- description: a human-readable description conveying context or intent beyond what the DisplayName communicates
+- engUnit: the engineering unit for the element's value. Where present, definitions from [UNECE Recommendation Number 20](https://unece.org/trade/documents/2021/06/uncefact-rec20-0) MUST be used.
+- extendedAttributes: present only when `isExtended: true`. Contains non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared attributes are omitted — clients look those up from the ObjectType schema.
+- system: vendor-defined key/value pairs for platform-specific metadata not covered by standard fields. Values MUST be limited to strings, numbers, and booleans.
 
 ### 3.2 Object Relationships
 
@@ -101,11 +109,17 @@ An ObjectType defines the schema for a class of objects within the contextualize
 
 ObjectTypes serve as the basis for instantiation and discovery through the I3X interfaces, such as retrieving the definition of a single ObjectType, enumerating all available ObjectTypes within a namespace, and listing object instances derived from a given ObjectType.
 
+ObjectType schemas MUST be expressed using JSON Schema. Implementations SHOULD resolve `allOf` inheritance chains when serving type definitions so that clients receive the fully expanded shape. Type inheritance MUST be tracked as an `InheritsFrom` relationship in the address space, parallel to the `allOf` reference in the schema.
+
+Each ObjectType definition MUST include a `sourceTypeId` field identifying the corresponding class or member within its source namespace (e.g., an OPC UA NodeId or BrowseName). This allows clients to correlate I3X types back to their originating external definitions.
+
+When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` and assign its ElementId as the `typeElementId` on all affected instances. This ensures every instance references a resolvable type.
+
 ### 3.4 Namespaces
 
 A Namespace provides a logical scope within the address space that groups related ObjectTypes and Relationship Types. Namespaces allow clients to explore and manage subsets of the type model, such as those tied to a particular standard, discipline, or vendor, without conflict or ambiguity.
 
-Object instances do not belong to a Namespace. They exist in the server's implicit address space and are associated with a namespace indirectly through their ObjectType (via `TypeNamespaceURI`). A single object instance may be composed of types from multiple namespaces.
+Object instances do not belong to a Namespace. They exist in the server's implicit address space and are associated with a namespace indirectly through their ObjectType (via `typeNamespaceUri`). A single object instance may be composed of types from multiple namespaces.
 
 ### 3.5 ElementIds
 
@@ -144,6 +158,7 @@ Each relationship type definition MUST include:
 - elementId: unique identifier for the relationship type
 - displayName: human-readable name
 - namespaceUri: the namespace URI for the relationship type
+- relationshipId: the identifier of the corresponding class or member within the source namespace, analogous to `sourceTypeId` on ObjectTypes
 - reverseOf: the elementId of the inverse relationship type (e.g., HasParent's reverseOf is HasChildren)
 
 Implementations MAY return additional relationship types for non-hierarchical relationships. These relationship type names SHALL be treated as keywords for follow-up queries. 
@@ -156,28 +171,21 @@ This Query MUST return an array of instance objects that are of the requested Ty
 
 This Query MUST return an array of objects related to the requested ElementId by the Type name of relationship specified in the query. Implementations MAY support a timestamp as a query parameter, which would allow for the exploration of historical relationships. 
 
-Each element in the returned object array MUST include the metadata indicated in [section 3.1.1](#311-required-object-metadata) and, if indicated by an optional query parameter, MAY include the metadata indicated in [section 3.1.2](#312-optional-object-metadata).
+Each element in the returned object array MUST include the metadata indicated in [section 3.1.1](#311-required-object-metadata) and, if indicated by an optional query parameter, MAY include the metadata indicated in [section 3.1.2](#312-optional-object-metadata). Each returned object MUST additionally include a `sourceRelationship` field identifying the relationship type traversed to reach it, enabling clients to traverse the graph in both directions without additional discovery calls.
 
-If the Query specifies an optional query parameter, an implementation MAY support following relationships to the specified depth - with the caveat that implementations may need to limit depth. As the required metadata for each object requires a boolean indication if an element HasChildren, a client may detect depth limiting by the server implementation, and recursively send follow-up requests to continue exploring the relationship hierarchy. If the depth parameter is omited, the depth SHALL be interpreted as zero. 
+If the Query specifies an optional query parameter, an implementation MAY support following relationships to the specified depth - with the caveat that implementations may need to limit depth. As the required metadata for each object includes `isComposition`, a client may detect depth limiting by the server implementation, and recursively send follow-up requests to continue exploring the relationship hierarchy. If the depth parameter is omitted, the depth SHALL be interpreted as zero. 
 
 #### 4.1.7 Object Definition
 
 If the ElementId exists as an instance object, this query MUST return the instance object, conforming to the Type definition from which the instance object is derived. The returned payload MUST include the most recent values of metadata indicated in [section 3.1.1](#311-required-object-metadata) and, if indicated by an optional query parameter, MAY include the most recent values of metadata indicated in [section 3.1.2](#312-optional-object-metadata).
 
-#### 4.1.8 Apparent Shape
+#### 4.1.8 Extended Attributes
 
-This Query MUST return the apparent schema of an object instance by ElementId. The apparent shape represents the actual structure of the object as observed in the platform — the union of the declared ObjectType schema and any additional attributes present in the instance's current value that are not declared in the type.
+If an instance object differs from its Type definition, information about additional members is surfaced inline on all object responses via the `isExtended` and `extendedAttributes` fields defined in [section 3.1.1](#311-required-object-metadata).
 
-The response MUST include:
-- **elementId**: the ElementId of the queried object
-- **typeElementId**: the ElementId of the declared ObjectType
-- **conformant**: a boolean indicating whether the instance's current value conforms to its declared type schema with no extra attributes
-- **apparentSchema**: a JSON Schema object representing the full apparent structure of the instance, including both declared and extra attributes
-- **extraAttributes**: an array of attribute names present in the instance's current value but not declared in the ObjectType schema
+When `isExtended` is true and the client requests metadata, the response MUST include an `extendedAttributes` field containing the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted from `extendedAttributes` — clients may look those up from the ObjectType schema identified by `typeElementId`.
 
-This Query MUST accept an array of ElementIds, consistent with other bulk query methods in this API.
-
-Implementations SHOULD resolve `allOf` inheritance chains in the declared type schema before comparing against the instance's actual data, so that inherited attributes are not incorrectly reported as extra.
+Implementations SHOULD resolve `allOf` inheritance chains in the declared type schema before determining conformance, so that inherited attributes are not incorrectly reported as extended.
 
 ### 4.2 Value Methods
 Value methods MAY be used to both Read and Write values in a CMIP, depending on the server implementation. In order to keep this document independent of any specific implementation technology choices, a Read operation shall be referred to as a Query; a Write operation shall be referred to as an Update. An Update may change an existing value in the CMIP.
@@ -195,12 +203,16 @@ When the requested element has `isComposition: true`, the Query MUST support an 
 - maxDepth=1: No recursion - return only this element's direct value (default)
 - maxDepth=N (N>1): Recurse up to N levels deep through HasComponent relationships
 
-When recursing, the response structure MUST include the element's own value under a `value` key (if present), with each component child's value keyed by its elementId.
+When recursing, the response structure MUST include the element's own VQT at the top level, with component children's values nested under a `components` key, keyed by their ElementId. Each child value is also in VQT format.
 
 When invoked as a Query, the response payload MUST include the Value-Quality-Timestamp (VQT) structure:
 - value: the actual data value
-- quality: a quality indicator (e.g., "Good", "GoodNoData", "Bad")
-- timestamp: a timestamp corresponding to the time and date the data was recorded in the CMIP, following the standard established by [Internet RFC 3339](https://www.rfc-editor.org/rfc/rfc3339)
+- quality: a quality indicator — MUST be one of `Good`, `GoodNoData`, `Bad`, or `Uncertain`
+- timestamp: an RFC 3339 timestamp in UTC (no timezone offset) corresponding to when the data was recorded in the CMIP
+
+When `value` is null, `quality` MUST be `Bad` or `GoodNoData`. The `Uncertain` and `Good` qualities imply a value is present.
+
+When the LastKnownValue interface is invoked with an array of ElementIds, the return payload MUST use the bulk response envelope defined in [section 5.1.1](#511-response-serialization).
 
 ##### 4.2.1.2 Object Element HistoricalValue
 
@@ -210,10 +222,10 @@ When invoked as a Query, the HistoricalValue interface MAY support an array of r
 
 When the requested element has `isComposition: true`, the Query MUST support an optional `maxDepth` parameter to control recursion through HasComponent relationships, with the same semantics as defined in [section 4.2.1.1](#4211-object-element-lastknownvalue).
 
-When invoked as a Query, each element in the response array MUST include the Value-Quality-Timestamp (VQT) structure:
+When invoked as a Query, the response MUST return a `values` array where each entry includes the Value-Quality-Timestamp (VQT) structure:
 - value: the actual data value
-- quality: a quality indicator (e.g., "Good", "GoodNoData", "Bad")
-- timestamp: a timestamp corresponding to the time and date the data was recorded in the CMIP, following the standard established by [Internet RFC 3339](https://www.rfc-editor.org/rfc/rfc3339)
+- quality: a quality indicator — MUST be one of `Good`, `GoodNoData`, `Bad`, or `Uncertain`
+- timestamp: an RFC 3339 timestamp in UTC (no timezone offset) corresponding to when the data was recorded in the CMIP
 
 #### 4.2.2 Update Methods
 
@@ -221,9 +233,11 @@ When invoked as a Query, each element in the response array MUST include the Val
 
 Implementations MAY include the ability to write to the LastKnownValue. If this feature is implemented, the following considerations apply:
 
-When invoked as an Update, the LastKnownValue interface MUST accept a new current value for the requested object to be recorded in the CMIP, by ElementId. If the CMIP supports write-back to a Control System (for example, via an interface to a PLC) additional security requirements outside the scope of this proposal MUST be considered.) 
+When invoked as an Update, the LastKnownValue interface MUST accept a new current value for the requested object to be recorded in the CMIP, by ElementId. If the CMIP supports write-back to a Control System (for example, via an interface to a PLC) additional security requirements outside the scope of this proposal MUST be considered.
 
-When invoked as an Update the LastKnownValue interface MAY accept an array of current values for an array of of ElementIds.
+Clients MUST write the complete value for the object. Partial attribute updates are not supported; the written value replaces the current value in its entirety.
+
+When invoked as an Update the LastKnownValue interface MAY accept an array of current values for an array of ElementIds.
 
 ##### 4.2.2.2 Object Element HistoricalValue
 
@@ -243,15 +257,17 @@ The contributors to this RFC, and the broader community, have communicated clear
 
 ##### 4.2.3.1 Create Subscription
 
-Registers a client for a new Subscription. This initial handshake allows the CMIP to allocate resources for a client. The response from the SMIP MUST include a Subscription Id that may be used for follow-up calls. Implementations SHALL support two delivery modes.
+Registers a client for a new Subscription. The client MUST provide a unique `clientId` to scope the subscription to the client. The response MUST include a server-generated `subscriptionId` scoped to the `clientId`; only the owning client may access the subscription. Implementations SHALL support two delivery modes.
 
 ###### Streaming: At Most Once
 
 The CMIP will publish messages to subscribed clients as the data becomes available via Server-Sent Events (SSE), but provide no guarantee of message delivery.
 
-###### Sync: Exactly Once
+###### Sync: At Least Once
 
-The server will publish messages to subscribed clients when the client indicates readiness via polling and will persist the message for re-delivery until the client acknowledges successful receipt. Only the most recent value is guaranteed to be delivered; in its initial version a CMIP provides no buffer for messages between acknowledged messages.
+The server queues updates as they occur, each assigned a monotonically increasing sequence number. The client polls to receive pending updates and acknowledges receipt by providing the highest sequence number processed. The server removes acknowledged updates and returns any remaining queue in the same call. Servers SHOULD queue updates FIFO and MAY drop the oldest updates when a server-imposed queue limit is reached.
+
+Implementations MUST also support listing existing subscriptions by ID and deleting subscriptions to release server resources.
 
 ##### 4.2.3.2 Register Monitored Items
 
@@ -263,13 +279,15 @@ The registration request MUST include:
 The registration request MAY include:
 - maxDepth: controls recursion through HasComponent relationships for elements with `isComposition: true`, using the same semantics as defined in [section 4.2.1.1](#4211-object-element-lastknownvalue). Default is 1 (no recursion).
 
-For streaming subscriptions, this method call establishes an ongoing connection between the client and CMIP. The server MUST stream changes to Subscribed items over this connection immediately until the connection is broken or the Unsubscribe method is called. Each update being streamed MUST include:
+Registration is additive — the client can add additional ElementIds later. Upon registration the CMIP MUST begin queuing changed values for the registered ElementIds.
+
+For streaming subscriptions, the client opens a separate SSE connection after registration. The server MUST send any updates queued while the stream was closed when the connection is (re-)established. Each streamed update MUST include:
 - elementId: the ElementId of the changed element
 - value: the new value (with recursive structure if maxDepth was specified)
 - quality: the quality indicator
 - timestamp: the timestamp of the change
 
-For sync subscriptions, the registration confirms which items will be monitored. Changed values are retrieved via the Sync method ([section 4.2.3.3](#4233-sync)).
+For sync subscriptions, the registration confirms which items will be monitored. Changed values are retrieved via the Sync method ([section 4.2.3.4](#4234-sync)).
 
 Note: I3X explicitly permits subscribing to composition structures (an ElementId may represent a single property of an object, an entire object, or a tree of composed objects). The `maxDepth` parameter controls how deep the CMIP recurses through HasComponent relationships when publishing updates. As the required metadata for each object includes `isComposition`, a client can determine which elements have component children.
 
@@ -291,11 +309,13 @@ When servicing the Sync call, the CMIP MUST respond with an array of updates for
 
 If no elements have changed since the last Sync call, the response MUST be an empty array.
 
-If the client does not acknowledge a previous message, the CMIP MUST re-send that message as part of the response to the Sync call. The CMIP must maintain state for all pending (un-acknowledged) messages, with the caveat that only the latest value is ever available to sync clients.
+Each update in the queue carries a monotonically increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the CMIP MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the CMIP MUST NOT clear the queue. The CMIP must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
 
-##### 4.2.3.5 Unsubscribe
+##### 4.2.3.5 Delete Subscription
 
-When invoked, the Unsubscribe interface MUST accept a single subscription ID and MAY accept an array of subscription IDs or a wildcard, and cancels publication of future messages matching the parameter to the invoking client, allowing the CMIP to release resources and state held for the client.
+When invoked, the Delete Subscription interface MUST accept one or more subscription IDs scoped to the client's `clientId`, and cancels publication of future messages for those subscriptions, allowing the CMIP to release all queued data and resources held for the client. Subsequent Sync or Stream calls for a deleted subscription MUST return a not-found error.
+
+If neither an active SSE stream nor a Sync call is received within a server-configured TTL interval, the CMIP MUST automatically delete the subscription to prevent abandoned subscriptions from consuming server resources.
 
 ## 5. Implementation Requirements
 
@@ -309,11 +329,30 @@ The I3X API SHALL be implemented over an encrypted transport, and support the in
 
 Implementations MUST support a default JSON serialization for all responses.
 
+All responses MUST be wrapped in a standard envelope. Successful single-item responses MUST use:
+```json
+{ "success": true, "result": <data> }
+```
+Successful bulk responses (accepting an array of ElementIds) MUST use a `results` array with per-item success or failure indicated inline:
+```json
+{ "success": false, "results": [ { "success": true, "elementId": "...", "result": <data> }, { "success": false, "elementId": "...", "error": { "code": 404, "message": "..." } } ] }
+```
+The top-level `success` is `false` if any item in a bulk response failed. Failure responses MUST use:
+```json
+{ "success": false, "error": { "code": <HTTP status code>, "message": "<description>" } }
+```
+
 Implementations MAY support a Binary serialization for all responses, where the format of such response will be determined in a future RFC.
 
 #### 5.1.2 Request Headers
 
-Applications consuming the API SHOULD use the normal "accept" and "content-type" headers for indicating inbound and outbound serialization format. If omitted, the default JSON serialization should be used.
+All requests MUST include `Content-Type: application/json` and `Accept: application/json` headers.
+
+#### 5.1.3 Versioning and Capability Discovery
+
+Implementations MUST prefix all API endpoints with a version path segment (e.g., `/v1/`). The version SHALL only be incremented on breaking changes to the API.
+
+Implementations MUST expose a capability discovery endpoint that returns the server's specification version and which optional features are supported. This endpoint MUST NOT require authentication. Clients SHOULD call this endpoint before making other API calls to confirm the server supports required features.
 
 ### 5.2 Type Safety
 
@@ -323,7 +362,7 @@ Underlying platforms MAY persist data values using any primitive types they wish
 
 #### 5.2.2 Complex Type Definitions
 
-Underlying platforms MUST derive Objects from separately declared definitions (also known as Class, Template or Schema definitions in other environments). In I3X, these definitions are generalized as Type definitions, given first-class treatment, and MUST be serializable to easy-to-consume JSON. Implementing platforms SHOULD support importing Type definitions from the [OPC UA Part 5 Information Modeling standard](https://reference.opcfoundation.org/Core/Part5/v104/docs/) (IEC62541-5). Implementing platforms MAY support importing Type definitions from the [Asset Administration Shell SubModelTemplate standard](https://www.zvei.org/fileadmin/user_upload/Presse_und_Medien/Publikationen/2020/Dezember/Submodel_Templates_of_the_Asset_Administration_Shell/201117_I40_ZVEI_SG2_Submodel_Spec_ZVEI_Technical_Data_Version_1_1.pdf). Implementing platforms MAY also support an internal Type definition and storage format.
+Underlying platforms MUST derive Objects from separately declared definitions (also known as Class, Template or Schema definitions in other environments). In I3X, these definitions are generalized as Type definitions, given first-class treatment, and MUST be expressed as JSON Schema. Implementing platforms SHOULD support importing Type definitions from the [OPC UA Part 5 Information Modeling standard](https://reference.opcfoundation.org/Core/Part5/v104/docs/) (IEC62541-5). Implementing platforms MAY support importing Type definitions from the [Asset Administration Shell SubModelTemplate standard](https://www.zvei.org/fileadmin/user_upload/Presse_und_Medien/Publikationen/2020/Dezember/Submodel_Templates_of_the_Asset_Administration_Shell/201117_I40_ZVEI_SG2_Submodel_Spec_ZVEI_Technical_Data_Version_1_1.pdf). Implementing platforms MAY also support an internal Type definition and storage format.
 
 ### 5.3 Security Considerations
 
