@@ -161,6 +161,7 @@ class MQTTDataSource(I3XDataSource):
                         "elementId": type_id,
                         "displayName": type_id,
                         "namespaceUri": namespace_uri,
+                        "sourceTypeId": type_id,
                         "schema": self._get_json_schema(value)
                     }
                     self.logger.info(f"Discovered new namespace and type from payload: {namespace_uri} -> {type_id}")
@@ -174,6 +175,7 @@ class MQTTDataSource(I3XDataSource):
                         "elementId": type_id,
                         "displayName": type_id,
                         "namespaceUri": self.MQTT_NAMESPACE_URI,
+                        "sourceTypeId": type_id,
                         "schema": self._get_json_schema(value)
                     }
                     self.logger.info(f"Created inferred type: {type_id}")

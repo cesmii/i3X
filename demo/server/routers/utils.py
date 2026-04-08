@@ -1,4 +1,5 @@
 from typing import Any
+from datetime import datetime, timezone
 from fastapi import Request
 from models import ErrorResponse
 
@@ -123,6 +124,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
         # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])
         parent_vqt = parent_data[0] if parent_data else {}
+        _now = datetime.now(timezone.utc).isoformat()
 
         components = {}
         for child_key in child_keys:
@@ -131,8 +133,8 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
                 child_vqt = child_data["data"][0] if child_data["data"] else {}
                 child_entry = {
                     "value": child_vqt.get("value"),
-                    "quality": child_vqt.get("quality"),
-                    "timestamp": child_vqt.get("timestamp"),
+                    "quality": child_vqt.get("quality") or "Good",
+                    "timestamp": child_vqt.get("timestamp") or _now,
                 }
                 if child_data.get("_truncated"):
                     was_truncated = True
@@ -143,20 +145,21 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
         return {
             "isComposition": is_composition,
             "value": parent_vqt.get("value"),
-            "quality": parent_vqt.get("quality"),
-            "timestamp": parent_vqt.get("timestamp"),
+            "quality": parent_vqt.get("quality") or "Good",
+            "timestamp": parent_vqt.get("timestamp") or _now,
             "components": components,
         }, was_truncated
     else:
         # Simple leaf element (or composition element where all children were server-truncated)
         data_list = element_data.get("data", [{}])
         vqt = data_list[0] if data_list else {}
+        _now = datetime.now(timezone.utc).isoformat()
 
         return {
             "isComposition": is_composition,
             "value": vqt.get("value"),
-            "quality": vqt.get("quality"),
-            "timestamp": vqt.get("timestamp"),
+            "quality": vqt.get("quality") or "Good",
+            "timestamp": vqt.get("timestamp") or _now,
         }, was_truncated
 
 

@@ -41,7 +41,8 @@ class RelationshipType(BaseModel):
     )
     displayName: str = Field(..., description="Relationship type name")
     namespaceUri: str = Field(..., description="Namespace URI")
-    reverseOf: str = Field(..., description="Type name of reverse relationship")
+    relationshipId: str = Field(..., description="Class or member of the Namespace that defines this relationship type")
+    reverseOf: str = Field(..., description="ElementId of the reverse relationship type")
 
 
 # RFC 3.1.1 - Required Object Metadata (Minimal Instance)
@@ -173,15 +174,6 @@ class ListSubscriptionsRequest(BaseModel):
     subscriptionIds: List[str] = Field(..., description="List of subscription IDs to retrieve")
 
 
-class SyncResponseItem(BaseModel):
-    model_config = ConfigDict(extra='allow')  # Allow extra fields from record metadata
-
-    elementId: str
-    value: Any
-    timestamp: Optional[str] = None
-    quality: Optional[str] = None
-
-
 # Request models for POST endpoints (GET to POST refactor)
 
 class ElementIdRequest(BaseModel):
@@ -271,9 +263,9 @@ class ObjectTypeResponse(BaseModel):
     elementId: str
     displayName: str
     namespaceUri: str
+    sourceTypeId: str = Field(..., description="Class or member of the Namespace that defines this type")
     version: Optional[str] = None
-    sourceTypeId: Optional[str] = None
-    type_schema: Optional[Dict[str, Any]] = Field(None, alias="schema")
+    type_schema: Dict[str, Any] = Field(..., alias="schema", description="JSON Schema definition for this object type")
     related: Optional[Dict[str, Any]] = None
 
 

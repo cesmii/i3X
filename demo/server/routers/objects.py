@@ -23,7 +23,7 @@ update = APIRouter(prefix="", tags=["Update"])
 
 
 # RFC 4.1.5 - Instances of an Object Type
-@explore.get("/objects", summary="Get Objects", operation_id="getObjects", response_model=SuccessResponse[List[ObjectInstanceResponse]], responses={**BASE_ERROR_RESPONSES})
+@explore.get("/objects", summary="Get Objects", operation_id="getObjects", response_model=SuccessResponse[List[ObjectInstanceResponse]], response_model_exclude_unset=True, responses={**BASE_ERROR_RESPONSES})
 def get_objects(
     typeElementId: Optional[str] = Query(default=None),
     includeMetadata: bool = Query(default=False),
@@ -40,7 +40,7 @@ def get_objects(
 
 
 # RFC 4.1.5 - Query Objects by ElementId
-@explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById", response_model=BulkResponse[ObjectInstanceResponse], responses={**BASE_ERROR_RESPONSES})
+@explore.post("/objects/list", summary="List Objects by ElementId", operation_id="listObjectsById", response_model=BulkResponse[ObjectInstanceResponse], response_model_exclude_unset=True, responses={**BASE_ERROR_RESPONSES})
 def query_objects_by_id(
     request_body: GetObjectsRequest,
     data_source=Depends(get_data_source),
@@ -69,7 +69,7 @@ def query_objects_by_id(
 
 
 # RFC 4.1.6 - Objects linked by Relationship Type
-@explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects", response_model=BulkResponse[List[RelatedObjectResult]], responses={**BASE_ERROR_RESPONSES})
+@explore.post("/objects/related", summary="Query Related Objects", operation_id="queryRelatedObjects", response_model=BulkResponse[List[RelatedObjectResult]], response_model_exclude_unset=True, responses={**BASE_ERROR_RESPONSES})
 def query_related_objects(
     request_body: GetRelatedObjectsRequest,
     data_source=Depends(get_data_source),
