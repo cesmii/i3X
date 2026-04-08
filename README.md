@@ -4,7 +4,7 @@
 
 i3X is in a *pre-release* Alpha state.
 
-**This branch represents the February 2026 Community Preview and is kept stable to support community engagement. To review the current progress toward a release specification, please switch to the [1.0](https://github.com/cesmii/i3X/tree/1.0) branch.**
+> **This branch represents the February 2026 Community Preview and is kept stable to support community engagement. If you are using it, you need to begin migrating to the [1.0 Beta](https://github.com/cesmii/i3X/tree/1.0-Beta) Specification now!**
 
 While the API signature is largely stable, expect significant changes to response structures, and minor changes to method calls over the first quarter of 2026 while we stabilize a 1.0 release. If you want to help, please see Contributing.md
 
