@@ -44,8 +44,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 - **Address Space** - The complete collection of contextualized information that a platform makes available to clients
 - **API** - Application Programming Interface
 - **I3X** - Industrial Information Interface eXchange
-- **CMIP** - Contextualized Manufacturing Information Platform that supports I3X
-- **Element** - Any object or object attribute persisted by a CMIP
+- **Element** - Any object or object attribute persisted by an implementation
 - **ElementId** - A platform-specific, persistent and unique key for an Element that MUST be a string
 - **Control System** - An system and associated instrumentation used for industrial process control
 - **Request** - A generic means of a consumer to inform the producer what information is needed
@@ -123,7 +122,7 @@ Object instances do not belong to a Namespace. They exist in the server's implic
 
 ### 3.5 ElementIds
 
-Within the scope of the platform providing the I3X interface, an ElementId is a unique string value that is assigned to every fundamental element in the address space. It enables unambiguous reference, linking, and retrieval of items within the CMIP address space.  Elements that contain an ElementId include:  ObjectTypes, Object Instances, Relationship Types, and Namespaces.
+Within the scope of the platform providing the I3X interface, an ElementId is a unique string value that is assigned to every fundamental element in the address space. It enables unambiguous reference, linking, and retrieval of items within the i3X address space.  Elements that contain an ElementId include:  ObjectTypes, Object Instances, Relationship Types, and Namespaces.
 
 ## 4. I3X Address Space Methods
 
@@ -148,7 +147,7 @@ The the response payload MAY be filtered by NamespaceURI if indicated by an opti
 
 #### 4.1.4 Relationship Types
 
-This Query MUST return an array of relationship type definitions registered in the CMIP. At minimum, implementations MUST support organizational hierarchy relationship types:
+This Query MUST return an array of relationship type definitions registered in the implementation. At minimum, implementations MUST support organizational hierarchy relationship types:
 - **Organizational:** HasParent, HasChildren - for topological/organizational hierarchy
 
 Implementations MAY support Class-composition. If supported, these minimum relationship types MUST be used:
@@ -188,13 +187,13 @@ When `isExtended` is true and the client requests metadata, the response MUST in
 Implementations SHOULD resolve `allOf` inheritance chains in the declared type schema before determining conformance, so that inherited attributes are not incorrectly reported as extended.
 
 ### 4.2 Value Methods
-Value methods MAY be used to both Read and Write values in a CMIP, depending on the server implementation. In order to keep this document independent of any specific implementation technology choices, a Read operation shall be referred to as a Query; a Write operation shall be referred to as an Update. An Update may change an existing value in the CMIP.
+Value methods MAY be used to both Read and Write values, depending on the server implementation. In order to keep this document independent of any specific implementation technology choices, a Read operation shall be referred to as a Query; a Write operation shall be referred to as an Update. An Update may change an existing value.
 
 #### 4.2.1 Queries
 
 ##### 4.2.1.1 Object Element LastKnownValue
 
-When invoked as a Query, the LastKnownValue interface MUST return the current value available in the CMIP for the requested object, by ElementId.
+When invoked as a Query, the LastKnownValue interface MUST return the current value available for the requested object, by ElementId.
 
 When invoked as a Query, the LastKnownValue interface MAY support an array of requested object ElementIds to reduce round-trips where multiple values are required by an application, in which case, the return payload MUST be an array.
 
@@ -208,7 +207,7 @@ When recursing, the response structure MUST include the element's own VQT at the
 When invoked as a Query, the response payload MUST include the Value-Quality-Timestamp (VQT) structure:
 - value: the actual data value
 - quality: a quality indicator — MUST be one of `Good`, `GoodNoData`, `Bad`, or `Uncertain`
-- timestamp: an RFC 3339 timestamp in UTC (no timezone offset) corresponding to when the data was recorded in the CMIP
+- timestamp: an RFC 3339 timestamp in UTC (no timezone offset) corresponding to when the data was recorded
 
 When `value` is null, `quality` MUST be `Bad` or `GoodNoData`. The `Uncertain` and `Good` qualities imply a value is present.
 
@@ -225,7 +224,7 @@ When the requested element has `isComposition: true`, the Query MUST support an 
 When invoked as a Query, the response MUST return a `values` array where each entry includes the Value-Quality-Timestamp (VQT) structure:
 - value: the actual data value
 - quality: a quality indicator — MUST be one of `Good`, `GoodNoData`, `Bad`, or `Uncertain`
-- timestamp: an RFC 3339 timestamp in UTC (no timezone offset) corresponding to when the data was recorded in the CMIP
+- timestamp: an RFC 3339 timestamp in UTC (no timezone offset) corresponding to when the data was recorded
 
 #### 4.2.2 Update Methods
 
@@ -233,7 +232,7 @@ When invoked as a Query, the response MUST return a `values` array where each en
 
 Implementations MAY include the ability to write to the LastKnownValue. If this feature is implemented, the following considerations apply:
 
-When invoked as an Update, the LastKnownValue interface MUST accept a new current value for the requested object to be recorded in the CMIP, by ElementId. If the CMIP supports write-back to a Control System (for example, via an interface to a PLC) additional security requirements outside the scope of this proposal MUST be considered.
+When invoked as an Update, the LastKnownValue interface MUST accept a new current value for the requested object to be recorded, by ElementId. If the implementation supports write-back to a Control System (for example, via an interface to a PLC) additional security requirements outside the scope of this proposal MUST be considered.
 
 Clients MUST write the complete value for the object. Partial attribute updates are not supported; the written value replaces the current value in its entirety.
 
@@ -249,7 +248,7 @@ When invoked as an Update, the HistoricalValue interface MAY accept an array of 
 
 When invoked in order to Create a new historical record, the HistoricalValue interface MAY accept an array of new historical values for an array of specified objects and timestamps, by ElementId.
 
-When updating Historical data, the CMIP SHOULD implement auditing or tracking of such changes.
+When updating Historical data, the implementation SHOULD implement auditing or tracking of such changes.
 
 #### 4.2.3 Subscription Methods
 
@@ -261,7 +260,7 @@ Registers a client for a new Subscription. The client MUST provide a unique `cli
 
 ###### Streaming: At Most Once
 
-The CMIP will publish messages to subscribed clients as the data becomes available via Server-Sent Events (SSE), but provide no guarantee of message delivery.
+The implementation will publish messages to subscribed clients as the data becomes available via Server-Sent Events (SSE), but provide no guarantee of message delivery.
 
 ###### Sync: At Least Once
 
@@ -271,7 +270,7 @@ Implementations MUST also support listing existing subscriptions by ID and delet
 
 ##### 4.2.3.2 Register Monitored Items
 
-Registers the ElementIds the client wishes to subscribe to, for a given Subscription Id. Upon registration, the CMIP MUST begin publishing changed values. This method is additive, that is the client can add additional monitored items later.
+Registers the ElementIds the client wishes to subscribe to, for a given Subscription Id. Upon registration, the implementation MUST begin publishing changed values. This method is additive, that is the client can add additional monitored items later.
 
 The registration request MUST include:
 - elementIds: an array of ElementIds to monitor
@@ -279,7 +278,7 @@ The registration request MUST include:
 The registration request MAY include:
 - maxDepth: controls recursion through HasComponent relationships for elements with `isComposition: true`, using the same semantics as defined in [section 4.2.1.1](#4211-object-element-lastknownvalue). Default is 1 (no recursion).
 
-Registration is additive — the client can add additional ElementIds later. Upon registration the CMIP MUST begin queuing changed values for the registered ElementIds.
+Registration is additive — the client can add additional ElementIds later. Upon registration the implementation MUST begin queuing changed values for the registered ElementIds.
 
 For streaming subscriptions, the client opens a separate SSE connection after registration. The server MUST send any updates queued while the stream was closed when the connection is (re-)established. Each streamed update MUST include:
 - elementId: the ElementId of the changed element
@@ -289,7 +288,7 @@ For streaming subscriptions, the client opens a separate SSE connection after re
 
 For sync subscriptions, the registration confirms which items will be monitored. Changed values are retrieved via the Sync method ([section 4.2.3.4](#4234-sync)).
 
-Note: I3X explicitly permits subscribing to composition structures (an ElementId may represent a single property of an object, an entire object, or a tree of composed objects). The `maxDepth` parameter controls how deep the CMIP recurses through HasComponent relationships when publishing updates. As the required metadata for each object includes `isComposition`, a client can determine which elements have component children.
+Note: I3X explicitly permits subscribing to composition structures (an ElementId may represent a single property of an object, an entire object, or a tree of composed objects). The `maxDepth` parameter controls how deep the implementation recurses through HasComponent relationships when publishing updates. As the required metadata for each object includes `isComposition`, a client can determine which elements have component children.
 
 ##### 4.2.3.3 Remove Monitored Items
 
@@ -301,7 +300,7 @@ This method is used only for sync subscriptions, and is called with a specific S
 - Acknowledge receipt of previous messages
 - Check for changes to subscribed elements
 
-When servicing the Sync call, the CMIP MUST respond with an array of updates for elements that have changed since the last Sync call. Each update in the response array MUST include:
+When servicing the Sync call, the implementation MUST respond with an array of updates for elements that have changed since the last Sync call. Each update in the response array MUST include:
 - elementId: the ElementId of the changed element
 - value: the new value (with recursive structure if maxDepth was specified during registration)
 - quality: the quality indicator
@@ -309,17 +308,17 @@ When servicing the Sync call, the CMIP MUST respond with an array of updates for
 
 If no elements have changed since the last Sync call, the response MUST be an empty array.
 
-Each update in the queue carries a monotonically increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the CMIP MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the CMIP MUST NOT clear the queue. The CMIP must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
+Each update in the queue carries a monotonically increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the implementation MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the implementation MUST NOT clear the queue. The implementation must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
 
 ##### 4.2.3.5 Delete Subscription
 
-When invoked, the Delete Subscription interface MUST accept one or more subscription IDs scoped to the client's `clientId`, and cancels publication of future messages for those subscriptions, allowing the CMIP to release all queued data and resources held for the client. Subsequent Sync or Stream calls for a deleted subscription MUST return a not-found error.
+When invoked, the Delete Subscription interface MUST accept one or more subscription IDs scoped to the client's `clientId`, and cancels publication of future messages for those subscriptions, allowing the implementation to release all queued data and resources held for the client. Subsequent Sync or Stream calls for a deleted subscription MUST return a not-found error.
 
-If neither an active SSE stream nor a Sync call is received within a server-configured TTL interval, the CMIP MUST automatically delete the subscription to prevent abandoned subscriptions from consuming server resources.
+If neither an active SSE stream nor a Sync call is received within a server-configured TTL interval, the implementation MUST automatically delete the subscription to prevent abandoned subscriptions from consuming server resources.
 
 ## 5. Implementation Requirements
 
-To support I3X, a CMIP must have certain capabilities. While this, and subsequent, RFCs will not define requirements for implementation specifics, some base functionality must exist. Vendors MAY differentiate on optimization, performance and scalability, to meet the requirements of the API.
+To support I3X, a implementation must have certain capabilities. While this, and subsequent, RFCs will not define requirements for implementation specifics, some base functionality must exist. Vendors MAY differentiate on optimization, performance and scalability, to meet the requirements of the API.
 
 The I3X API SHALL be implemented over an encrypted transport, and support the interfaces listed in this section. In order to properly support some of these interfaces, implementations MUST support the required capabilities listed in [section 3](#3-address-space-overview), and MAY support the optional capabilities listed in [section 3](#3-address-space-overview). 
 
