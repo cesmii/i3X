@@ -2,7 +2,7 @@
 
 ## Status of This Effort
 
-i3X is in a _Beta_ state. 
+**i3X is in a _Beta_ state.**
 
 > **This branch represents the _current state_ of the effort to establish a 1.0 specification. It contains breaking changes from the Alpha (Community Preview) branch released February 2026!**
 
