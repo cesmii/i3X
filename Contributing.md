@@ -28,7 +28,7 @@ Do not use AI to comment on Issues or Pull Requests. While you may use AI to exp
 
 ## Charter
 
-Please review the [Working Group Charter](https://github.com/cesmii/API/blob/main/Working%20Group%20Charter.md) and ensure you can agree to its conditions.
+Please review the [Working Group Charter](https://github.com/cesmii/API/blob/1.0-Beta/Working%20Group%20Charter.md) and ensure you can agree to its conditions.
 If you are a part of an organization, your participation in this project commits your organization to the Charter as well.
 
 ## Code of Conduct
