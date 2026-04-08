@@ -164,7 +164,7 @@ app.add_middleware(
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"success": False, "error": {"message": exc.detail}}
+        content={"success": False, "error": {"code": exc.status_code, "message": exc.detail}}
     )
 
 

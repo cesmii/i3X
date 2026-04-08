@@ -26,6 +26,8 @@ def get_info(request: Request):
                 "current": capabilities_config.get("update", {}).get("current", True),
                 "history": capabilities_config.get("update", {}).get("history", False),
             },
-            "subscribe": capabilities_config.get("subscribe", True),
+            "subscribe": {
+                "stream": capabilities_config.get("subscribe", {}).get("stream", True),
+            },
         },
     })

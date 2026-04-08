@@ -7,7 +7,7 @@ def get_data_source(request: Request) -> Any:
     return request.app.state.data_source
 
 
-OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "sourceTypeId", "version", "schema"}
+OBJECT_TYPE_FIELDS = {"elementId", "displayName", "namespaceUri", "sourceTypeId", "version", "schema", "related"}
 
 
 def formatObjectType(type_def: Any) -> Any:
@@ -19,8 +19,8 @@ def success_response(result):
     return {"success": True, "result": result}
 
 
-def error_response(message):
-    return {"success": False, "error": {"message": message}}
+def error_response(message, code=500):
+    return {"success": False, "error": {"code": code, "message": message}}
 
 
 def bulk_response(results):
