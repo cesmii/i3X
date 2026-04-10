@@ -1,7 +1,7 @@
 Smart Manufacturing API Working Group\
 Request for Comments: 001\
 Category: Informational\
-Community Feedback Draft
+Final Version Candidate
 
 # Common API for Industrial Information Interface eXchange (I3X)
 
