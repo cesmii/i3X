@@ -59,7 +59,7 @@ The complete collection of Relationship Types and Relationships, Object Types an
 
 ### 3.1 Object Elements
 
-The reader will observe that the API requires the underlying platform to support the idea of organizing data into objects with attributes. Those objects MUST be composable using other objects. Implementations MAY choose to have attributes of different styles internally (for example: OPC UA differentiates between properties and variables), but MUST simplify those variations to object parameters to support easy-to-consume JSON serialization. If the calling application requests additional metadata for an object, an implementation MAY return details about its specific attribute behavior (as described in [section 5.1.1](#511-response-serialization) and [section 5.1.2](#512-request-headers))
+The reader will observe that the API requires the underlying platform to support the idea of organizing data into objects with attributes. Those objects MUST be composable using other objects. Implementations MAY choose to have attributes of different styles internally (for example: OPC UA differentiates between properties and variables), but MUST simplify those variations to object parameters to support easy-to-consume JSON serialization. If the calling application requests additional metadata for an object, an implementation MAY return details about its specific attribute behavior (as described in [section 3.1.2](#312-object-metadata-block)).
 
 ### 3.1.1 Required Object Metadata
 
@@ -112,7 +112,7 @@ ObjectType schemas MUST be expressed using JSON Schema. Implementations SHOULD r
 
 Each ObjectType definition MUST include a `sourceTypeId` field identifying the corresponding class or member within its source namespace (e.g., an OPC UA NodeId or BrowseName). This allows clients to correlate I3X types back to their originating external definitions.
 
-When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` and assign its ElementId as the `typeElementId` on all affected instances. This ensures every instance references a resolvable type.
+When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` and assign the instance's `typeElementId` on all affected instances. This ensures every instance references a resolvable type.
 
 ### 3.4 Namespaces
 

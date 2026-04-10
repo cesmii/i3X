@@ -80,7 +80,7 @@ i3X is RESTful HTTP-based API and relies on HTTP for transport. It includes typi
 In addition to an HTTP based transport, i3X uses JSON encoding to exchange data between the client and the server and clients may request compression through gzip.
 
 - All i3X requests MUST include `Content-Type: application/json` and `Accept: application/json` in the HTTP header.
-- When i3x requests include `Accept-Encoding: gzip`, servers MUST respond with `Content-Encoding: gzip` where the response is compressed using gzip.
+- When i3X requests include `Accept-Encoding: gzip`, servers MUST respond with `Content-Encoding: gzip` where the response is compressed using gzip.
 
 ### Security & Authentication
 
@@ -1650,7 +1650,7 @@ Production Line A (parent)
 └── Machine 3 (child)
 ```
 
-**Requirements:**s
+**Requirements:**
 
 - If object A `HasParent` B, then B `HasChildren` A
 - `parentId` on instances MUST match the `HasParent` relationship
