@@ -334,7 +334,32 @@ I3X_DATA = {
                     "value": 71.79,
                     "quality": "Good",
                     "timestamp": "2025-10-27T18:32:47Z"
-                }
+                },
+                {
+                    "value": 69.95,
+                    "quality": "Good",
+                    "timestamp": "2025-10-26T18:32:47Z"
+                },
+                {
+                    "value": 74.12,
+                    "quality": "Good",
+                    "timestamp": "2025-10-25T18:32:47Z"
+                },
+                {
+                    "value": 76.88,
+                    "quality": "Good",
+                    "timestamp": "2025-10-24T18:32:47Z"
+                },
+                {
+                    "value": 78.43,
+                    "quality": "Uncertain",
+                    "timestamp": "2025-10-23T18:32:47Z"
+                },
+                {
+                    "value": 73.20,
+                    "quality": "Good",
+                    "timestamp": "2025-10-22T18:32:47Z"
+                },
             ],
         },
         {
@@ -405,6 +430,30 @@ I3X_DATA = {
                     "quality": "Good",
                     "timestamp": "2025-10-26T10:15:30Z",
                     "localTimestamp": "2025-01-26T07:15:30-03:00",
+                },
+                {
+                    "value": 71.5,
+                    "quality": "Good",
+                    "timestamp": "2025-10-25T10:15:30Z",
+                    "localTimestamp": "2025-01-25T07:15:30-03:00",
+                },
+                {
+                    "value": 63.8,
+                    "quality": "Good",
+                    "timestamp": "2025-10-24T10:15:30Z",
+                    "localTimestamp": "2025-01-24T07:15:30-03:00",
+                },
+                {
+                    "value": 58.4,
+                    "quality": "Uncertain",
+                    "timestamp": "2025-10-23T10:15:30Z",
+                    "localTimestamp": "2025-01-23T07:15:30-03:00",
+                },
+                {
+                    "value": 66.0,
+                    "quality": "Good",
+                    "timestamp": "2025-10-22T10:15:30Z",
+                    "localTimestamp": "2025-01-22T07:15:30-03:00",
                 },
             ],
         },

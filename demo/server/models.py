@@ -2,9 +2,11 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, ConfigDict, model_validator
-from typing import Optional, List, Dict, Any, Union, Callable
+from typing import Optional, List, Dict, Any, Union, Callable, Generic, TypeVar
 from datetime import datetime
 from enum import Enum
+
+T = TypeVar('T')
 
 
 # RFC 4.1.1 - Namespace Model
@@ -39,7 +41,8 @@ class RelationshipType(BaseModel):
     )
     displayName: str = Field(..., description="Relationship type name")
     namespaceUri: str = Field(..., description="Namespace URI")
-    reverseOf: str = Field(..., description="Type name of reverse relationship")
+    relationshipId: str = Field(..., description="Class or member of the Namespace that defines this relationship type")
+    reverseOf: str = Field(..., description="ElementId of the reverse relationship type")
 
 
 # RFC 3.1.1 - Required Object Metadata (Minimal Instance)
@@ -171,15 +174,6 @@ class ListSubscriptionsRequest(BaseModel):
     subscriptionIds: List[str] = Field(..., description="List of subscription IDs to retrieve")
 
 
-class SyncResponseItem(BaseModel):
-    model_config = ConfigDict(extra='allow')  # Allow extra fields from record metadata
-
-    elementId: str
-    value: Any
-    timestamp: Optional[str] = None
-    quality: Optional[str] = None
-
-
 # Request models for POST endpoints (GET to POST refactor)
 
 class ElementIdRequest(BaseModel):
@@ -231,3 +225,129 @@ class GetRelationshipTypesRequest(ElementIdRequest):
     pass
 
 
+# --- Generic response wrappers ---
+
+class ErrorDetail(BaseModel):
+    code: int
+    message: str
+
+
+class ErrorResponse(BaseModel):
+    success: bool = False
+    error: ErrorDetail
+
+
+class SuccessResponse(BaseModel, Generic[T]):
+    success: bool
+    result: Optional[T] = None
+
+
+class BulkResultItem(BaseModel, Generic[T]):
+    success: bool
+    elementId: Optional[str] = None
+    subscriptionId: Optional[str] = None
+    result: Optional[T] = None
+    error: Optional[ErrorDetail] = None
+
+
+class BulkResponse(BaseModel, Generic[T]):
+    success: bool
+    results: List[BulkResultItem[T]]
+
+
+# --- Endpoint-specific result models ---
+
+class ObjectTypeResponse(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    elementId: str
+    displayName: str
+    namespaceUri: str
+    sourceTypeId: str = Field(..., description="Class or member of the Namespace that defines this type")
+    version: Optional[str] = None
+    type_schema: Dict[str, Any] = Field(..., alias="schema", description="JSON Schema definition for this object type")
+    related: Optional[Dict[str, Any]] = None
+
+
+class ObjectInstanceMetadata(BaseModel):
+    typeNamespaceUri: Optional[str] = None
+    sourceTypeId: Optional[str] = None
+    description: Optional[str] = None
+    relationships: Optional[Dict[str, Any]] = None
+    extendedAttributes: Optional[Dict[str, Any]] = None
+    system: Optional[Dict[str, Any]] = None
+
+
+class ObjectInstanceResponse(BaseModel):
+    elementId: str
+    displayName: str
+    typeElementId: str
+    parentId: Optional[str] = None
+    isComposition: bool
+    isExtended: bool = False
+    metadata: Optional[ObjectInstanceMetadata] = None
+
+
+class RelatedObjectResult(BaseModel):
+    sourceRelationship: str
+    object: ObjectInstanceResponse
+
+
+class VQT(BaseModel):
+    value: Any
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
+
+
+class CurrentValueResult(BaseModel):
+    isComposition: bool = Field(..., description="True if this Object encapsulates composed child elements")
+    value: Any
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
+    components: Optional[Dict[str, VQT]] = Field(None, description="Child element values, present only on composition elements when maxDepth > 1")
+
+
+class HistoricalValueResult(BaseModel):
+    isComposition: bool = Field(..., description="True if this Object encapsulates composed child elements")
+    values: List[VQT] = Field(..., description="Ordered array of VQT objects for the requested time range")
+
+
+class SyncUpdate(BaseModel):
+    model_config = ConfigDict(extra='allow')
+    sequenceNumber: int
+    elementId: str
+    value: Any
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
+
+
+class SubscriptionDetail(BaseModel):
+    subscriptionId: str
+    displayName: Optional[str] = None
+    monitoredObjects: List[Dict[str, Any]]
+
+
+class _QueryCapabilities(BaseModel):
+    history: bool
+
+
+class _UpdateCapabilities(BaseModel):
+    current: bool
+    history: bool
+
+
+class _SubscribeCapabilities(BaseModel):
+    stream: bool
+
+
+class ServerCapabilities(BaseModel):
+    query: _QueryCapabilities
+    update: _UpdateCapabilities
+    subscribe: _SubscribeCapabilities
+
+
+class ServerInfo(BaseModel):
+    specVersion: str
+    serverVersion: Optional[str] = None
+    serverName: Optional[str] = None
+    capabilities: ServerCapabilities

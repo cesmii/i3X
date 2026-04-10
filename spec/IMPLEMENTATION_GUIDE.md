@@ -42,7 +42,6 @@ This document is a working draft, and should not be considered complete or norma
     - [HasParent / HasChildren](#hasparent--haschildren)
     - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
   - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
-  - [Pagination](#pagination)
 
 ## Introduction
 i3X is an HTTP-based API for interacting with industrial systems. It defines a standard interface between clients and servers for discovery, browsing, reading, writing, and subscribing to industrial data.
@@ -81,7 +80,7 @@ i3X is RESTful HTTP-based API and relies on HTTP for transport. It includes typi
 In addition to an HTTP based transport, i3X uses JSON encoding to exchange data between the client and the server and clients may request compression through gzip.
 
 - All i3X requests MUST include `Content-Type: application/json` and `Accept: application/json` in the HTTP header.
-- When i3x requests include `Accept-Encoding: gzip`, servers MUST respond with `Content-Encoding: gzip` where the response is compressed using gzip.
+- When i3X requests include `Accept-Encoding: gzip`, servers MUST respond with `Content-Encoding: gzip` where the response is compressed using gzip.
 
 ### Security & Authentication
 
@@ -343,7 +342,7 @@ The standard creates the necessary hooks to identify the version of an object ty
 
 ### Relationship Types
 
-Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types can can include composition, inheritance, graph, etc.
+Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types include hierarchical, composition and graph.
 Every Relationship Type MUST define a `reverseOf` that is also registered in the address space.
 
 Below is an example of two Relationship Type definitions.
@@ -376,6 +375,8 @@ Below is an example of two Relationship Type definitions.
   }
 ]
 ```
+
+For more information on the types of Relationships supported in i3X, see the document [Understanding Relationships](UNDERSTANDING_RELATIONSHIPS.md).
 
 **Expressing type inheritance with `allOf`**
 
@@ -1407,8 +1408,6 @@ Once a Subscription is created, a client can add and remove Objects to the Subsc
 - Servers SHOULD queue the updates and deliver them FIFO to clients
 - Servers SHOULD have a limit on how many updates they can queue, and when reached, start dropping older updates first
 
-[TODO] - how does a server signal a client that data has been dropped?  MGP- Maybe through some additional data in the `GET` /subscription.  Add some timestamp for when data was last dropped?  Maybe something more creative, also?
-
 ---
 
 #### `POST` /subscriptions/register
@@ -1735,29 +1734,6 @@ When `maxDepth > 1` and the element has components:
 - Each child value is in VQT format (`value`, `quality`, `timestamp`)
 - Recursion only follows `HasComponent` relationships, not `HasChildren`
 - When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
-
----
-
-### Pagination
-
-For endpoints returning arrays, implementations SHOULD support pagination.
-
-**Offset/Limit (Simple):**
-
-```
-GET /objects?offset=100&limit=50
-```
-
-**Response with pagination metadata:**
-
-```json
-{
-  "items": [...],
-  "total": 500,
-  "offset": 100,
-  "limit": 50
-}
-```
 
 ---
 
