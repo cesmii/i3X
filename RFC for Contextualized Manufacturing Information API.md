@@ -3,7 +3,7 @@ Request for Comments: 001\
 Category: Informational\
 Release Candidate
 
-# Common API for Industrial Information Interface eXchange (I3X)
+# Common API for Industrial Information Interface eXchange (i3X)
 
 #### Status of this Memo
 
@@ -43,7 +43,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 - **Address Space** - The complete collection of contextualized information that a platform makes available to clients
 - **API** - Application Programming Interface
-- **I3X** - Industrial Information Interface eXchange
+- **i3X** - Industrial Information Interface eXchange
 - **Element** - Any object or object attribute persisted by an implementation
 - **ElementId** - A platform-specific, persistent and unique key for an Element that MUST be a string
 - **Control System** - An system and associated instrumentation used for industrial process control
@@ -106,11 +106,11 @@ Modern manufacturing information involves relationships in data that are not str
 
 An ObjectType defines the schema for a class of objects within the contextualized manufacturing information model. It describes the structure, attributes, and relationships that instances of that type may exhibit, for example, defining what constitutes a `Machine`, `Sensor`, or `ProductionOrder`.
 
-ObjectTypes serve as the basis for instantiation and discovery through the I3X interfaces, such as retrieving the definition of a single ObjectType, enumerating all available ObjectTypes within a namespace, and listing object instances derived from a given ObjectType.
+ObjectTypes serve as the basis for instantiation and discovery through the i3X interfaces, such as retrieving the definition of a single ObjectType, enumerating all available ObjectTypes within a namespace, and listing object instances derived from a given ObjectType.
 
 ObjectType schemas MUST be expressed using JSON Schema. Implementations SHOULD resolve `allOf` inheritance chains when serving type definitions so that clients receive the fully expanded shape. Type inheritance MUST be tracked as an `InheritsFrom` relationship in the address space, parallel to the `allOf` reference in the schema.
 
-Each ObjectType definition MUST include a `sourceTypeId` field identifying the corresponding class or member within its source namespace (e.g., an OPC UA NodeId or BrowseName). This allows clients to correlate I3X types back to their originating external definitions.
+Each ObjectType definition MUST include a `sourceTypeId` field identifying the corresponding class or member within its source namespace (e.g., an OPC UA NodeId or BrowseName). This allows clients to correlate i3X types back to their originating external definitions.
 
 When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` and assign the instance's `typeElementId` on all affected instances. This ensures every instance references a resolvable type.
 
@@ -122,9 +122,9 @@ Object instances do not belong to a Namespace. They exist in the server's implic
 
 ### 3.5 ElementIds
 
-Within the scope of the platform providing the I3X interface, an ElementId is a unique string value that is assigned to every fundamental element in the address space. It enables unambiguous reference, linking, and retrieval of items within the i3X address space.  Elements that contain an ElementId include:  ObjectTypes, Object Instances, Relationship Types, and Namespaces.
+Within the scope of the platform providing the i3X interface, an ElementId is a unique string value that is assigned to every fundamental element in the address space. It enables unambiguous reference, linking, and retrieval of items within the i3X address space.  Elements that contain an ElementId include:  ObjectTypes, Object Instances, Relationship Types, and Namespaces.
 
-## 4. I3X Address Space Methods
+## 4. i3X Address Space Methods
 
 ### 4.1 Exploratory Methods
 Exploratory methods are Read-only operations, reflecting the current state of an information store at the time of the query, or in some cases, at the time specified as a query parameter. Operations to change relationships between elements are performed as an Update of an instance object, using the Value interfaces described in [section 4.2](#query-methods).
@@ -288,7 +288,7 @@ For streaming subscriptions, the client opens a separate SSE connection after re
 
 For sync subscriptions, the registration confirms which items will be monitored. Changed values are retrieved via the Sync method ([section 4.2.3.4](#4234-sync)).
 
-Note: I3X explicitly permits subscribing to composition structures (an ElementId may represent a single property of an object, an entire object, or a tree of composed objects). The `maxDepth` parameter controls how deep the implementation recurses through HasComponent relationships when publishing updates. As the required metadata for each object includes `isComposition`, a client can determine which elements have component children.
+Note: i3X explicitly permits subscribing to composition structures (an ElementId may represent a single property of an object, an entire object, or a tree of composed objects). The `maxDepth` parameter controls how deep the implementation recurses through HasComponent relationships when publishing updates. As the required metadata for each object includes `isComposition`, a client can determine which elements have component children.
 
 ##### 4.2.3.3 Remove Monitored Items
 
@@ -318,9 +318,9 @@ If neither an active SSE stream nor a Sync call is received within a server-conf
 
 ## 5. Implementation Requirements
 
-To support I3X, a implementation must have certain capabilities. While this, and subsequent, RFCs will not define requirements for implementation specifics, some base functionality must exist. Vendors MAY differentiate on optimization, performance and scalability, to meet the requirements of the API.
+To support i3X, a implementation must have certain capabilities. While this, and subsequent, RFCs will not define requirements for implementation specifics, some base functionality must exist. Vendors MAY differentiate on optimization, performance and scalability, to meet the requirements of the API.
 
-The I3X API SHALL be implemented over an encrypted transport, and support the interfaces listed in this section. In order to properly support some of these interfaces, implementations MUST support the required capabilities listed in [section 3](#3-address-space-overview), and MAY support the optional capabilities listed in [section 3](#3-address-space-overview). 
+The i3X API SHALL be implemented over an encrypted transport, and support the interfaces listed in this section. In order to properly support some of these interfaces, implementations MUST support the required capabilities listed in [section 3](#3-address-space-overview), and MAY support the optional capabilities listed in [section 3](#3-address-space-overview). 
 
 ### 5.1 Request and Response Structure
 
@@ -361,7 +361,7 @@ Underlying platforms MAY persist data values using any primitive types they wish
 
 #### 5.2.2 Complex Type Definitions
 
-Underlying platforms MUST derive Objects from separately declared definitions (also known as Class, Template or Schema definitions in other environments). In I3X, these definitions are generalized as Type definitions, given first-class treatment, and MUST be expressed as JSON Schema. Implementing platforms SHOULD support importing Type definitions from the [OPC UA Part 5 Information Modeling standard](https://reference.opcfoundation.org/Core/Part5/v104/docs/) (IEC62541-5). Implementing platforms MAY support importing Type definitions from the [Asset Administration Shell SubModelTemplate standard](https://www.zvei.org/fileadmin/user_upload/Presse_und_Medien/Publikationen/2020/Dezember/Submodel_Templates_of_the_Asset_Administration_Shell/201117_I40_ZVEI_SG2_Submodel_Spec_ZVEI_Technical_Data_Version_1_1.pdf). Implementing platforms MAY also support an internal Type definition and storage format.
+Underlying platforms MUST derive Objects from separately declared definitions (also known as Class, Template or Schema definitions in other environments). In i3X, these definitions are generalized as Type definitions, given first-class treatment, and MUST be expressed as JSON Schema. Implementing platforms SHOULD support importing Type definitions from the [OPC UA Part 5 Information Modeling standard](https://reference.opcfoundation.org/Core/Part5/v104/docs/) (IEC62541-5). Implementing platforms MAY support importing Type definitions from the [Asset Administration Shell SubModelTemplate standard](https://www.zvei.org/fileadmin/user_upload/Presse_und_Medien/Publikationen/2020/Dezember/Submodel_Templates_of_the_Asset_Administration_Shell/201117_I40_ZVEI_SG2_Submodel_Spec_ZVEI_Technical_Data_Version_1_1.pdf). Implementing platforms MAY also support an internal Type definition and storage format.
 
 ### 5.3 Security Considerations
 

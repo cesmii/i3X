@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository Overview
 
-This repository contains the RFC 001 specification and prototype implementation for I3X (Industrial Information Interface eXchange) - a common API for Contextualized Manufacturing Information Platforms (CMIPs). The goal is to enable portable application development across different manufacturing information platforms by providing a vendor-agnostic API specification.
+This repository contains the RFC 001 specification and prototype implementation for i3X (Industrial Information Interface eXchange) - a common API for information platforms. The goal is to enable portable application development across different manufacturing information platforms by providing a vendor-agnostic API specification.
 
 **Key Documents:**
 - `IMPLEMENTATION_GUIDE.md` - The guide that will eventually become the specification
-- `RFC for Contextualized Manufacturing Information API.md` - Complete RFC 001 specification defining the I3X API
+- `RFC for Contextualized Manufacturing Information API.md` - Complete RFC 001 specification defining the i3X API
 - `Working Group Charter.md` - Charter for the Smart Manufacturing API Working Group
 - `README.md` - High-level project overview and problem statement
 
@@ -19,7 +19,7 @@ examples where appropriate, but also progressively disclose the standard in a wa
 discuss composition (an advanced feature) until the reader understands the basic space and type system.
 
 **Repository Structure:**
-- `demo/server/` - FastAPI-based I3X API server implementation (primary active codebase)
+- `demo/server/` - FastAPI-based i3X API server implementation (primary active codebase)
 - `demo/client/` - Test client for validating server functionality (currently basic SSE client)
 - `images/` - Documentation diagrams
 
@@ -65,7 +65,7 @@ Copy `config-example.json` to `config.json` and modify as needed. Supports singl
 
 ### Server Architecture
 
-The server implements RFC 001 I3X API using FastAPI with a pluggable data source architecture.
+The server implements RFC 001 i3X API using FastAPI with a pluggable data source architecture.
 
 **Core Files:**
 - `app.py` - FastAPI application with lifecycle management
@@ -230,7 +230,7 @@ The updater must access raw instance data (`self.data_source.data["instances"]`)
 
 ## Working with the Client (demo/client/)
 
-Currently a basic test client with SSE (Server-Sent Events) support. Future work will expand this into a full I3X client library.
+Currently a basic test client with SSE (Server-Sent Events) support. Future work will expand this into a full i3X client library.
 
 **Running the test client:**
 ```bash
@@ -241,7 +241,7 @@ python test_client.py
 
 ## RFC 001 Compliance
 
-The server implements RFC 001 I3X API specification:
+The server implements RFC 001 i3X API specification:
 
 **Implemented:**
 - RFC 4.1.x - All exploratory methods (namespaces, types, instances, relationships)

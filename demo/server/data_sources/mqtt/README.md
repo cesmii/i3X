@@ -1,6 +1,6 @@
 # MQTT Data Source
 
-The MQTT data source adapter connects to an MQTT broker and exposes topics as I3X objects. It supports real-time subscriptions, automatic relationship inference from topic hierarchy, and namespace/type discovery from payload metadata.
+The MQTT data source adapter connects to an MQTT broker and exposes topics as i3X objects. It supports real-time subscriptions, automatic relationship inference from topic hierarchy, and namespace/type discovery from payload metadata.
 
 ## Configuration
 

@@ -20,7 +20,7 @@ class I3XDataSource(ABC):
 
     @abstractmethod
     def get_namespaces(self) -> List[Dict[str, Any]]:
-        """Return array of Namespaces registered in the CMIP"""
+        """Return array of Namespaces registered in the implementation"""
         pass
 
     @abstractmethod

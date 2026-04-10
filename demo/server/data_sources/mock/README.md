@@ -1,6 +1,6 @@
 # Mock Data Source
 
-This directory contains the mock data source for the I3X demo server. It serves static manufacturing data to exercise the full I3X API surface without requiring a real platform connection.
+This directory contains the mock data source for the i3X demo server. It serves static manufacturing data to exercise the full i3X API surface without requiring a real platform connection.
 
 ## Namespace Schema Files (`Namespaces/`)
 
@@ -21,7 +21,7 @@ The `types` map is a flat registry — every type in the namespace is a top-leve
 
 ## Expressing Composition in JSON Schema
 
-I3X supports composite objects whose values are composed of child component values (via `HasComponent` relationships). JSON Schema has no built-in concept of "this type is composed of instances of these other types" — that relationship is an I3X concept, not a schema concept.
+i3X supports composite objects whose values are composed of child component values (via `HasComponent` relationships). JSON Schema has no built-in concept of "this type is composed of instances of these other types" — that relationship is an i3X concept, not a schema concept.
 
 Within JSON Schema's constraints, component types are expressed using same-document `$ref` pointers:
 
@@ -72,7 +72,7 @@ A common need is an instance that is *almost like* an existing type but has a co
 
 Both types are independent entries in the flat `types` map. The base type is fully usable on its own. The extended type composes the base via `$ref` inside `allOf`, and the server inlines that reference when serving the schema so API consumers receive the fully resolved shape.
 
-This maps to the `InheritsFrom`/`InheritedBy` relationship types in the I3X relationship vocabulary. The `related` field on the extended type's entry in `mock_data.py` records this topology for use by the instance graph.
+This maps to the `InheritsFrom`/`InheritedBy` relationship types in the i3X relationship vocabulary. The `related` field on the extended type's entry in `mock_data.py` records this topology for use by the instance graph.
 
 Note the distinction from composition:
 - `allOf` / `$ref` in properties → `HasComponent` — the value *is made up of* child objects that exist independently in the graph
@@ -84,4 +84,4 @@ When an instance is discovered at runtime and its type cannot be determined (e.g
 
 ## Relationship Metadata
 
-The `related` field on object type entries in `mock_data.py` captures I3X-specific relationship topology (e.g. which types a given type has `HasComponent` or `HasChildren` relationships with). This is internal mock data configuration — it is not part of the JSON Schema definition and does not appear in the API response. The I3X instance graph (the `/objects` endpoints) is the authoritative source for relationship information at runtime.
+The `related` field on object type entries in `mock_data.py` captures i3X-specific relationship topology (e.g. which types a given type has `HasComponent` or `HasChildren` relationships with). This is internal mock data configuration — it is not part of the JSON Schema definition and does not appear in the API response. The i3X instance graph (the `/objects` endpoints) is the authoritative source for relationship information at runtime.

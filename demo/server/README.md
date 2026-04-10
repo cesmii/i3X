@@ -1,16 +1,16 @@
-# I3X API Server
+# i3X API Server
 
-This is a FastAPI-based HTTP server that implements the RFC 001 compliant I3X (Industrial Information Interface eXchange) API for Contextualized Manufacturing Information. The server provides endpoints for browsing equipment, sensors, and process data in a manufacturing environment. The server port is configurable via a config file.
+This is a FastAPI-based HTTP server that implements the RFC 001 compliant i3X (Industrial Information Interface eXchange) API for Contextualized Manufacturing Information. The server provides endpoints for browsing equipment, sensors, and process data in a manufacturing environment. The server port is configurable via a config file.
 
 ### Core Structure
 - **app.py**: Main FastAPI application with startup/shutdown lifecycle and configurable data source initialization
-- **models.py**: Pydantic models for all I3X RFC-compliant data structures
+- **models.py**: Pydantic models for all i3X RFC-compliant data structures
 - **data_sources/**: Abstraction layer for data access
   - `data_interface.py`: Abstract I3XDataSource interface
   - `factory.py`: Factory pattern for creating single or multiple data sources from config
   - `manager.py`: DataSourceManager for routing operations across multiple data sources
   - `mock/`: Mock data source implementation with random value generation
-    - `mock_data.py`: I3X-compliant simulated manufacturing data
+    - `mock_data.py`: i3X-compliant simulated manufacturing data
     - `mock_data_source.py`: Mock implementation using mock_data.py
     - `mock_updater.py`: Background thread for generating random value updates
   - `mqtt/`: MQTT data source implementation with real-time updates, subscribes to one or more topics on a single broker
@@ -139,7 +139,7 @@ Note: `username`, `password`, and `excluded_topics` are optional.
     "host": "0.0.0.0",
     "debug": true,
     "app": {
-        "title": "I3X API Prototype",
+        "title": "i3X API Prototype",
         "description": "Industrial Information Interface eXchange API - RFC 001 Compliant",
         "version": "0.0.1"
     },
@@ -204,7 +204,7 @@ This script will:
 
 ## API Endpoints
 
-The I3X server implements RFC 001 - Common API for Industrial Information Interface eXchange (I3X). The available endpoints follow the specification exactly. Check the interactive document to explore the API.
+The i3X server implements RFC 001 - Common API for Industrial Information Interface eXchange (i3X). The available endpoints follow the specification exactly. Check the interactive document to explore the API.
 
 ### Interactive Documentation
 
@@ -267,7 +267,7 @@ To run on a different port, modify the `port` field in `config.json`:
 ### Data Sources
 
 **Mock Data Source**
-The server includes a mock data source stored in `mock_data.py` that simulates an I3X-compliant manufacturing environment with:
+The server includes a mock data source stored in `mock_data.py` that simulates an i3X-compliant manufacturing environment with:
 - Namespaces (equipment, process, quality)
 - Object Types (machines, sensors, processes)  
 - Object Instances (specific machines, sensors, and processes)
@@ -283,13 +283,13 @@ The server supports connecting to MQTT brokers for real-time industrial data:
 - **Topic Subscription**: Subscribe to specific topics or use wildcards (`#` for multi-level, `+` for single-level)
 - **Topic Filtering**: Exclude specific topics via `excluded_topics` configuration
 - **Real-time Updates**: Automatic cache updates and subscription notifications when messages arrive
-- **Dynamic Types**: Automatically generates I3X object types from JSON message structure
+- **Dynamic Types**: Automatically generates i3X object types from JSON message structure
 - **URL Path Safe**: Converts topic `/` to `_` for API element IDs (e.g., `sensors/temp` becomes `sensors_temp`)
 - **Limitations**: Read-only (no write operations), limited exploratory support
 
 ### RFC 001 Compliance
 
-This implementation follows RFC 001 - Common API for Industrial Information Interface eXchange (I3X) which provides a common API that Contextualized Manufacturing Information Platforms (CMIPs) can implement. The specification defines:
+This implementation follows RFC 001 - Common API for Industrial Information Interface eXchange (i3X) which provides a common API for information platforms. The specification defines:
 
 - **Address Space Organization** (RFC 3) - Complete collection of contextualized information
 - **Object Elements** (RFC 3.1) - Objects with attributes and required metadata

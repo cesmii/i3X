@@ -1,4 +1,4 @@
-# I3X API Client
+# i3X API Client
 
 TODO - for right now this is a single file that's a test client for streaming mode (server sent events). We will change this into a full client.
 

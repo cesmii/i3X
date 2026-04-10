@@ -126,7 +126,7 @@ Examples:
 
 ```json
 // GET /namespaces
-{ "success": true, "result": [{ "uri": "https://cesmii.org/i3x", "displayName": "I3X" }] }
+{ "success": true, "result": [{ "uri": "https://cesmii.org/i3x", "displayName": "i3X" }] }
 
 // POST /subscriptions
 { "success": true, "result": { "subscriptionId": "Xf9q8wL1...", "displayName": "mySubscription" } }
@@ -265,7 +265,7 @@ The following is an example of a Namespace definition.
 ```json
   {
     "uri": "https://cesmii.org/i3X",
-    "displayName": "I3X"
+    "displayName": "i3X"
   }
 ```
 

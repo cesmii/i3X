@@ -81,7 +81,7 @@ class DataSourceManager(I3XDataSource):
                 print(f"Error stopping data source {name}: {e}")
 
     def get_namespaces(self) -> List[Dict[str, Any]]:
-        """Return array of Namespaces registered in the CMIP"""
+        """Return array of Namespaces registered in the an implementation"""
         source = self._get_source_for_operation("get_namespaces")
         return source.get_namespaces()
 
