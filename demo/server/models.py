@@ -228,13 +228,14 @@ class GetRelationshipTypesRequest(ElementIdRequest):
 # --- Generic response wrappers ---
 
 class ErrorDetail(BaseModel):
-    code: int
-    message: str
+    title: str
+    status: int
+    detail: str
 
 
 class ErrorResponse(BaseModel):
     success: bool = False
-    error: ErrorDetail
+    problemDetail: ErrorDetail
 
 
 class SuccessResponse(BaseModel, Generic[T]):
@@ -247,7 +248,7 @@ class BulkResultItem(BaseModel, Generic[T]):
     elementId: Optional[str] = None
     subscriptionId: Optional[str] = None
     result: Optional[T] = None
-    error: Optional[ErrorDetail] = None
+    problemDetail: Optional[ErrorDetail] = None
 
 
 class BulkResponse(BaseModel, Generic[T]):

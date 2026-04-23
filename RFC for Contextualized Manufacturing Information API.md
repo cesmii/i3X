@@ -302,6 +302,7 @@ This method is used only for sync subscriptions, and is called with a specific S
 
 When servicing the Sync call, the implementation MUST respond with an array of updates for elements that have changed since the last Sync call. Each update in the response array MUST include:
 - elementId: the ElementId of the changed element
+- sequenceNumber: the monotonically increasing sequence number assigned to this update
 - value: the new value (with recursive structure if maxDepth was specified during registration)
 - quality: the quality indicator
 - timestamp: the timestamp of the change
@@ -309,6 +310,15 @@ When servicing the Sync call, the implementation MUST respond with an array of u
 If no elements have changed since the last Sync call, the response MUST be an empty array.
 
 Each update in the queue carries a monotonically increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the implementation MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the implementation MUST NOT clear the queue. The implementation must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
+
+When the server drops updates due to queue limits, it MUST signal data loss to the client by returning HTTP 206 (Partial Content) instead of HTTP 200. The response body MUST use `"success": true` with the standard `result` payload and an additional top-level `problemDetail` object. The `problemDetail` object MUST include the following fields:
+- `title`: a short human-readable summary of the problem
+- `status`: the HTTP status code (206)
+- `detail`: a human-readable explanation of what was lost and why
+
+The `result` array in a 206 response MUST contain all currently available pending updates.
+
+Clients can detect the extent of data loss from the sequence gap: all sequence numbers between `lastSequenceNumber + 1` and the lowest `sequenceNumber` in the returned `result` array were dropped by the server and cannot be retrieved. Clients MUST NOT attempt to retrieve dropped updates. Clients SHOULD log or alert on receipt of a 206 response and MUST continue polling using the highest `sequenceNumber` from the response as the next `lastSequenceNumber`.
 
 ##### 4.2.3.5 Delete Subscription
 
@@ -334,12 +344,20 @@ All responses MUST be wrapped in a standard envelope. Successful single-item res
 ```
 Successful bulk responses (accepting an array of ElementIds) MUST use a `results` array with per-item success or failure indicated inline:
 ```json
-{ "success": false, "results": [ { "success": true, "elementId": "...", "result": <data> }, { "success": false, "elementId": "...", "error": { "code": 404, "message": "..." } } ] }
+{ "success": false, "results": [ { "success": true, "elementId": "...", "result": <data> }, { "success": false, "elementId": "...", "problemDetail": { "title": "Not Found", "status": 404, "detail": "..." } } ] }
 ```
 The top-level `success` is `false` if any item in a bulk response failed. Failure responses MUST use:
 ```json
-{ "success": false, "error": { "code": <HTTP status code>, "message": "<description>" } }
+{ "success": false, "problemDetail": { "title": "<summary>", "status": <HTTP status code>, "detail": "<description>" } }
 ```
+Partial success responses (HTTP 206) MUST use `"success": true` with the standard `result` payload and an additional top-level `problemDetail` object:
+```json
+{ "success": true, "result": <data>, "problemDetail": { "title": "<summary>", "status": 206, "detail": "<description>" } }
+```
+Error objects MUST follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs), and include the following fields:
+ - `title` is a short human-readable summary of the problem type
+ - `status` is the HTTP status code
+ - `detail` is a human-readable explanation specific to this occurrence
 
 Implementations MAY support a Binary serialization for all responses, where the format of such response will be determined in a future RFC.
 

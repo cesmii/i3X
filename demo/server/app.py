@@ -14,6 +14,7 @@ from routers.namespaces import ns
 from routers.typeDefinitions import typeDefinitions
 from routers.objects import explore, query, update
 from routers.subscriptions import subs, subscription_worker, handle_data_source_update
+from routers.utils import _HTTP_TITLES
 from data_sources.factory import DataSourceFactory
 
 
@@ -164,7 +165,7 @@ app.add_middleware(
 async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
-        content={"success": False, "error": {"code": exc.status_code, "message": exc.detail}}
+        content={"success": False, "problemDetail": {"title": _HTTP_TITLES.get(exc.status_code, "Error"), "status": exc.status_code, "detail": exc.detail}}
     )
 
 
