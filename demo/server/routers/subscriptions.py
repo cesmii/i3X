@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import StreamingResponse, JSONResponse
 from typing import List, Optional, Any, Callable, Dict
 from datetime import datetime, timezone
 import asyncio
@@ -21,6 +21,8 @@ from models import (
 )
 from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE
 
+PARTIAL_CONTENT_DESCRIPTION = "Some updates were dropped from the subscription queue due to overflow. See the `detail` field in the response body."
+
 
 # Not required, but showing what information is stored for simulated subscriptions
 class Subscription(BaseModel):
@@ -33,6 +35,7 @@ class Subscription(BaseModel):
     max_queue_size: int = 1000
     nextSequence: int = 1           # Sequence number for the next queued update
     lastAckedSequence: int = 0      # Highest sequence number acknowledged by the client
+    droppedCount: int = 0           # Updates dropped from the queue since last client ack
     ttl_seconds: int = 300          # Idle TTL: subscription auto-deleted if no /sync or active stream within this window
     last_activity: str = ""         # ISO timestamp of last /sync, /ack, or stream open
     is_streaming: bool = False  # True when SSE connection is active
@@ -108,7 +111,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            results.append({"success": False, "elementId": eid, "error": {"code": 404, "message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
@@ -139,7 +142,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            results.append({"success": False, "elementId": eid, "error": {"code": 404, "message": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
@@ -210,13 +213,18 @@ async def stream_subscription(request: Request, req: StreamRequest):
     summary="Sync Values",
     operation_id="syncSubscription",
     response_model=SuccessResponse[List[SyncUpdate]],
-    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
+    responses={
+        206: {"description": PARTIAL_CONTENT_DESCRIPTION},
+        **NOT_FOUND_RESPONSE,
+        **BASE_ERROR_RESPONSES,
+    },
 )
 def sync_subscription(request: Request, req: SyncRequest):
     """Acknowledge previously received updates and return all pending updates in one call.
 
     If `lastSequenceNumber` is provided, all queued updates with sequenceNumber <= lastSequenceNumber are removed first,
-    then the remaining (newer) updates are returned. subscriptionId is passed in the request body.
+    then the remaining (newer) updates are returned. Returns HTTP 206 if updates were dropped from the queue since
+    the client's last acknowledged sequence number. subscriptionId is passed in the request body.
     """
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
@@ -226,8 +234,36 @@ def sync_subscription(request: Request, req: SyncRequest):
         sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.lastSequenceNumber]
         sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
 
+    # Detect data loss: explicit drop counter or a sequence gap between the last ack and first available update
+    has_drops = sub.droppedCount > 0
+    if not has_drops and sub.pendingUpdates and req.lastSequenceNumber is not None:
+        first_seq = sub.pendingUpdates[0].get("sequenceNumber", 0)
+        has_drops = first_seq > req.lastSequenceNumber + 1
+
+    # Reset drop counter now that the client is being informed
+    sub.droppedCount = 0
+
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    return success_response(list(sub.pendingUpdates))
+    updates = list(sub.pendingUpdates)
+
+    if has_drops:
+        body = {
+            "success": True,
+            "result": updates,
+            "problemDetail": {
+                "title": "Updates dropped due to queue overflow",
+                "status": 206,
+                "detail": (
+                    "Updates were dropped from the subscription queue because the server-imposed "
+                    "queue limit was reached. The client may assume that all sequence numbers "
+                    "between its last acknowledged sequence number and the first returned sequence "
+                    "number were dropped."
+                ),
+            },
+        }
+        return JSONResponse(content=body, status_code=206)
+
+    return success_response(updates)
 
 
 # POST /subscriptions/delete - Delete one or more subscriptions
@@ -256,7 +292,7 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
             request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
             results.append({"success": True, "subscriptionId": sub_id, "result": None})
         else:
-            results.append({"success": False, "subscriptionId": sub_id, "error": {"code": 404, "message": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Subscription not found: {sub_id}"}})
 
     return bulk_response(results)
 
@@ -286,7 +322,7 @@ def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
                 },
             })
         else:
-            results.append({"success": False, "subscriptionId": sub_id, "error": {"code": 404, "message": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Subscription not found: {sub_id}"}})
 
     return bulk_response(results)
 
@@ -325,9 +361,10 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
                         **update_value,
                     }
                     sub.nextSequence += 1
-                    # Enforce FIFO with max queue size
+                    # Enforce FIFO with max queue size — oldest update is dropped first
                     if len(sub.pendingUpdates) >= sub.max_queue_size:
                         sub.pendingUpdates.pop(0)
+                        sub.droppedCount += 1
                     sub.pendingUpdates.append(queued_item)
     except Exception as e:
         import traceback

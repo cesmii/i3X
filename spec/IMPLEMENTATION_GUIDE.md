@@ -36,6 +36,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
+    - [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses)
   - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
@@ -137,42 +138,44 @@ Examples:
 
 ### Failure
 
-Failures return an HTTP error code with the following shape.
+Failures return an HTTP error code with the following shape. The `problemDetail` object follows [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs).
 
 ```json
 {
   "success": false,
-  "error": {
-    "code": 400,
-    "message": "error message"
+  "problemDetail": {
+    "title": "Not Found",
+    "status": 404,
+    "detail": "Element not found: pump-101"
   }
 }
 ```
 
-| Field        | Type    | Required | Description                                                           |
-|--------------|---------|----------|-----------------------------------------------------------------------|
-| `success`    | boolean | Yes      | False if the request is not successful. HTTP return must be none 200. |
-| `error.code` | Number  | Yes      | The HTTP error code.                                                  |
-| `error.message` | String  | Yes      | Server specific error message to add context for the caller.          |
+| Field                    | Type    | Required | Description                                                             |
+|--------------------------|---------|----------|-------------------------------------------------------------------------|
+| `success`                | boolean | Yes      | `false` for any error response.                                         |
+| `problemDetail.title`    | string  | Yes      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
+| `problemDetail.status`   | number  | Yes      | The HTTP status code.                                                   |
+| `problemDetail.detail`   | string  | Yes      | Human-readable explanation specific to this occurrence.                 |
 
-The following HTTP error codes are suggested.
+The following HTTP status codes are used.
 
 | Code | Meaning | When to Use |
 |------|---------|-------------|
 | 200 | OK | Successful request |
-| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits (e.g., depth cap on a composition query) |
+| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits. The response body includes a top-level `problemDetail` object. |
 | 400 | Bad Request | Invalid parameters, malformed request body, or request the server cannot fulfill at all |
 | 401 | Unauthorized | Missing or invalid authentication |
 | 403 | Forbidden | Authenticated but not authorized |
 | 404 | Not Found | ElementId or resource doesn't exist |
 | 500 | Internal Server Error | Server-side error |
-| 501 | Not Implemented | Optional feature not supported 
+| 501 | Not Implemented | Optional feature not supported
 
 Examples:
 
 ```json
 // GET /namespaces
-{ "success": false, "error": { "code": 401, "message": "User does not have access"}}
+{ "success": false, "problemDetail": { "title": "Unauthorized", "status": 401, "detail": "User does not have access" }}
 ```
 
 ### Bulk Response
@@ -193,9 +196,10 @@ The Server's response MUST be in the same order and the same size as the request
     {
       "success": false,
       "elementId": "non-existent",
-      "error": {
-        "code": 404,
-        "message": "Element not found: non-existent"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: non-existent"
       }
     }
   ]
@@ -617,9 +621,10 @@ Returns one or more Object Types given a collection of elementIds.
     {
       "success": false,
       "elementId": "string",
-      "error": { 
-        "code": 404,
-        "message": "Object type not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Object type not found: string"
       }
     }
   ]
@@ -705,9 +710,10 @@ Returns one or more Relationship Types given a collection of elementIds.
     {
       "success": false,
       "elementId": "string",
-      "error": { 
-        "code": 404,
-        "message": "Relationship type not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Relationship type not found: string"
       }
     }
   ]
@@ -832,9 +838,10 @@ Returns one or more Objects without data/values given a collection of elementIds
     {
       "success": false,
       "elementId": "string",
-      "error": {
-        "code": 404,
-        "message": "Element not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
       }
     }
   ]
@@ -871,9 +878,10 @@ Returns one or more Objects without data/values given a collection of elementIds
     {
       "success": false,
       "elementId": "string",
-      "error": { 
-        "code": 404,
-        "message": "Element not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
       }
     }
   ]
@@ -935,9 +943,10 @@ Returns a bulk response with the related Objects for each queried elementId.
     {
       "success": false,
       "elementId": "string",
-      "error": { 
-        "code": 404,
-        "message": "Element not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
       }
     }
   ]
@@ -1090,9 +1099,10 @@ Returns the last known value for one or more Objects.
     {
       "success": false,
       "elementId": "string",
-      "error": { 
-        "code": 404,
-        "message": "Element not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
       }
     }
   ]
@@ -1174,9 +1184,10 @@ Returns the historical values for one or more Objects between a start and end ti
     {
       "success": false,
       "elementId": "string",
-      "error": { 
-        "code": 404,
-        "message": "Element not found: string"
+      "problemDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
       }
     }
   ]
@@ -1564,6 +1575,42 @@ Sync allows the client to control when value changes are received, and to explic
 
 This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
 
+#### Queue Overflow and Partial Responses
+
+Servers maintain a queue for each subscription. When the queue is full and a new update arrives, the server MUST drop the oldest pending update to make room. If a client polls infrequently relative to the rate of change, it may miss updates.
+
+When the server has dropped updates since the client's last acknowledged sequence number, it MUST return **HTTP 206 (Partial Content)**. The response body has the same shape as a normal 200, with one addition: a `problemDetail` object:
+
+```json
+HTTP 206
+{
+  "success": true,
+  "result": [
+    {"sequenceNumber": 151, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+  ],
+  "problemDetail": {
+    "title": "Updates dropped due to queue overflow",
+    "status": 206,
+    "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
+  }
+}
+```
+
+**Inferring dropped sequence numbers:**
+
+The `sequenceNumber` on each update is monotonically increasing per update for a given subscription. When receiving an HTTP 206 response, a client can determine exactly which updates were lost by inspecting the :
+
+> All sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped.
+
+For example, if the client's last call used `"lastSequenceNumber": 100` and the first update in the 206 response has `"sequenceNumber": 151`, then the 50 updates with sequence numbers 101–150 are permanently gone.
+
+**Client requirements on 206:**
+
+- Clients MUST process returned updates in the `result` array normally
+- Clients MUST continue polling with the highest returned `sequenceNumber` as the next `lastSequenceNumber`
+- Clients MUST NOT attempt to retrieve dropped updates — they are no longer unavailable
+- Clients SHOULD log or raise an alert when a 206 is received, as it indicates data loss
+
 ---
 
 #### `POST` /subscriptions/sync
@@ -1601,7 +1648,7 @@ All subsequent calls (ack previous batch, fetch new):
 }
 ```
 
-**Response:**
+**Response (HTTP 200 — all updates delivered):**
 
 ```json
 {
@@ -1612,6 +1659,24 @@ All subsequent calls (ack previous batch, fetch new):
   ]
 }
 ```
+
+**Response (HTTP 206 — some updates were dropped):**
+
+```json
+{
+  "success": true,
+  "result": [
+    {"sequenceNumber": 151, "elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
+  ],
+  "problemDetail": {
+    "title": "Updates dropped due to queue overflow",
+    "status": 206,
+    "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
+  }
+}
+```
+
+See [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses) for how to interpret a 206 response and recover from data loss.
 
 ---
 
