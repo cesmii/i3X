@@ -114,10 +114,17 @@ class VQT(BaseModel):
     timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
 
 
+class VQTInput(BaseModel):
+    """VQT for write requests — quality and timestamp are optional (server supplies defaults)."""
+    value: Any
+    quality: Optional[str] = Field(default="Good", description="Data quality indicator. Defaults to 'Good' if omitted.")
+    timestamp: Optional[str] = Field(default=None, description="RFC 3339 timestamp. Defaults to server time if omitted.")
+
+
 # RFC 4.2.2.1 - Object Element LastKnownValue update
 class ValueUpdateItem(BaseModel):
     elementId: str = Field(..., description="The elementId of the Object to update")
-    value: Any = Field(..., description="The VQT value to write. Must conform to the Object's type schema.")
+    value: VQTInput = Field(..., description="The VQT value to write. Must conform to the Object's type schema.")
 
 
 class UpdateValueRequest(BaseModel):

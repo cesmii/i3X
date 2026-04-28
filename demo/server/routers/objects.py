@@ -17,7 +17,7 @@ from models import (
     CurrentValueResult,
     HistoricalValueResult,
 )
-from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE, PARTIAL_CONTENT_DESCRIPTION
+from .utils import getObject, success_response, bulk_response, transform_value_result, get_data_source, BASE_ERROR_RESPONSES, PARTIAL_CONTENT_DESCRIPTION
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
@@ -203,8 +203,8 @@ def query_historical_values(
 
 
 # RFC 4.2.2.1 - Object Element LastKnownValue update
-@update.post(
-    "/objects/value/update",
+@update.put(
+    "/objects/value",
     summary="Update Values of Objects",
     operation_id="updateObjectValues",
     response_model=BulkResponse[None],
@@ -229,9 +229,7 @@ def update_object_values(
             results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
         try:
-            body = item.value
-            value = body["value"] if isinstance(body, dict) and "value" in body else body
-            data_source.update_instance_value(eid, value)
+            data_source.update_instance_value(eid, item.value.value)
             results.append({"success": True, "elementId": eid, "result": None})
         except Exception as e:
             results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Error", "status": 500, "detail": str(e)}})
@@ -239,8 +237,8 @@ def update_object_values(
 
 
 # RFC 4.2.2.2 - Object Element HistoricalValue update
-@update.post(
-    "/objects/history/update",
+@update.put(
+    "/objects/history",
     summary="Update Historical Values of Objects",
     operation_id="updateObjectHistory",
     responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **BASE_ERROR_RESPONSES},

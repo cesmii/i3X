@@ -132,7 +132,7 @@ Examples:
 // POST /subscriptions
 { "success": true, "result": { "subscriptionId": "Xf9q8wL1...", "displayName": "mySubscription" } }
 
-// POST /objects/value/update (write succeeded)
+// PUT /objects/value (write succeeded)
 { "success": true, "results": [{ "success": true, "elementId": "pump-101", "result": null }] }
 ```
 
@@ -510,8 +510,8 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
 | `serverName`                    | string | No | Human-readable name for this server or deployment                  |
 | `capabilities`                       | object | Yes | Declares which optional features this server supports              |
 | `capabilities.query.history`         | boolean | Yes | True if `POST /objects/history` is supported                       |
-| `capabilities.update.current`        | boolean | Yes | True if `POST /objects/value/update` is supported              |
-| `capabilities.update.history`        | boolean | Yes | True if `POST /objects/history/update` is supported            |
+| `capabilities.update.current`        | boolean | Yes | True if `PUT /objects/value` is supported              |
+| `capabilities.update.history`        | boolean | Yes | True if `PUT /objects/history` is supported            |
 | `capabilities.subscribe.stream`      | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
 
 
@@ -1209,7 +1209,7 @@ It is the responsibility of the implementing platform to validate the input, inc
 
 ---
 
-#### `POST` /objects/value/update
+#### `PUT` /objects/value
 
 Update the current value of one or more Objects.
 
@@ -1257,7 +1257,7 @@ Returns a bulk response with a result per elementId.
 
 ---
 
-#### `POST` /objects/history/update
+#### `PUT` /objects/history
 
 Update historical values of one or more Objects.
 
