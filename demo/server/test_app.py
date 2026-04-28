@@ -1,6 +1,7 @@
 import unittest
 import json
 from fastapi.testclient import TestClient
+import httpx
 from app import app
 from models import Namespace, ObjectType, ObjectInstanceMinimal
 import threading
@@ -255,19 +256,23 @@ class TestI3XEndpoints(unittest.TestCase):
         results = []
 
         def stream_reader():
-            with self.client.stream("POST", "/subscriptions/stream", json={"subscriptionId": subscription_id}) as stream_resp:
-                self.assertEqual(stream_resp.status_code, 200)
-                count = 0
-                for line in stream_resp.iter_lines():
-                    if line:
-                        decoded = line.decode("utf-8")
-                        print("Received chunk:", decoded)
-                        results.append(decoded)
-                        count += 1
-                        if count >= 3:  # read 3 update batches then stop
-                            break
+            try:
+                timeout = httpx.Timeout(5.0, read=8.0)
+                with self.client.stream("POST", "/subscriptions/stream", json={"subscriptionId": subscription_id}, timeout=timeout) as stream_resp:
+                    self.assertEqual(stream_resp.status_code, 200)
+                    count = 0
+                    for line in stream_resp.iter_lines():
+                        if line:
+                            decoded = line.decode("utf-8")
+                            print("Received chunk:", decoded)
+                            results.append(decoded)
+                            count += 1
+                            if count >= 3:  # read 3 update batches then stop
+                                break
+            except httpx.TimeoutException:
+                pass  # stream timed out cleanly
 
-        thread = threading.Thread(target=stream_reader)
+        thread = threading.Thread(target=stream_reader, daemon=True)
         thread.start()
         thread.join(timeout=10)
 
