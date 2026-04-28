@@ -275,7 +275,7 @@ class ObjectInstanceMetadata(BaseModel):
     sourceTypeId: Optional[str] = None
     description: Optional[str] = None
     relationships: Optional[Dict[str, Any]] = None
-    extendedAttributes: Optional[Dict[str, Any]] = None
+    schemaExtensions: Optional[Dict[str, Any]] = None
     system: Optional[Dict[str, Any]] = None
 
 

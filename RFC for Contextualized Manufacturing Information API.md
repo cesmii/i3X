@@ -81,7 +81,7 @@ When a client requests metadata, the server MUST return a `metadata` block along
 **Optional in the metadata block** — the server MAY include these where available:
 - description: a human-readable description conveying context or intent beyond what the DisplayName communicates
 - engUnit: the engineering unit for the element's value. Where present, definitions from [UNECE Recommendation Number 20](https://unece.org/trade/documents/2021/06/uncefact-rec20-0) MUST be used.
-- extendedAttributes: present only when `isExtended: true`. Contains non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared attributes are omitted — clients look those up from the ObjectType schema.
+- schemaExtensions: present only when `isExtended: true`. Contains non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared attributes are omitted — clients look those up from the ObjectType schema.
 - system: vendor-defined key/value pairs for platform-specific metadata not covered by standard fields. Values MUST be limited to strings, numbers, and booleans.
 
 ### 3.2 Object Relationships
@@ -182,7 +182,7 @@ If the ElementId exists as an instance object, this query MUST return the instan
 
 If an instance object differs from its Type definition, information about additional members is surfaced inline on all object responses via the `isExtended` and `extendedAttributes` fields defined in [section 3.1.1](#311-required-object-metadata).
 
-When `isExtended` is true and the client requests metadata, the response MUST include an `extendedAttributes` field containing the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted from `extendedAttributes` — clients may look those up from the ObjectType schema identified by `typeElementId`.
+When `isExtended` is true and the client requests metadata, the response MUST include a `schemaExtensions` field containing the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted from `schemaExtensions` — clients may look those up from the ObjectType schema identified by `typeElementId`.
 
 Implementations SHOULD resolve `allOf` inheritance chains in the declared type schema before determining conformance, so that inherited attributes are not incorrectly reported as extended.
 

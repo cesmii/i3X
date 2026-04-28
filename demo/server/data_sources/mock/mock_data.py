@@ -499,7 +499,7 @@ I3X_DATA = {
             # Example of an extended object: typed as temperature-sensor-type (which declares only
             # 'temperature' and 'unit'), but its value also carries vendor_serial and firmware_version
             # — attributes not in the declared schema. isExtended=true will be set on this object,
-            # and extendedAttributes will be populated when includeMetadata=true is requested.
+            # and schemaExtensions will be populated when includeMetadata=true is requested.
             "elementId": "sensor-003",
             "displayName": "TempSensor-VendorX",
             "typeElementId": "temperature-sensor-type",

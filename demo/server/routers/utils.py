@@ -76,7 +76,7 @@ def getObject(instance: Any, includeMetadata: bool, type_info: Any = None, extra
     metadata["relationships"] = instance.get("relationships", {})
 
     if extra_attrs:
-        metadata["extendedAttributes"] = extra_attrs
+        metadata["schemaExtensions"] = extra_attrs
 
     # Collect vendor/server-defined instance-level properties (RFC 3.1.2 optional metadata)
     # into metadata.system. Values are limited to primitives (string, number, boolean).
