@@ -232,21 +232,19 @@ When invoked as a Query, the response MUST return a `values` array where each en
 
 Implementations MAY include the ability to write to the LastKnownValue. If this feature is implemented, the following considerations apply:
 
-When invoked as an Update, the LastKnownValue interface MUST accept a new current value for the requested object to be recorded, by ElementId. If the implementation supports write-back to a Control System (for example, via an interface to a PLC) additional security requirements outside the scope of this proposal MUST be considered.
+When invoked as an Update, the LastKnownValue interface MUST accept an array of `{elementId, value}` pairs in the request body. Each entry identifies the target Object by ElementId in the body (not in the URL path) and provides the new value in VQT format. If the implementation supports write-back to a Control System (for example, via an interface to a PLC) additional security requirements outside the scope of this proposal MUST be considered.
 
 Clients MUST write the complete value for the object. Partial attribute updates are not supported; the written value replaces the current value in its entirety.
 
-When invoked as an Update the LastKnownValue interface MAY accept an array of current values for an array of ElementIds.
+The response MUST use the bulk response envelope defined in [section 5.1.1](#511-response-serialization), with a per-item success or failure result for each ElementId in the request.
 
 ##### 4.2.2.2 Object Element HistoricalValue
 
 Implementations MAY include the ability to write to HistoricalValue(s). If this feature is implemented, the following considerations apply:
 
-When invoked as an Update, the HistoricalValue interface MUST accept an updated historical value for the requested object and timestamp, by ElementId.
+When invoked as an Update, the HistoricalValue interface MUST accept an array of `{elementId, value}` pairs in the request body. Each entry identifies the target Object by ElementId in the body (not in the URL path) and provides the value in VQT format. The `timestamp` field in the VQT identifies the historical record to create or replace.
 
-When invoked as an Update, the HistoricalValue interface MAY accept an array of updated historical values for an array of specified objects and timestamps, by ElementId.
-
-When invoked in order to Create a new historical record, the HistoricalValue interface MAY accept an array of new historical values for an array of specified objects and timestamps, by ElementId.
+The response MUST use the bulk response envelope defined in [section 5.1.1](#511-response-serialization), with a per-item success or failure result for each ElementId in the request.
 
 When updating Historical data, the implementation SHOULD implement auditing or tracking of such changes.
 

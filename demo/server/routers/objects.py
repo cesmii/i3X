@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Path, Query, HTTPException, Body, Depends
+from fastapi import APIRouter, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from typing import Optional, Any, List
+from typing import Optional, List
 from urllib.parse import unquote
 from models import (
     GetObjectsRequest,
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
+    UpdateValueRequest,
+    UpdateHistoryRequest,
     SuccessResponse,
     BulkResponse,
     ErrorResponse,
@@ -200,84 +202,56 @@ def query_historical_values(
     return response_body
 
 
-# RFC 4.2.1.2 - Historical values for a single Object (convenience GET form)
-@query.get(
-    "/objects/{elementId}/history",
-    summary="Get Historical Values",
-    operation_id="getHistoricalValues",
-    response_model=SuccessResponse[HistoricalValueResult],
-    responses={206: {"model": SuccessResponse[HistoricalValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
-)
-def get_historical_values(
-    elementId: str = Path(...),
-    startTime: Optional[str] = Query(default=None, description="ISO 8601 start time"),
-    endTime: Optional[str] = Query(default=None, description="ISO 8601 end time"),
-    maxDepth: int = Query(default=1, ge=0, description="Recursion depth through HasComponent. 0=infinite, 1=no recursion"),
-    data_source=Depends(get_data_source),
-):
-    """Return historical values for a single Object. Optionally filter by time range."""
-    elementId = unquote(elementId)
-    instance = data_source.get_instance_by_id(elementId)
-    if not instance:
-        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
-
-    historical_values = data_source.get_instance_values_by_id(
-        elementId,
-        startTime,
-        endTime,
-        maxDepth,
-        returnHistory=True,
-    )
-    if not historical_values:
-        raise HTTPException(status_code=404, detail="No historical data available")
-
-    transformed, was_truncated = transform_value_result(elementId, historical_values, instance, is_history=True)
-    if transformed is None:
-        raise HTTPException(status_code=404, detail="No historical data available")
-
-    if was_truncated:
-        return JSONResponse(content={"success": True, "result": transformed}, status_code=206)
-    return {"success": True, "result": transformed}
-
-
 # RFC 4.2.2.1 - Object Element LastKnownValue update
-@update.put(
-    "/objects/{elementId}/value",
-    summary="Update Value of Object",
-    operation_id="updateObjectValue",
-    response_model=SuccessResponse[None],
-    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
+@update.post(
+    "/objects/value/update",
+    summary="Update Values of Objects",
+    operation_id="updateObjectValues",
+    response_model=BulkResponse[None],
+    responses={**BASE_ERROR_RESPONSES},
 )
-def update_object(
-    elementId: str = Path(...),
-    body: Any = Body(...),
+def update_object_values(
+    request_body: UpdateValueRequest,
     data_source=Depends(get_data_source),
 ):
-    """Update the value of an Object"""
-    if not data_source.get_instance_by_id(elementId):
-        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
-    try:
-        # Unwrap VQT body: {value, quality, timestamp} -> extract inner value
-        if isinstance(body, dict) and "value" in body:
-            value = body["value"]
-        else:
-            value = body
-        data_source.update_instance_value(elementId, value)
-        return success_response(None)
-    except Exception as e:
-        return error_response(str(e))
+    """
+    Update the current value of one or more Objects.
+
+    Request body: {"updates": [{"elementId": "...", "value": {...}}, ...]}
+
+    Returns bulk response with succeeded/failed per elementId.
+    """
+    results = []
+    for item in request_body.updates:
+        eid = unquote(item.elementId)
+        instance = data_source.get_instance_by_id(eid)
+        if not instance:
+            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
+            continue
+        try:
+            body = item.value
+            value = body["value"] if isinstance(body, dict) and "value" in body else body
+            data_source.update_instance_value(eid, value)
+            results.append({"success": True, "elementId": eid, "result": None})
+        except Exception as e:
+            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Error", "status": 500, "detail": str(e)}})
+    return bulk_response(results)
 
 
-# RFC 4.2.2.2 - Object Element HistoricalValue
-@update.put(
-    "/objects/{elementId}/history",
-    summary="Update Historical Values of Object",
+# RFC 4.2.2.2 - Object Element HistoricalValue update
+@update.post(
+    "/objects/history/update",
+    summary="Update Historical Values of Objects",
     operation_id="updateObjectHistory",
-    responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
+    responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **BASE_ERROR_RESPONSES},
 )
 def update_object_history(
-    elementId: str = Path(...),
+    request_body: UpdateHistoryRequest,
     data_source=Depends(get_data_source),
 ):
-    """Update the historical values for one or more Objects"""
+    """
+    Update historical values for one or more Objects.
+
+    Request body: {"updates": [{"elementId": "...", "value": {"value": ..., "quality": "...", "timestamp": "..."}}, ...]}
+    """
     raise HTTPException(status_code=501, detail="Operation not implemented")

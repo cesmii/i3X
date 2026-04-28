@@ -108,31 +108,24 @@ class HistoricalValue(BaseModel):
     )
 
 
-# RFC 4.2.2.1 - Object Element LastKnownValue
-class UpdateRequest(BaseModel):
-    elementIds: List[str]
-    values: List[Any]
+# RFC 4.2.2.1 - Object Element LastKnownValue update
+class ValueUpdateItem(BaseModel):
+    elementId: str = Field(..., description="The elementId of the Object to update")
+    value: Any = Field(..., description="The VQT value to write. Must conform to the Object's type schema.")
 
 
-# TODO: the RFC doesn't say what this should be
-class UpdateResult(BaseModel):
-    elementId: str
-    success: bool
-    message: str
+class UpdateValueRequest(BaseModel):
+    updates: List[ValueUpdateItem] = Field(..., description="Array of elementId/value pairs to write")
 
 
-# 4.2.2.2 Object Element HistoricalValue
-class HistoricalValueUpdate(BaseModel):
-    elementId: str
-    timestamp: str  # ISO8601 string
-    value: Any
+# RFC 4.2.2.2 - Object Element HistoricalValue update
+class HistoryUpdateItem(BaseModel):
+    elementId: str = Field(..., description="The elementId of the Object to update")
+    value: VQT = Field(..., description="The VQT value to write, including timestamp")
 
 
-class HistoricalUpdateResult(BaseModel):
-    elementId: str
-    timestamp: str
-    success: bool
-    message: str
+class UpdateHistoryRequest(BaseModel):
+    updates: List[HistoryUpdateItem] = Field(..., description="Array of elementId/value pairs to write")
 
 
 class CreateSubscriptionRequest(BaseModel):

@@ -132,8 +132,8 @@ Examples:
 // POST /subscriptions
 { "success": true, "result": { "subscriptionId": "Xf9q8wL1...", "displayName": "mySubscription" } }
 
-// PUT /objects/{elementId}/value (write succeeded)
-{ "success": true, "result": null }
+// POST /objects/value/update (write succeeded)
+{ "success": true, "results": [{ "success": true, "elementId": "pump-101", "result": null }] }
 ```
 
 ### Failure
@@ -510,8 +510,8 @@ Returns the server version and capabilities. Clients SHOULD call this endpoint b
 | `serverName`                    | string | No | Human-readable name for this server or deployment                  |
 | `capabilities`                       | object | Yes | Declares which optional features this server supports              |
 | `capabilities.query.history`         | boolean | Yes | True if `POST /objects/history` is supported                       |
-| `capabilities.update.current`        | boolean | Yes | True if `PUT /objects/{elementId}/value` is supported              |
-| `capabilities.update.history`        | boolean | Yes | True if `PUT /objects/{elementId}/history` is supported            |
+| `capabilities.update.current`        | boolean | Yes | True if `POST /objects/value/update` is supported              |
+| `capabilities.update.history`        | boolean | Yes | True if `POST /objects/history/update` is supported            |
 | `capabilities.subscribe.stream`      | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
 
 
@@ -1209,15 +1209,9 @@ It is the responsibility of the implementing platform to validate the input, inc
 
 ---
 
-#### `PUT` /objects/{elementId}/value
+#### `POST` /objects/value/update
 
-Update the value of an Object.
-
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `elementId` | string | Yes | The elementId of the Object to update |
+Update the current value of one or more Objects.
 
 **Request Body:**
 
@@ -1225,49 +1219,87 @@ The value to write in VQT format. The value will replace the current Object valu
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `value` | any | Yes | The data value to write. Must conform to the Object's type schema. `null` is permitted for nullable fields — see [Null Value Handling](#null-value-handling). |
-| `quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
-| `timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
+| `updates` | array | Yes | Array of elementId/value pairs to write |
+| `updates[].elementId` | string | Yes | The elementId of the Object to update |
+| `updates[].value` | object | Yes | The VQT value to write. `value` must conform to the Object's type schema. `null` is permitted for nullable fields — see [Null Value Handling](#null-value-handling). |
+| `updates[].value.value` | any | Yes | The data value to write |
+| `updates[].value.quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
+| `updates[].value.timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
 
 ```json
 {
-  "value": { "temperature": 20, "unit": "C" },
-  "quality": "Good",
-  "timestamp": "2025-01-08T10:30:00Z"
+  "updates": [
+    {
+      "elementId": "pump-101",
+      "value": {
+        "value": { "temperature": 20, "unit": "C" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z"
+      }
+    }
+  ]
 }
 ```
 
 **Response:**
 
+Returns a bulk response with a result per elementId.
+
 ```json
 {
   "success": true,
-  "result": null
+  "results": [
+    { "success": true, "elementId": "pump-101", "result": null },
+    { "success": false, "elementId": "bad-id", "problemDetail": { "title": "Not Found", "status": 404, "detail": "Element not found: bad-id" } }
+  ]
 }
 ```
 
 ---
 
-#### `PUT` /objects/{elementId}/history
+#### `POST` /objects/history/update
 
-Update historical values of an Object.
+Update historical values of one or more Objects.
 
-**Path Parameters:**
-
-| Name | Type | Required | Description |
-|------|------|----------|-------------|
-| `elementId` | string | Yes | The elementId of the Object to update |
+> **Note:** This endpoint is defined by the specification but not yet implemented by this server. It returns HTTP 501.
 
 **Request Body:**
 
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `updates` | array | Yes | Array of elementId/value pairs to write |
+| `updates[].elementId` | string | Yes | The elementId of the Object to update |
+| `updates[].value` | object | Yes | A VQT object. The `timestamp` field identifies which historical record to create or replace. |
+| `updates[].value.value` | any | Yes | The data value to write |
+| `updates[].value.quality` | string | Yes | Quality indicator |
+| `updates[].value.timestamp` | string | Yes | RFC 3339 timestamp of the historical record to write |
+
 ```json
-// TODO document this
+{
+  "updates": [
+    {
+      "elementId": "pump-101",
+      "value": {
+        "value": { "temperature": 19.5, "unit": "C" },
+        "quality": "Good",
+        "timestamp": "2025-01-07T08:00:00Z"
+      }
+    }
+  ]
+}
 ```
 
 **Response:**
 
+Returns a bulk response with a result per elementId.
+
 ```json
-// TODO document this
+{
+  "success": true,
+  "results": [
+    { "success": true, "elementId": "pump-101", "result": null }
+  ]
+}
 ```
 
 ---
