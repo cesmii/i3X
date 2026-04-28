@@ -108,6 +108,12 @@ class HistoricalValue(BaseModel):
     )
 
 
+class VQT(BaseModel):
+    value: Any
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
+
+
 # RFC 4.2.2.1 - Object Element LastKnownValue update
 class ValueUpdateItem(BaseModel):
     elementId: str = Field(..., description="The elementId of the Object to update")
@@ -285,12 +291,6 @@ class ObjectInstanceResponse(BaseModel):
 class RelatedObjectResult(BaseModel):
     sourceRelationship: str
     object: ObjectInstanceResponse
-
-
-class VQT(BaseModel):
-    value: Any
-    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
-    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
 
 
 class CurrentValueResult(BaseModel):
