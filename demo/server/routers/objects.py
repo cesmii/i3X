@@ -65,7 +65,7 @@ def query_objects_by_id(
             extra_attrs = data_source.get_instance_extra_attributes(eid_decoded)
             results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info, extra_attrs)})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -105,7 +105,7 @@ def query_related_objects(
                 })
             results.append({"success": True, "elementId": eid_decoded, "result": related_result})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -145,9 +145,9 @@ def query_last_known_values(
                     any_truncated = True
                 results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": "No value available"}})
+                results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": "No value available"}})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     response_body = bulk_response(results)
     if any_truncated:
@@ -192,9 +192,9 @@ def query_historical_values(
                     any_truncated = True
                 results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": "No historical data available"}})
+                results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": "No historical data available"}})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     response_body = bulk_response(results)
     if any_truncated:
@@ -226,13 +226,13 @@ def update_object_values(
         eid = unquote(item.elementId)
         instance = data_source.get_instance_by_id(eid)
         if not instance:
-            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
         try:
             data_source.update_instance_value(eid, item.value.value)
             results.append({"success": True, "elementId": eid, "result": None})
         except Exception as e:
-            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Error", "status": 500, "detail": str(e)}})
+            results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Error", "status": 500, "detail": str(e)}})
     return bulk_response(results)
 
 

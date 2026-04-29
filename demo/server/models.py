@@ -241,7 +241,7 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     success: bool = False
-    problemDetail: ErrorDetail
+    responseDetail: ErrorDetail
 
 
 class SuccessResponse(BaseModel, Generic[T]):
@@ -254,7 +254,7 @@ class BulkResultItem(BaseModel, Generic[T]):
     elementId: Optional[str] = None
     subscriptionId: Optional[str] = None
     result: Optional[T] = None
-    problemDetail: Optional[ErrorDetail] = None
+    responseDetail: Optional[ErrorDetail] = None
 
 
 class BulkResponse(BaseModel, Generic[T]):

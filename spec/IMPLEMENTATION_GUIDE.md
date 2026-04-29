@@ -118,10 +118,26 @@ Successful responses return an HTTP 200 with the following shape. Note the `resu
 }
 ```
 
+Success responses (HTTP 2xx, including partial success) MAY include `responseDetail` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) - Problem Details for HTTP APIs) to convey informational context: 
+```json
+{
+  "success": true,
+  "result": <data>,
+  "responseDetail": {
+    "title": <title>,
+    "status": 2xx,
+    "detail": <detail>
+  }
+}
+```
+
 | Field                           | Type    | Required | Description                                                 |
 |---------------------------------|---------|----------|-------------------------------------------------------------|
 | `success`                       | boolean | Yes      | True if the request is successful. HTTP return must be 200. |
-| `result`                        | any     | Yes      | Endpoint specific result.                                   |
+| `result`                        | any     | Yes      | Endpoint specific result. 
+| `responseDetail.title`    | string  | No      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
+| `responseDetail.status`   | number  | No      | The HTTP status code.                                                   |
+| `responseDetail.detail`   | string  | No      | Human-readable explanation specific to this occurrence.                 |
 
 Examples:
 
@@ -134,36 +150,44 @@ Examples:
 
 // PUT /objects/value (write succeeded)
 { "success": true, "results": [{ "success": true, "elementId": "pump-101", "result": null }] }
+
+// POST /subscriptions/sync (overflow occurred, POST returns HTTP 206 Partial Content)
+{
+  "success": true, "result": [...], "responseDetail": { "title": "Partial results returned", "status": 206, "detail": "Result set was truncated due to server-imposed depth limits." }
+}
 ```
 
 ### Failure
 
-Failures return an HTTP error code with the following shape. The `problemDetail` object follows [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs).
+Failures return an HTTP error code with the following shape. The `responseDetail` object follows [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs) and communicates additional context about a response. It MUST be present on failure responses.
 
 ```json
 {
   "success": false,
-  "problemDetail": {
+  "responseDetail": {
     "title": "Not Found",
     "status": 404,
     "detail": "Element not found: pump-101"
   }
 }
-```
-
 | Field                    | Type    | Required | Description                                                             |
 |--------------------------|---------|----------|-------------------------------------------------------------------------|
 | `success`                | boolean | Yes      | `false` for any error response.                                         |
-| `problemDetail.title`    | string  | Yes      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
-| `problemDetail.status`   | number  | Yes      | The HTTP status code.                                                   |
-| `problemDetail.detail`   | string  | Yes      | Human-readable explanation specific to this occurrence.                 |
+
+| `responseDetail.title`    | string  | Yes      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
+| `responseDetail.status`   | number  | Yes      | The HTTP status code.                                                   |
+| `responseDetail.detail`   | string  | Yes      | Human-readable explanation specific to this occurrence.                 |
+
+Failures (`success: false`) MUST include `responseDetail`:
+
+```
 
 The following HTTP status codes are used.
 
 | Code | Meaning | When to Use |
 |------|---------|-------------|
 | 200 | OK | Successful request |
-| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits. The response body includes a top-level `problemDetail` object. |
+| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits. The response body includes a top-level `responseDetail` object. |
 | 400 | Bad Request | Invalid parameters, malformed request body, or request the server cannot fulfill at all |
 | 401 | Unauthorized | Missing or invalid authentication |
 | 403 | Forbidden | Authenticated but not authorized |
@@ -175,7 +199,7 @@ Examples:
 
 ```json
 // GET /namespaces
-{ "success": false, "problemDetail": { "title": "Unauthorized", "status": 401, "detail": "User does not have access" }}
+{ "success": false, "responseDetail": { "title": "Unauthorized", "status": 401, "detail": "User does not have access" }}
 ```
 
 ### Bulk Response
@@ -196,7 +220,7 @@ The Server's response MUST be in the same order and the same size as the request
     {
       "success": false,
       "elementId": "non-existent",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Element not found: non-existent"
@@ -621,7 +645,7 @@ Returns one or more Object Types given a collection of elementIds.
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Object type not found: string"
@@ -710,7 +734,7 @@ Returns one or more Relationship Types given a collection of elementIds.
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Relationship type not found: string"
@@ -838,7 +862,7 @@ Returns one or more Objects without data/values given a collection of elementIds
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Element not found: string"
@@ -878,7 +902,7 @@ Returns one or more Objects without data/values given a collection of elementIds
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Element not found: string"
@@ -943,7 +967,7 @@ Returns a bulk response with the related Objects for each queried elementId.
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Element not found: string"
@@ -1099,7 +1123,7 @@ Returns the last known value for one or more Objects.
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Element not found: string"
@@ -1184,7 +1208,7 @@ Returns the historical values for one or more Objects between a start and end ti
     {
       "success": false,
       "elementId": "string",
-      "problemDetail": {
+      "responseDetail": {
         "title": "Not Found",
         "status": 404,
         "detail": "Element not found: string"
@@ -1250,7 +1274,7 @@ Returns a bulk response with a result per elementId.
   "success": true,
   "results": [
     { "success": true, "elementId": "pump-101", "result": null },
-    { "success": false, "elementId": "bad-id", "problemDetail": { "title": "Not Found", "status": 404, "detail": "Element not found: bad-id" } }
+    { "success": false, "elementId": "bad-id", "responseDetail": { "title": "Not Found", "status": 404, "detail": "Element not found: bad-id" } }
   ]
 }
 ```
@@ -1611,7 +1635,7 @@ This approach ensures updates are not lost if the client crashes between receivi
 
 Servers maintain a queue for each subscription. When the queue is full and a new update arrives, the server MUST drop the oldest pending update to make room. If a client polls infrequently relative to the rate of change, it may miss updates.
 
-When the server has dropped updates since the client's last acknowledged sequence number, it MUST return **HTTP 206 (Partial Content)**. The response body has the same shape as a normal 200, with one addition: a `problemDetail` object:
+When the server has dropped updates since the client's last acknowledged sequence number, it MUST return **HTTP 206 (Partial Content)**. The response body has the same shape as a normal 200, with one addition: a `responseDetail` object:
 
 ```json
 HTTP 206
@@ -1620,7 +1644,7 @@ HTTP 206
   "result": [
     {"sequenceNumber": 151, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
   ],
-  "problemDetail": {
+  "responseDetail": {
     "title": "Updates dropped due to queue overflow",
     "status": 206,
     "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
@@ -1700,7 +1724,7 @@ All subsequent calls (ack previous batch, fetch new):
   "result": [
     {"sequenceNumber": 151, "elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
   ],
-  "problemDetail": {
+  "responseDetail": {
     "title": "Updates dropped due to queue overflow",
     "status": 206,
     "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."

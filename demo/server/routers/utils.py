@@ -5,7 +5,7 @@ from models import ErrorResponse
 
 # Shared response schema dicts for use in route decorators
 BASE_ERROR_RESPONSES = {
-    "default": {"model": ErrorResponse, "description": "Error — see problemDetail.code for the HTTP status code (400, 401, 403, 404, 500, etc.)"},
+    "default": {"model": ErrorResponse, "description": "Error — see responseDetail.code for the HTTP status code (400, 401, 403, 404, 500, etc.)"},
 }
 
 NOT_FOUND_RESPONSE = {
@@ -39,7 +39,7 @@ _HTTP_TITLES = {
 
 def error_response(detail, status=500):
     title = _HTTP_TITLES.get(status, "Error")
-    return {"success": False, "problemDetail": {"title": title, "status": status, "detail": detail}}
+    return {"success": False, "responseDetail": {"title": title, "status": status, "detail": detail}}
 
 
 def bulk_response(results):

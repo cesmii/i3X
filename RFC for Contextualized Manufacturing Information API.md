@@ -309,7 +309,7 @@ If no elements have changed since the last Sync call, the response MUST be an em
 
 Each update in the queue carries a monotonically increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the implementation MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the implementation MUST NOT clear the queue. The implementation must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
 
-When the server drops updates due to queue limits, it MUST signal data loss to the client by returning HTTP 206 (Partial Content) instead of HTTP 200. The response body MUST use `"success": true` with the standard `result` payload and an additional top-level `problemDetail` object. The `problemDetail` object MUST include the following fields:
+When the server drops updates due to queue limits, it MUST signal data loss to the client by returning HTTP 206 (Partial Content) instead of HTTP 200. The response body MUST use `"success": true` with the standard `result` payload and an additional top-level `responseDetail` object. The `responseDetail` object MUST include the following fields:
 - `title`: a short human-readable summary of the problem
 - `status`: the HTTP status code (206)
 - `detail`: a human-readable explanation of what was lost and why
@@ -342,17 +342,21 @@ All responses MUST be wrapped in a standard envelope. Successful single-item res
 ```
 Successful bulk responses (accepting an array of ElementIds) MUST use a `results` array with per-item success or failure indicated inline:
 ```json
-{ "success": false, "results": [ { "success": true, "elementId": "...", "result": <data> }, { "success": false, "elementId": "...", "problemDetail": { "title": "Not Found", "status": 404, "detail": "..." } } ] }
+{ "success": false, "results": [ { "success": true, "elementId": "...", "result": <data> }, { "success": false, "elementId": "...", "responseDetail": { "title": "Not Found", "status": 404, "detail": "..." } } ] }
 ```
-The top-level `success` is `false` if any item in a bulk response failed. Failure responses MUST use:
+The top-level `success` is `false` if any item in a bulk response failed. Failure responses MUST include a top-level `responseDetail` object:
 ```json
-{ "success": false, "problemDetail": { "title": "<summary>", "status": <HTTP status code>, "detail": "<description>" } }
+{ "success": false, "responseDetail": { "title": "<summary>", "status": <HTTP status code>, "detail": "<description>" } }
 ```
-Partial success responses (HTTP 206) MUST use `"success": true` with the standard `result` payload and an additional top-level `problemDetail` object:
+Partial success responses (HTTP 206) MUST use `"success": true` with the standard `result` payload and MUST include a top-level `responseDetail` object:
 ```json
-{ "success": true, "result": <data>, "problemDetail": { "title": "<summary>", "status": 206, "detail": "<description>" } }
+{ "success": true, "result": <data>, "responseDetail": { "title": "<summary>", "status": 206, "detail": "<description>" } }
 ```
-Error objects MUST follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs), and include the following fields:
+Success responses (HTTP 2xx) MAY include a top-level `responseDetail` object to convey additional context without indicating failure:
+```json
+{ "success": true, "result": <data>, "responseDetail": { "title": "<summary>", "status": 200, "detail": "<informational context>" } }
+```
+The `responseDetail` object MUST follow [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs), and include the following fields:
  - `title` is a short human-readable summary of the problem type
  - `status` is the HTTP status code
  - `detail` is a human-readable explanation specific to this occurrence
