@@ -170,19 +170,15 @@ Failures return an HTTP error code with the following shape. The `responseDetail
     "detail": "Element not found: pump-101"
   }
 }
+```
 | Field                    | Type    | Required | Description                                                             |
 |--------------------------|---------|----------|-------------------------------------------------------------------------|
 | `success`                | boolean | Yes      | `false` for any error response.                                         |
-
 | `responseDetail.title`    | string  | Yes      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
 | `responseDetail.status`   | number  | Yes      | The HTTP status code.                                                   |
 | `responseDetail.detail`   | string  | Yes      | Human-readable explanation specific to this occurrence.                 |
 
-Failures (`success: false`) MUST include `responseDetail`:
-
-```
-
-The following HTTP status codes are used.
+The following HTTP status codes are used:
 
 | Code | Meaning | When to Use |
 |------|---------|-------------|
