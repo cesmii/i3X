@@ -1,12 +1,14 @@
-from fastapi import APIRouter, Path, Query, HTTPException, Body, Depends
+from fastapi import APIRouter, Query, HTTPException, Depends
 from fastapi.responses import JSONResponse
-from typing import Optional, Any, List
+from typing import Optional, List
 from urllib.parse import unquote
 from models import (
     GetObjectsRequest,
     GetRelatedObjectsRequest,
     GetObjectValueRequest,
     GetObjectHistoryRequest,
+    UpdateValueRequest,
+    UpdateHistoryRequest,
     SuccessResponse,
     BulkResponse,
     ErrorResponse,
@@ -15,7 +17,7 @@ from models import (
     CurrentValueResult,
     HistoricalValueResult,
 )
-from .utils import getObject, success_response, error_response, bulk_response, transform_value_result, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE, PARTIAL_CONTENT_DESCRIPTION
+from .utils import getObject, success_response, bulk_response, transform_value_result, get_data_source, BASE_ERROR_RESPONSES, PARTIAL_CONTENT_DESCRIPTION
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
@@ -63,7 +65,7 @@ def query_objects_by_id(
             extra_attrs = data_source.get_instance_extra_attributes(eid_decoded)
             results.append({"success": True, "elementId": eid_decoded, "result": getObject(instance, request_body.includeMetadata, type_info, extra_attrs)})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -103,7 +105,7 @@ def query_related_objects(
                 })
             results.append({"success": True, "elementId": eid_decoded, "result": related_result})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     return bulk_response(results)
 
@@ -143,9 +145,9 @@ def query_last_known_values(
                     any_truncated = True
                 results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": "No value available"}})
+                results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": "No value available"}})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     response_body = bulk_response(results)
     if any_truncated:
@@ -190,9 +192,9 @@ def query_historical_values(
                     any_truncated = True
                 results.append({"success": True, "elementId": eid_decoded, "result": transformed})
             else:
-                results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": "No historical data available"}})
+                results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": "No historical data available"}})
         else:
-            results.append({"success": False, "elementId": eid_decoded, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
+            results.append({"success": False, "elementId": eid_decoded, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid_decoded}"}})
 
     response_body = bulk_response(results)
     if any_truncated:
@@ -200,84 +202,54 @@ def query_historical_values(
     return response_body
 
 
-# RFC 4.2.1.2 - Historical values for a single Object (convenience GET form)
-@query.get(
-    "/objects/{elementId}/history",
-    summary="Get Historical Values",
-    operation_id="getHistoricalValues",
-    response_model=SuccessResponse[HistoricalValueResult],
-    responses={206: {"model": SuccessResponse[HistoricalValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
-)
-def get_historical_values(
-    elementId: str = Path(...),
-    startTime: Optional[str] = Query(default=None, description="ISO 8601 start time"),
-    endTime: Optional[str] = Query(default=None, description="ISO 8601 end time"),
-    maxDepth: int = Query(default=1, ge=0, description="Recursion depth through HasComponent. 0=infinite, 1=no recursion"),
-    data_source=Depends(get_data_source),
-):
-    """Return historical values for a single Object. Optionally filter by time range."""
-    elementId = unquote(elementId)
-    instance = data_source.get_instance_by_id(elementId)
-    if not instance:
-        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
-
-    historical_values = data_source.get_instance_values_by_id(
-        elementId,
-        startTime,
-        endTime,
-        maxDepth,
-        returnHistory=True,
-    )
-    if not historical_values:
-        raise HTTPException(status_code=404, detail="No historical data available")
-
-    transformed, was_truncated = transform_value_result(elementId, historical_values, instance, is_history=True)
-    if transformed is None:
-        raise HTTPException(status_code=404, detail="No historical data available")
-
-    if was_truncated:
-        return JSONResponse(content={"success": True, "result": transformed}, status_code=206)
-    return {"success": True, "result": transformed}
-
-
 # RFC 4.2.2.1 - Object Element LastKnownValue update
 @update.put(
-    "/objects/{elementId}/value",
-    summary="Update Value of Object",
-    operation_id="updateObjectValue",
-    response_model=SuccessResponse[None],
-    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
+    "/objects/value",
+    summary="Update Values of Objects",
+    operation_id="updateObjectValues",
+    response_model=BulkResponse[None],
+    responses={**BASE_ERROR_RESPONSES},
 )
-def update_object(
-    elementId: str = Path(...),
-    body: Any = Body(...),
+def update_object_values(
+    request_body: UpdateValueRequest,
     data_source=Depends(get_data_source),
 ):
-    """Update the value of an Object"""
-    if not data_source.get_instance_by_id(elementId):
-        raise HTTPException(status_code=404, detail=f"Element not found: {elementId}")
-    try:
-        # Unwrap VQT body: {value, quality, timestamp} -> extract inner value
-        if isinstance(body, dict) and "value" in body:
-            value = body["value"]
-        else:
-            value = body
-        data_source.update_instance_value(elementId, value)
-        return success_response(None)
-    except Exception as e:
-        return error_response(str(e))
+    """
+    Update the current value of one or more Objects.
+
+    Request body: {"updates": [{"elementId": "...", "value": {...}}, ...]}
+
+    Returns bulk response with succeeded/failed per elementId.
+    """
+    results = []
+    for item in request_body.updates:
+        eid = unquote(item.elementId)
+        instance = data_source.get_instance_by_id(eid)
+        if not instance:
+            results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
+            continue
+        try:
+            data_source.update_instance_value(eid, item.value.value)
+            results.append({"success": True, "elementId": eid, "result": None})
+        except Exception as e:
+            results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Error", "status": 500, "detail": str(e)}})
+    return bulk_response(results)
 
 
-# RFC 4.2.2.2 - Object Element HistoricalValue
+# RFC 4.2.2.2 - Object Element HistoricalValue update
 @update.put(
-    "/objects/{elementId}/history",
-    summary="Update Historical Values of Object",
+    "/objects/history",
+    summary="Update Historical Values of Objects",
     operation_id="updateObjectHistory",
-    responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
+    responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **BASE_ERROR_RESPONSES},
 )
 def update_object_history(
-    elementId: str = Path(...),
+    request_body: UpdateHistoryRequest,
     data_source=Depends(get_data_source),
 ):
-    """Update the historical values for one or more Objects"""
+    """
+    Update historical values for one or more Objects.
+
+    Request body: {"updates": [{"elementId": "...", "value": {"value": ..., "quality": "...", "timestamp": "..."}}, ...]}
+    """
     raise HTTPException(status_code=501, detail="Operation not implemented")

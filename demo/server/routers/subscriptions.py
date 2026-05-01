@@ -111,7 +111,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
@@ -142,7 +142,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
 
     for eid in req.elementIds:
         if not data_source.get_instance_by_id(eid):
-            results.append({"success": False, "elementId": eid, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
+            results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
         tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
         for item in tree:
@@ -250,7 +250,7 @@ def sync_subscription(request: Request, req: SyncRequest):
         body = {
             "success": True,
             "result": updates,
-            "problemDetail": {
+            "responseDetail": {
                 "title": "Updates dropped due to queue overflow",
                 "status": 206,
                 "detail": (
@@ -292,7 +292,7 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
             request.app.state.I3X_DATA_SUBSCRIPTIONS.pop(index)
             results.append({"success": True, "subscriptionId": sub_id, "result": None})
         else:
-            results.append({"success": False, "subscriptionId": sub_id, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Subscription not found: {sub_id}"}})
 
     return bulk_response(results)
 
@@ -322,7 +322,7 @@ def list_subscriptions(request: Request, req: ListSubscriptionsRequest):
                 },
             })
         else:
-            results.append({"success": False, "subscriptionId": sub_id, "problemDetail": {"title": "Not Found", "status": 404, "detail": f"Subscription not found: {sub_id}"}})
+            results.append({"success": False, "subscriptionId": sub_id, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Subscription not found: {sub_id}"}})
 
     return bulk_response(results)
 

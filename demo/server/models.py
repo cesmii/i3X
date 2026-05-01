@@ -108,31 +108,37 @@ class HistoricalValue(BaseModel):
     )
 
 
-# RFC 4.2.2.1 - Object Element LastKnownValue
-class UpdateRequest(BaseModel):
-    elementIds: List[str]
-    values: List[Any]
-
-
-# TODO: the RFC doesn't say what this should be
-class UpdateResult(BaseModel):
-    elementId: str
-    success: bool
-    message: str
-
-
-# 4.2.2.2 Object Element HistoricalValue
-class HistoricalValueUpdate(BaseModel):
-    elementId: str
-    timestamp: str  # ISO8601 string
+class VQT(BaseModel):
     value: Any
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
 
 
-class HistoricalUpdateResult(BaseModel):
-    elementId: str
-    timestamp: str
-    success: bool
-    message: str
+class VQTInput(BaseModel):
+    """VQT for write requests — quality and timestamp are optional (server supplies defaults)."""
+    value: Any
+    quality: Optional[str] = Field(default="Good", description="Data quality indicator. Defaults to 'Good' if omitted.")
+    timestamp: Optional[str] = Field(default=None, description="RFC 3339 timestamp. Defaults to server time if omitted.")
+
+
+# RFC 4.2.2.1 - Object Element LastKnownValue update
+class ValueUpdateItem(BaseModel):
+    elementId: str = Field(..., description="The elementId of the Object to update")
+    value: VQTInput = Field(..., description="The VQT value to write. Must conform to the Object's type schema.")
+
+
+class UpdateValueRequest(BaseModel):
+    updates: List[ValueUpdateItem] = Field(..., description="Array of elementId/value pairs to write")
+
+
+# RFC 4.2.2.2 - Object Element HistoricalValue update
+class HistoryUpdateItem(BaseModel):
+    elementId: str = Field(..., description="The elementId of the Object to update")
+    value: VQT = Field(..., description="The VQT value to write, including timestamp")
+
+
+class UpdateHistoryRequest(BaseModel):
+    updates: List[HistoryUpdateItem] = Field(..., description="Array of elementId/value pairs to write")
 
 
 class CreateSubscriptionRequest(BaseModel):
@@ -235,7 +241,7 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     success: bool = False
-    problemDetail: ErrorDetail
+    responseDetail: ErrorDetail
 
 
 class SuccessResponse(BaseModel, Generic[T]):
@@ -248,7 +254,7 @@ class BulkResultItem(BaseModel, Generic[T]):
     elementId: Optional[str] = None
     subscriptionId: Optional[str] = None
     result: Optional[T] = None
-    problemDetail: Optional[ErrorDetail] = None
+    responseDetail: Optional[ErrorDetail] = None
 
 
 class BulkResponse(BaseModel, Generic[T]):
@@ -292,12 +298,6 @@ class ObjectInstanceResponse(BaseModel):
 class RelatedObjectResult(BaseModel):
     sourceRelationship: str
     object: ObjectInstanceResponse
-
-
-class VQT(BaseModel):
-    value: Any
-    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
-    timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
 
 
 class CurrentValueResult(BaseModel):
