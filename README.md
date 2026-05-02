@@ -4,7 +4,7 @@
 
 **i3X is in a _1.0 Release Candidate_ state.**
 
-> **This branch represents the _current state_ of the effort to establish a 1.0 specification. It contains breaking changes from the Alpha (Community Preview) branch released February 2026!**
+> **This branch represents the _current state_ of the effort to establish a 1.0 specification. It contains breaking changes from the Beta branch released April 2026! See the [CHANGELOG.md](CHANGELOG.md) for the deltas from the Beta.**
 
 The API definition is now largely stable, with only minor changes to response payloads and subscription API signatures expected through Q2 of 2026. If you want to help, please see [Contributing.md](https://github.com/cesmii/i3X/blob/1.0-Beta/Contributing.md).
 
