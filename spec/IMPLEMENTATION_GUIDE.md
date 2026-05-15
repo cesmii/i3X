@@ -1672,6 +1672,7 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 - Each queued update includes a `sequenceNumber`
 - If `lastSequenceNumber` is provided, the server removes all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
 - Server MUST NOT clear the queue if `lastSequenceNumber` is omitted
+- Server MUST clear the queue if `lastSequenceNumber=-1` is provided, acknowledging all pending updates
 - Clients SHOULD omit `lastSequenceNumber` only on the first call, when there is nothing yet to acknowledge
 - Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
 
