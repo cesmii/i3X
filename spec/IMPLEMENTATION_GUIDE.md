@@ -30,13 +30,15 @@ This document is a working draft, and should not be considered complete or norma
   - [Relationship Type Endpoints](#relationship-type-endpoints)
   - [Object Endpoints](#object-endpoints)
 - [Query Methods](#query-methods)
+  - [Null Value Handling](#null-value-handling)
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
   - [Subscriptions](#subscriptions)
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
-    - [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses)
+    - [Sync Examples](#sync-examples)
+    - [Sync Data Loss](#sync-data-loss)
   - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
@@ -66,7 +68,7 @@ Below are the required capabilities for all i3X compliant Clients and Servers.
   * MUST support all [Exploratory Methods](#exploratory-methods)
 * Query
   * MUST support Current Value (`objects/value`) as defined in [Query Methods](#query-methods)
-  * MAY support History Value (`objects/history`)
+  * MUST support History Value (`objects/history`) — see note in [Query Methods](#query-methods)
 * Update
   * MAY support [Update Methods](#update-methods)
 * Subscribe
@@ -1004,7 +1006,7 @@ Values in i3X have the following definition.
 |-------|------|----------|-------------|
 | `value` | any | Yes | The actual data value (any JSON type) |
 | `quality` | string | Yes | Data quality indicator |
-| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times must be UTC with no timezone offset. |
+| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times MUST be UTC with no timezone offset. Fractional seconds are supported: `"2025-01-08T10:30:00.123456Z"`. |
 
 
 | Quality | Description | When to Use |
@@ -1160,9 +1162,10 @@ Returns the last known value for one or more Objects.
 
 #### `POST` /objects/history
 
-Returns the historical values for one or more Objects between a start and end time.
+> **Implementation note:** Not all implementations are required to become Historians; the intent is that whatever history the underlying platform already retains should be accessible through a consistent interface. A Historian, a cache, or no history at all should be accessed the same way.
+A server whose platform stores no history SHOULD still implement this endpoint and return `GoodNoData` for the requested range. Use `GET /info` `capabilities.query.history` to advertise whether historical data is available.
 
-[TODO] - Sync reponse with v0.1.2
+Returns the historical values for one or more Objects between a start and end time.
 
 **Request Body:**
 
@@ -1281,7 +1284,7 @@ Returns a bulk response with a result per elementId.
 
 Update historical values of one or more Objects.
 
-> **Note:** This endpoint is defined by the specification but not yet implemented by this server. It returns HTTP 501.
+> **Implementation note:** As with query history, implementations are not expected become Historians if they don't already have this capabilitiy. This endpoint allows clients to write historical records into whatever persistence the underlying platform supports. Servers whose platform does not support historical writes SHOULD return HTTP 501.
 
 **Request Body:**
 

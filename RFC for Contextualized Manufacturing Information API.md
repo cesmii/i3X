@@ -215,7 +215,7 @@ When the LastKnownValue interface is invoked with an array of ElementIds, the re
 
 ##### 4.2.1.2 Object Element HistoricalValue
 
-When invoked as a Query, the HistoricalValue interface MUST return an array of historical values in a time range available in the contextualized information platform for the requested object, by ElementId.
+When invoked as a Query, the HistoricalValue interface MUST return an array of historical values in any time range that is available in the contextualized information platform for the requested object, by ElementId.
 
 When invoked as a Query, the HistoricalValue interface MAY support an array of requested object ElementIds to reduce round-trips where multiple values are required by an application, in which case, the return payload MUST be an array of arrays.
 
@@ -262,7 +262,7 @@ The implementation will publish messages to subscribed clients as the data becom
 
 ###### Sync: At Least Once
 
-The server queues updates as they occur, each assigned a monotonically increasing sequence number. The client polls to receive pending updates and acknowledges receipt by providing the highest sequence number processed. The server removes acknowledged updates and returns any remaining queue in the same call. Servers SHOULD queue updates FIFO and MAY drop the oldest updates when a server-imposed queue limit is reached.
+The server queues updates as they occur, each assigned an increasing sequence number. The client polls to receive pending updates and acknowledges receipt by providing the highest sequence number processed. The server removes acknowledged updates and returns any remaining queue in the same call. Servers SHOULD queue updates FIFO and MAY drop the oldest updates when a server-imposed queue limit is reached.
 
 Implementations MUST also support listing existing subscriptions by ID and deleting subscriptions to release server resources.
 
@@ -300,14 +300,14 @@ This method is used only for sync subscriptions, and is called with a specific S
 
 When servicing the Sync call, the implementation MUST respond with an array of updates for elements that have changed since the last Sync call. Each update in the response array MUST include:
 - elementId: the ElementId of the changed element
-- sequenceNumber: the monotonically increasing sequence number assigned to this update
+- sequenceNumber: the increasing sequence number assigned to this update
 - value: the new value (with recursive structure if maxDepth was specified during registration)
 - quality: the quality indicator
 - timestamp: the timestamp of the change
 
 If no elements have changed since the last Sync call, the response MUST be an empty array.
 
-Each update in the queue carries a monotonically increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the implementation MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the implementation MUST NOT clear the queue. The implementation must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
+Each update in the queue carries an increasing `sequenceNumber`. The client MAY include a `lastSequenceNumber` in the Sync call to acknowledge all updates with a sequence number at or below that value; the implementation MUST remove those acknowledged updates before returning the remaining queue. If `lastSequenceNumber` is omitted the implementation MUST NOT clear the queue. The implementation must maintain state for all pending (un-acknowledged) updates, subject to server-imposed queue limits.
 
 When the server drops updates due to queue limits, it MUST signal data loss to the client by returning HTTP 206 (Partial Content) instead of HTTP 200. The response body MUST use `"success": true` with the standard `result` payload and an additional top-level `responseDetail` object. The `responseDetail` object MUST include the following fields:
 - `title`: a short human-readable summary of the problem
