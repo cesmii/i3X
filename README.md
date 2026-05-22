@@ -2,11 +2,11 @@
 
 ## Status of This Effort
 
-**i3X is in a _Beta_ state.**
+This is an archive of i3X in its Beta state. Please migrate to 1.0-RC.
 
-> **This branch represents the April 2026 _Beta_ and is kept stable to support community engagement. It contains breaking changes from the Alpha (Community Preview) branch released February 2026!**
+> **This branch represents the April 2026 _Beta_ and is kept stable to support community engagement!**
 
-The API definition is now largely stable, with only minor changes to response payloads and subscription API signatures expected through Q2 of 2026. To see the latest, please switch to the 1.0-WIP branch. If you want to help, please see [Contributing.md](https://github.com/cesmii/i3X/blob/1.0-Beta/Contributing.md).
+The API definition is now largely stable, with only minor changes to response payloads and subscription API signatures expected through Q2 of 2026. To see the latest, please switch to the 1.0-RC branch.
 
 ## What is i3X?
 
