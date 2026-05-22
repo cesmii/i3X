@@ -313,13 +313,17 @@ class HistoricalValueResult(BaseModel):
     values: List[VQT] = Field(..., description="Ordered array of VQT objects for the requested time range")
 
 
-class SyncUpdate(BaseModel):
+class SyncUpdateEntry(BaseModel):
     model_config = ConfigDict(extra='allow')
-    sequenceNumber: int
     elementId: str
     value: Any
     quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
     timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
+
+
+class SyncBatch(BaseModel):
+    sequenceNumber: int
+    updates: List[SyncUpdateEntry]
 
 
 class SubscriptionDetail(BaseModel):

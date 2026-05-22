@@ -30,13 +30,15 @@ This document is a working draft, and should not be considered complete or norma
   - [Relationship Type Endpoints](#relationship-type-endpoints)
   - [Object Endpoints](#object-endpoints)
 - [Query Methods](#query-methods)
+  - [Null Value Handling](#null-value-handling)
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
   - [Subscriptions](#subscriptions)
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
-    - [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses)
+    - [Sync Examples](#sync-examples)
+    - [Sync Data Loss](#sync-data-loss)
   - [Subscription Life Cycle](#subscription-life-cycle)
 - [Appendix](#appendix-for-now)
   - [Relationship Semantics](#relationship-semantics)
@@ -66,13 +68,13 @@ Below are the required capabilities for all i3X compliant Clients and Servers.
   * MUST support all [Exploratory Methods](#exploratory-methods)
 * Query
   * MUST support Current Value (`objects/value`) as defined in [Query Methods](#query-methods)
-  * MAY support History Value (`objects/history`)
+  * MUST support History Value (`objects/history`) — see note in [Query Methods](#query-methods)
 * Update
   * MAY support [Update Methods](#update-methods)
 * Subscribe
   * MUST support base [Subscribe Methods](#subscribe-methods) (create, delete, list, register objects, unregister objects)
   * MUST support Sync (`/subscriptions/sync`)
-  * SHOULD support Stream (`/subscriptions/stream`)
+  * MAY support Stream (`/subscriptions/stream`)
   
 ## Transport & Encoding
 
@@ -1004,7 +1006,7 @@ Values in i3X have the following definition.
 |-------|------|----------|-------------|
 | `value` | any | Yes | The actual data value (any JSON type) |
 | `quality` | string | Yes | Data quality indicator |
-| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times must be UTC with no timezone offset. |
+| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times MUST be UTC with no timezone offset. Fractional seconds are supported: `"2025-01-08T10:30:00.123456Z"`. |
 
 
 | Quality | Description | When to Use |
@@ -1160,9 +1162,10 @@ Returns the last known value for one or more Objects.
 
 #### `POST` /objects/history
 
-Returns the historical values for one or more Objects between a start and end time.
+> **Implementation note:** Not all implementations are required to become Historians; the intent is that whatever history the underlying platform already retains should be accessible through a consistent interface. A Historian, a cache, or no history at all should be accessed the same way.
+A server whose platform stores no history SHOULD still implement this endpoint and return `GoodNoData` for the requested range. Use `GET /info` `capabilities.query.history` to advertise whether historical data is available.
 
-[TODO] - Sync reponse with v0.1.2
+Returns the historical values for one or more Objects between a start and end time.
 
 **Request Body:**
 
@@ -1281,7 +1284,7 @@ Returns a bulk response with a result per elementId.
 
 Update historical values of one or more Objects.
 
-> **Note:** This endpoint is defined by the specification but not yet implemented by this server. It returns HTTP 501.
+> **Implementation note:** As with query history, implementations are not expected become Historians if they don't already have this capabilitiy. This endpoint allows clients to write historical records into whatever persistence the underlying platform supports. Servers whose platform does not support historical writes SHOULD return HTTP 501.
 
 **Request Body:**
 
@@ -1326,15 +1329,18 @@ Returns a bulk response with a result per elementId.
 
 ## Subscribe Methods
 
-Subscriptions allow clients to receive value changes in real-time for objects they are interested in. Subscriptions support two delivery modes:
+Subscriptions allow clients to receive the most recent values of objects they are interested in. Subscriptions support two delivery modes:
 
-| Mode | Description |
-|------|-------------|
-| **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
-| **sync** | Value changes are queued and delivered when the client calls the sync API. |
+| Mode | Required | Description |
+|------|----------|-------------|
+| **sync** | MUST | Clients poll for batched updates; the server acknowledges delivery for high Quality of Service. |
+| **streaming** | MAY | The server pushes updates as they occur using SSE for low Quality of Service. |
 
-Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered and acknowledge delivery. The following
-sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
+Sync is the baseline delivery mode and MUST be supported by all servers. Streaming MAY be supported when the underlying data source provides real-time push notifications; see the note in the [Streaming](#streaming) section.
+
+> **Implementation note for non-real-time sources:** Servers backed by a historian, database, or other non-push data source MAY satisfy the sync requirement by reading the most recent value for each registered object at the time `/sync` is called, rather than maintaining a live change queue. The response format is identical — only the update granularity differs. Clients will observe the latest available value on each sync call, but intermediate changes between calls may not be captured.
+
+The following sections describe common methods to set up and configure a subscription, followed by more details on the stream and sync modes.
 
 ### Subscriptions
 
@@ -1499,7 +1505,7 @@ Register one or more Objects with a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to register items with. |
 | `elementIds` | string[] | Yes | One or more elementIds to register. |
-| `maxDepth` | integer | No | Controls recursion depth. [TODO] - MGP explain how maxDepth works. Similar to values, where it only follows hasComponent relationships? |
+| `maxDepth` | integer | No | Controls recursion depth. See [maxDepth](#maxdepth-parameter-semantics) for more detail. |
 
 **Response:**
 
@@ -1560,7 +1566,9 @@ Unregister one or more Objects from a Subscription.
 
 ### Streaming
 
-Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events) for a low Quality of Service.
+Streaming sends values as they occur using SSE (Server Sent Events) and MAY be supported when the underlying data source can push updates in real time. Streaming provides low Quality of Service — at-most-once delivery with no acknowledgement.
+
+> **Implementation note:** Streaming requires a data source capable of push notifications. Servers that use a polling-based sync implementation (see the note in [Subscribe Methods](#subscribe-methods)) SHOULD return HTTP 501 for `/subscriptions/stream`.
 
 **How it works:**
 
@@ -1616,64 +1624,28 @@ Sync allows the client to control when value changes are received, and to explic
 **How it works:**
 
 1. Client creates subscription via `POST /subscriptions`
-2. Client registers items via `POST /subscriptions/register`
-3. Server queues updates as they occur, each assigned a monotonically increasing `sequenceNumber`.  Each subscription uses a different `sequenceNumber` where the first update within a new subscription sets `sequenceNumber=1`.  `sequenceNumber` is a 64-bit unsigned integer so rollover happens after 2⁶⁴ − 1
+2. Client registers objects via `POST /subscriptions/register`
+3. Server queues object updates as they occur, or — for non-push sources — captures the latest value at sync time
 4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
-5. Server returns all pending updates
+5. Server returns all pending updates with a `sequenceNumber=1`
 6. Client processes the updates
-7. Client calls `POST /subscriptions/sync` again with `{"clientId": "...", "subscriptionId": "...", "lastSequenceNumber": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
-8. Server removes acknowledged updates (sequenceNumber ≤ `lastSequenceNumber`) then returns the remaining queue
+7. Client calls `POST /subscriptions/sync` again with `lastSequenceNumber: 1` to acknowledge the previous batch and receive any new updates in a single round trip
+8. Server removes acknowledged updates (`lastSequenceNumber` ≤ 1) then returns the remaining queue with `sequenceNumber=2`
 9. Continue this process
 
 This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
-
-#### Queue Overflow and Partial Responses
-
-Servers maintain a queue for each subscription. When the queue is full and a new update arrives, the server MUST drop the oldest pending update to make room. If a client polls infrequently relative to the rate of change, it may miss updates.
-
-When the server has dropped updates since the client's last acknowledged sequence number, it MUST return **HTTP 206 (Partial Content)**. The response body has the same shape as a normal 200, with one addition: a `responseDetail` object:
-
-```json
-HTTP 206
-{
-  "success": true,
-  "result": [
-    {"sequenceNumber": 151, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
-  ],
-  "responseDetail": {
-    "title": "Updates dropped due to queue overflow",
-    "status": 206,
-    "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
-  }
-}
-```
-
-**Inferring dropped sequence numbers:**
-
-The `sequenceNumber` on each update is monotonically increasing per update for a given subscription. When receiving an HTTP 206 response, a client can determine exactly which updates were lost by inspecting the :
-
-> All sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped.
-
-For example, if the client's last call used `"lastSequenceNumber": 100` and the first update in the 206 response has `"sequenceNumber": 151`, then the 50 updates with sequence numbers 101–150 are permanently gone.
-
-**Client requirements on 206:**
-
-- Clients MUST process returned updates in the `result` array normally
-- Clients MUST continue polling with the highest returned `sequenceNumber` as the next `lastSequenceNumber`
-- Clients MUST NOT attempt to retrieve dropped updates — they are no longer unavailable
-- Clients SHOULD log or raise an alert when a 206 is received, as it indicates data loss
-
----
 
 #### `POST` /subscriptions/sync
 
 Returns all pending updates, acknowledging a previously received batch in the same call.
 
-- Each queued update includes a `sequenceNumber`
-- If `lastSequenceNumber` is provided, the server removes all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
-- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted
-- Clients SHOULD omit `lastSequenceNumber` only on the first call, when there is nothing yet to acknowledge
+- Server MUST provide an incrementing `sequenceNumber` for new updates returned in the `/sync` response
+- The `sequenceNumber` MUST be a 64-bit unsigned integer to avoid rollover (2⁶⁴ − 1)
+- Clients SHOULD omit `lastSequenceNumber` on the first call, when there is nothing to acknowledge
 - Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
+- Server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` from the response
+- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
+- Server MUST return an empty array and no `sequenceNumber` if there are no new updates since the last `/sync` call
 
 **Body Parameters:**
 
@@ -1683,7 +1655,9 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 | `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
 | `lastSequenceNumber` | 64-bit unsigned integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
 
-First call (nothing to acknowledge yet):
+##### Sync Examples
+
+Assume the client setup the subscription and this is the first call to `/sync`. Note there is no `lastSequenceNumber`.
 ```json
 {
   "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
@@ -1691,7 +1665,46 @@ First call (nothing to acknowledge yet):
 }
 ```
 
-All subsequent calls (ack previous batch, fetch new):
+Server returns all pending updates with a sequence number.
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 1,
+      "updates": [
+        {"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+        {"elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+      ]
+    }
+  ]
+}
+```
+
+Client calls `/sync` again with no `lastSequenceNumber`. The response includes updates from the previous sequenceNumber and the new updates.
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 1, 
+      "updates": [
+        {"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+        {"elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+      ]
+    },
+    {
+      "sequenceNumber": 2,
+      "updates": [
+        {"elementId": "sensor-001", "value": 82.5, "quality": "Good", "timestamp": "2025-01-08T10:31:00Z"},
+        {"elementId": "sensor-002", "value": 28.3, "quality": "Good", "timestamp": "2025-01-08T10:31:01Z"}
+      ]
+    }
+  ]
+}
+```
+
+The client calls `/sync` again with `lastSequenceNumber=2`. 
 ```json
 {
   "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
@@ -1700,36 +1713,40 @@ All subsequent calls (ack previous batch, fetch new):
 }
 ```
 
-**Response (HTTP 200 — all updates delivered):**
-
+Assume there are no new updates. The server clears updates for sequenceNumber 1 and 2, and responds with no new updates.
 ```json
 {
   "success": true,
-  "result": [
-    {"sequenceNumber": 1, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
-    {"sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
-  ]
+  "result": []
 }
 ```
 
-**Response (HTTP 206 — some updates were dropped):**
+##### Sync Data Loss
 
+If the client does not call `/sync` frequently enough, the server's subscription queue may fill up and start dropping updates. 
+
+- The Server SHOULD drop the oldest updates first
+- The Server MUST return HTTP 206 (Partial Content) 
+
+Below is an example of a 206 response from the Server.
 ```json
 {
   "success": true,
   "result": [
-    {"sequenceNumber": 151, "elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
+    {
+      "sequenceNumber": 151,
+      "updates": [
+        {"elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
+      ]
+    }
   ],
   "responseDetail": {
     "title": "Updates dropped due to queue overflow",
     "status": 206,
-    "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
+    "detail": "Updates were dropped from the subscription queue. The server limit is 10k updates."
   }
 }
 ```
-
-See [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses) for how to interpret a 206 response and recover from data loss.
-
 ---
 
 ### Subscription Life Cycle
@@ -1746,7 +1763,6 @@ This requirement prevents abandoned Subscriptions from consuming Server resource
 Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUST be re-created by the Client. Subsequent calls to `/sync` or `/stream` for a deleted or non-existent Subscription MUST return 404 Not Found.
 
 ---
-
 
 ## Appendix (for now)
 
@@ -1854,4 +1870,4 @@ When `maxDepth > 1` and the element has components:
 
 ---
 
-*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2025. All Rights Reserved.*
+*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2026. All Rights Reserved.*
