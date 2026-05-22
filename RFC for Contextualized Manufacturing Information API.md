@@ -254,7 +254,7 @@ The contributors to this RFC, and the broader community, have communicated clear
 
 ##### 4.2.3.1 Create Subscription
 
-Registers a client for a new Subscription. The client MUST provide a unique `clientId` to scope the subscription to the client. The response MUST include a server-generated `subscriptionId` scoped to the `clientId`; only the owning client may access the subscription. Implementations SHALL support two delivery modes.
+Registers a client for a new Subscription. The client MUST provide a unique `clientId` to scope the subscription to the client. The response MUST include a server-generated `subscriptionId` scoped to the `clientId`; only the owning client may access the subscription. Implementations MUST support the Sync delivery mode. Implementations MAY support the Streaming delivery mode.
 
 ###### Streaming: At Most Once
 

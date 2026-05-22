@@ -4,6 +4,7 @@ from typing import List, Optional, Any, Callable, Dict
 from datetime import datetime, timezone
 import asyncio
 import json
+import queue as thread_queue
 import time
 import uuid
 from pydantic import BaseModel, Field, ConfigDict
@@ -16,7 +17,7 @@ from models import (
     CreateSubscriptionResponse,
     SuccessResponse,
     BulkResponse,
-    SyncUpdate,
+    SyncBatch,
     SubscriptionDetail,
 )
 from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE
@@ -31,11 +32,12 @@ class Subscription(BaseModel):
     displayName: Optional[str] = None
     created: str
     monitoredObjects: List[dict] = []  # Each entry: {"elementId": str, "maxDepth": int}
-    pendingUpdates: List[Any] = []  # Queue for updates (max 1000, FIFO). Each item: {sequenceNumber, elementId, value, quality, timestamp}
+    stagedUpdates: List[Any] = []  # Raw updates queued from data source, not yet batched. Each item: {elementId, value, quality, timestamp}
+    batches: List[Any] = []        # Batched updates returned to client but not yet acked. Each item: {sequenceNumber, updates: [...]}
     max_queue_size: int = 1000
-    nextSequence: int = 1           # Sequence number for the next queued update
+    nextSequence: int = 1           # Sequence number for the next batch created on /sync
     lastAckedSequence: int = 0      # Highest sequence number acknowledged by the client
-    droppedCount: int = 0           # Updates dropped from the queue since last client ack
+    droppedCount: int = 0           # Updates dropped from stagedUpdates since last client ack
     ttl_seconds: int = 300          # Idle TTL: subscription auto-deleted if no /sync or active stream within this window
     last_activity: str = ""         # ISO timestamp of last /sync, /ack, or stream open
     is_streaming: bool = False  # True when SSE connection is active
@@ -170,15 +172,19 @@ async def stream_subscription(request: Request, req: StreamRequest):
     if sub.handler is not None and sub.streaming_response is not None:
         return sub.streaming_response
 
-    # Otherwise create queue, loop, handler, and streaming response once
-    queue = asyncio.Queue()
-    loop = asyncio.get_event_loop()
+    # Otherwise create queue, handler, and streaming response once.
+    # Use a threading.Queue so the MockDataUpdater thread can push without any
+    # event-loop cross-thread coordination (asyncio.Queue is not thread-safe).
+    tq: thread_queue.Queue = thread_queue.Queue()
 
     async def event_stream():
         try:
             while True:
-                update = await queue.get()
-                yield f"data: {json.dumps([update])}\n\n"
+                try:
+                    update = tq.get_nowait()
+                    yield f"data: {json.dumps([update])}\n\n"
+                except thread_queue.Empty:
+                    await asyncio.sleep(0.05)
         except Exception as e:
             print(f"[SSE] Stream ended: {e}")
         finally:
@@ -190,19 +196,20 @@ async def stream_subscription(request: Request, req: StreamRequest):
             print(f"[SSE] Subscription {req.subscriptionId} switched back to queue mode")
 
     def push_update_to_client(update):
-        asyncio.run_coroutine_threadsafe(queue.put(update), loop)
+        tq.put(update)
 
     # Switch to streaming mode
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sub.is_streaming = True
     sub.handler = push_update_to_client
-    sub.event_loop = loop
+    sub.event_loop = None
     sub.streaming_response = StreamingResponse(
         event_stream(), media_type="text/event-stream"
     )
 
-    # Clear the queue when switching to streaming (per requirements)
-    sub.pendingUpdates.clear()
+    # Clear staged updates when switching to streaming — client will receive live SSE going forward
+    sub.stagedUpdates.clear()
+    sub.batches.clear()
 
     return sub.streaming_response
 
@@ -212,7 +219,7 @@ async def stream_subscription(request: Request, req: StreamRequest):
     "/subscriptions/sync",
     summary="Sync Values",
     operation_id="syncSubscription",
-    response_model=SuccessResponse[List[SyncUpdate]],
+    response_model=SuccessResponse[List[SyncBatch]],
     responses={
         206: {"description": PARTIAL_CONTENT_DESCRIPTION},
         **NOT_FOUND_RESPONSE,
@@ -220,50 +227,53 @@ async def stream_subscription(request: Request, req: StreamRequest):
     },
 )
 def sync_subscription(request: Request, req: SyncRequest):
-    """Acknowledge previously received updates and return all pending updates in one call.
+    """Acknowledge previously received batches and return all pending batches in one call.
 
-    If `lastSequenceNumber` is provided, all queued updates with sequenceNumber <= lastSequenceNumber are removed first,
-    then the remaining (newer) updates are returned. Returns HTTP 206 if updates were dropped from the queue since
-    the client's last acknowledged sequence number. subscriptionId is passed in the request body.
+    If `lastSequenceNumber` is provided, all batches with sequenceNumber <= lastSequenceNumber are
+    removed first (acknowledged). Any staged updates are then bundled into a new batch and appended.
+    Returns HTTP 206 if updates were dropped from the staging queue due to overflow.
+    subscriptionId is passed in the request body.
     """
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
+    # Acknowledge batches the client has already processed
     if req.lastSequenceNumber is not None:
-        sub.pendingUpdates = [u for u in sub.pendingUpdates if u.get("sequenceNumber", 0) > req.lastSequenceNumber]
+        sub.batches = [b for b in sub.batches if b.get("sequenceNumber", 0) > req.lastSequenceNumber]
         sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
 
-    # Detect data loss: explicit drop counter or a sequence gap between the last ack and first available update
+    # Detect data loss before resetting the counter
     has_drops = sub.droppedCount > 0
-    if not has_drops and sub.pendingUpdates and req.lastSequenceNumber is not None:
-        first_seq = sub.pendingUpdates[0].get("sequenceNumber", 0)
-        has_drops = first_seq > req.lastSequenceNumber + 1
-
-    # Reset drop counter now that the client is being informed
     sub.droppedCount = 0
 
+    # Bundle any staged updates into a new batch
+    if sub.stagedUpdates:
+        new_batch = {"sequenceNumber": sub.nextSequence, "updates": list(sub.stagedUpdates)}
+        sub.batches.append(new_batch)
+        sub.nextSequence += 1
+        sub.stagedUpdates.clear()
+
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    updates = list(sub.pendingUpdates)
+    batches = list(sub.batches)
 
     if has_drops:
+        first_seq = batches[0]["sequenceNumber"] if batches else sub.nextSequence
         body = {
             "success": True,
-            "result": updates,
+            "result": batches,
             "responseDetail": {
                 "title": "Updates dropped due to queue overflow",
                 "status": 206,
                 "detail": (
-                    "Updates were dropped from the subscription queue because the server-imposed "
-                    "queue limit was reached. The client may assume that all sequence numbers "
-                    "between its last acknowledged sequence number and the first returned sequence "
-                    "number were dropped."
+                    f"Updates were dropped from the subscription queue because the server-imposed "
+                    f"queue limit was reached. Updates prior to sequence number {first_seq} were lost."
                 ),
             },
         }
         return JSONResponse(content=body, status_code=206)
 
-    return success_response(updates)
+    return success_response(batches)
 
 
 # POST /subscriptions/delete - Delete one or more subscriptions
@@ -354,18 +364,13 @@ def handle_data_source_update(instance, value, I3X_DATA_SUBSCRIPTIONS, data_sour
                         sub.is_streaming = False
                         sub.handler = None
                 else:
-                    # Queue mode: store for later /sync retrieval
+                    # Queue mode: stage for later batching on /sync
                     update_value = getSubscriptionValue(instance, value, maxDepth=monitored["maxDepth"], data_source=data_source)
-                    queued_item = {
-                        "sequenceNumber": sub.nextSequence,
-                        **update_value,
-                    }
-                    sub.nextSequence += 1
-                    # Enforce FIFO with max queue size — oldest update is dropped first
-                    if len(sub.pendingUpdates) >= sub.max_queue_size:
-                        sub.pendingUpdates.pop(0)
+                    # Enforce FIFO with max queue size — oldest staged update is dropped first
+                    if len(sub.stagedUpdates) >= sub.max_queue_size:
+                        sub.stagedUpdates.pop(0)
                         sub.droppedCount += 1
-                    sub.pendingUpdates.append(queued_item)
+                    sub.stagedUpdates.append(update_value)
     except Exception as e:
         import traceback
         print(f"Error routing data source update: {e}\n{traceback.format_exc()}")

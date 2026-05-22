@@ -74,7 +74,7 @@ Below are the required capabilities for all i3X compliant Clients and Servers.
 * Subscribe
   * MUST support base [Subscribe Methods](#subscribe-methods) (create, delete, list, register objects, unregister objects)
   * MUST support Sync (`/subscriptions/sync`)
-  * SHOULD support Stream (`/subscriptions/stream`)
+  * MAY support Stream (`/subscriptions/stream`)
   
 ## Transport & Encoding
 
@@ -1329,15 +1329,18 @@ Returns a bulk response with a result per elementId.
 
 ## Subscribe Methods
 
-Subscriptions allow clients to receive value changes in real-time for objects they are interested in. Subscriptions support two delivery modes:
+Subscriptions allow clients to receive the most recent values of objects they are interested in. Subscriptions support two delivery modes:
 
-| Mode | Description |
-|------|-------------|
-| **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
-| **sync** | Value changes are queued and delivered when the client calls the sync API. |
+| Mode | Required | Description |
+|------|----------|-------------|
+| **sync** | MUST | Clients poll for batched updates; the server acknowledges delivery for high Quality of Service. |
+| **streaming** | MAY | The server pushes updates as they occur using SSE for low Quality of Service. |
 
-Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered and acknowledge delivery. The following
-sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
+Sync is the baseline delivery mode and MUST be supported by all servers. Streaming MAY be supported when the underlying data source provides real-time push notifications; see the note in the [Streaming](#streaming) section.
+
+> **Implementation note for non-real-time sources:** Servers backed by a historian, database, or other non-push data source MAY satisfy the sync requirement by reading the most recent value for each registered object at the time `/sync` is called, rather than maintaining a live change queue. The response format is identical — only the update granularity differs. Clients will observe the latest available value on each sync call, but intermediate changes between calls may not be captured.
+
+The following sections describe common methods to set up and configure a subscription, followed by more details on the stream and sync modes.
 
 ### Subscriptions
 
@@ -1502,7 +1505,7 @@ Register one or more Objects with a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to register items with. |
 | `elementIds` | string[] | Yes | One or more elementIds to register. |
-| `maxDepth` | integer | No | Controls recursion depth. [TODO] - MGP explain how maxDepth works. Similar to values, where it only follows hasComponent relationships? |
+| `maxDepth` | integer | No | Controls recursion depth. See [maxDepth](#maxdepth-parameter-semantics) for more detail. |
 
 **Response:**
 
@@ -1563,7 +1566,9 @@ Unregister one or more Objects from a Subscription.
 
 ### Streaming
 
-Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events) for a low Quality of Service.
+Streaming sends values as they occur using SSE (Server Sent Events) and MAY be supported when the underlying data source can push updates in real time. Streaming provides low Quality of Service — at-most-once delivery with no acknowledgement.
+
+> **Implementation note:** Streaming requires a data source capable of push notifications. Servers that use a polling-based sync implementation (see the note in [Subscribe Methods](#subscribe-methods)) SHOULD return HTTP 501 for `/subscriptions/stream`.
 
 **How it works:**
 
@@ -1620,7 +1625,7 @@ Sync allows the client to control when value changes are received, and to explic
 
 1. Client creates subscription via `POST /subscriptions`
 2. Client registers objects via `POST /subscriptions/register`
-3. Server queues object updates as they occur
+3. Server queues object updates as they occur, or — for non-push sources — captures the latest value at sync time
 4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
 5. Server returns all pending updates with a `sequenceNumber=1`
 6. Client processes the updates
@@ -1865,4 +1870,4 @@ When `maxDepth > 1` and the element has components:
 
 ---
 
-*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2025. All Rights Reserved.*
+*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2026. All Rights Reserved.*
