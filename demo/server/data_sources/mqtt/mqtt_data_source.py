@@ -609,7 +609,12 @@ class MQTTDataSource(I3XDataSource):
                 instances.append(instance)
 
         return instances
-    
+
+    def get_instance_extra_attributes(self, element_id: str) -> Optional[Dict[str, Any]]:
+        """
+        Return extra (non-schema) attributes for an instance by ElementId.
+        """
+        return {}
 
     # Helpers to respond to data source method calls above
 
