@@ -1589,7 +1589,6 @@ Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
   - [TODO] is this enough or should we spec what happens if you spam the /stream endpoint? Ignore? Close the old and open new?
-  - MGP - should multiple clients be allowed to connect in a multicast-type pattern?
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
   - [TODO] should register require queuing the current value of the Object?
