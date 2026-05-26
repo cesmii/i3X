@@ -1638,13 +1638,15 @@ This approach ensures updates are not lost if the client crashes between receivi
 
 Returns all pending updates, acknowledging a previously received batch in the same call.
 
+- Each queued update includes a `sequenceNumber`
 - Server MUST provide an incrementing `sequenceNumber` for new updates returned in the `/sync` response
 - The `sequenceNumber` MUST be a 64-bit unsigned integer to avoid rollover (2⁶⁴ − 1)
-- Clients SHOULD omit `lastSequenceNumber` on the first call, when there is nothing to acknowledge
-- Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
-- Server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` from the response
-- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
 - Server MUST return an empty array and no `sequenceNumber` if there are no new updates since the last `/sync` call
+- Clients SHOULD omit `lastSequenceNumber` only on the first call, when there is nothing yet to acknowledge
+- Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
+- If `lastSequenceNumber` is provided, the server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
+- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
+- Server MUST clear the queue if `lastSequenceNumber=-1` is provided, acknowledging all pending updates
 
 **Body Parameters:**
 
