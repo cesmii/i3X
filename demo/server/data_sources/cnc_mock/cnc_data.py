@@ -149,7 +149,7 @@ CNC_DATA = {
         # Work Center - organizational container for both CNC machines
         {
             "elementId": "cnc-work-center",
-            "displayName": "CNC Work Center",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC Work Center",
             "namespaceUri": ISA95_NAMESPACE,
             "typeId": "work-center-type",
             "parentId": "/",
@@ -165,7 +165,7 @@ CNC_DATA = {
         # ==================== CNC-001 ====================
         {
             "elementId": "cnc-001",
-            "displayName": "CNC Machine 001",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC Machine 001",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "cnc-base-type",
             "parentId": "cnc-work-center",
@@ -188,7 +188,7 @@ CNC_DATA = {
         # CNC-001 Status
         {
             "elementId": "cnc-001-status",
-            "displayName": "CNC-001 Status",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Status",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "machine-status-type",
             "parentId": "cnc-001",
@@ -211,7 +211,7 @@ CNC_DATA = {
         # CNC-001 Spindle
         {
             "elementId": "cnc-001-spindle",
-            "displayName": "CNC-001 Main Spindle",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Main Spindle",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "spindle-type",
             "parentId": "cnc-001",
@@ -224,7 +224,7 @@ CNC_DATA = {
         # CNC-001 Spindle Motor
         {
             "elementId": "cnc-001-spindle-motor",
-            "displayName": "CNC-001 Spindle Motor",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Spindle Motor",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "motor-type",
             "parentId": "cnc-001-spindle",
@@ -251,7 +251,7 @@ CNC_DATA = {
         # CNC-001 X Axis
         {
             "elementId": "cnc-001-axis-x",
-            "displayName": "CNC-001 X Axis",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 X Axis",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "axis-type",
             "parentId": "cnc-001",
@@ -264,7 +264,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-001-axis-x-position",
-            "displayName": "CNC-001 X Axis Position",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 X Axis Position",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "position-type",
             "parentId": "cnc-001-axis-x",
@@ -288,7 +288,7 @@ CNC_DATA = {
         # CNC-001 Y Axis
         {
             "elementId": "cnc-001-axis-y",
-            "displayName": "CNC-001 Y Axis",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Y Axis",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "axis-type",
             "parentId": "cnc-001",
@@ -301,7 +301,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-001-axis-y-position",
-            "displayName": "CNC-001 Y Axis Position",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Y Axis Position",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "position-type",
             "parentId": "cnc-001-axis-y",
@@ -325,7 +325,7 @@ CNC_DATA = {
         # CNC-001 Z Axis
         {
             "elementId": "cnc-001-axis-z",
-            "displayName": "CNC-001 Z Axis",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Z Axis",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "axis-type",
             "parentId": "cnc-001",
@@ -338,7 +338,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-001-axis-z-position",
-            "displayName": "CNC-001 Z Axis Position",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Z Axis Position",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "position-type",
             "parentId": "cnc-001-axis-z",
@@ -362,7 +362,7 @@ CNC_DATA = {
         # CNC-001 Coolant System
         {
             "elementId": "cnc-001-coolant",
-            "displayName": "CNC-001 Coolant System",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Coolant System",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "coolant-system-type",
             "parentId": "cnc-001",
@@ -374,7 +374,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-001-coolant-tank",
-            "displayName": "CNC-001 Coolant Tank",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Coolant Tank",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "coolant-tank-type",
             "parentId": "cnc-001-coolant",
@@ -397,7 +397,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-001-coolant-pump",
-            "displayName": "CNC-001 Coolant Pump",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-001 Coolant Pump",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "coolant-pump-type",
             "parentId": "cnc-001-coolant",
@@ -422,7 +422,7 @@ CNC_DATA = {
         # ==================== CNC-002 ====================
         {
             "elementId": "cnc-002",
-            "displayName": "CNC Machine 002",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC Machine 002",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "cnc-base-type",
             "parentId": "cnc-work-center",
@@ -445,7 +445,7 @@ CNC_DATA = {
         # CNC-002 Status
         {
             "elementId": "cnc-002-status",
-            "displayName": "CNC-002 Status",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Status",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "machine-status-type",
             "parentId": "cnc-002",
@@ -468,7 +468,7 @@ CNC_DATA = {
         # CNC-002 Spindle
         {
             "elementId": "cnc-002-spindle",
-            "displayName": "CNC-002 Main Spindle",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Main Spindle",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "spindle-type",
             "parentId": "cnc-002",
@@ -481,7 +481,7 @@ CNC_DATA = {
         # CNC-002 Spindle Motor
         {
             "elementId": "cnc-002-spindle-motor",
-            "displayName": "CNC-002 Spindle Motor",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Spindle Motor",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "motor-type",
             "parentId": "cnc-002-spindle",
@@ -508,7 +508,7 @@ CNC_DATA = {
         # CNC-002 X Axis
         {
             "elementId": "cnc-002-axis-x",
-            "displayName": "CNC-002 X Axis",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 X Axis",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "axis-type",
             "parentId": "cnc-002",
@@ -521,7 +521,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-002-axis-x-position",
-            "displayName": "CNC-002 X Axis Position",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 X Axis Position",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "position-type",
             "parentId": "cnc-002-axis-x",
@@ -545,7 +545,7 @@ CNC_DATA = {
         # CNC-002 Y Axis
         {
             "elementId": "cnc-002-axis-y",
-            "displayName": "CNC-002 Y Axis",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Y Axis",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "axis-type",
             "parentId": "cnc-002",
@@ -558,7 +558,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-002-axis-y-position",
-            "displayName": "CNC-002 Y Axis Position",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Y Axis Position",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "position-type",
             "parentId": "cnc-002-axis-y",
@@ -582,7 +582,7 @@ CNC_DATA = {
         # CNC-002 Z Axis
         {
             "elementId": "cnc-002-axis-z",
-            "displayName": "CNC-002 Z Axis",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Z Axis",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "axis-type",
             "parentId": "cnc-002",
@@ -595,7 +595,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-002-axis-z-position",
-            "displayName": "CNC-002 Z Axis Position",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Z Axis Position",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "position-type",
             "parentId": "cnc-002-axis-z",
@@ -619,7 +619,7 @@ CNC_DATA = {
         # CNC-002 Coolant System
         {
             "elementId": "cnc-002-coolant",
-            "displayName": "CNC-002 Coolant System",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Coolant System",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "coolant-system-type",
             "parentId": "cnc-002",
@@ -631,7 +631,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-002-coolant-tank",
-            "displayName": "CNC-002 Coolant Tank",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Coolant Tank",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "coolant-tank-type",
             "parentId": "cnc-002-coolant",
@@ -654,7 +654,7 @@ CNC_DATA = {
         },
         {
             "elementId": "cnc-002-coolant-pump",
-            "displayName": "CNC-002 Coolant Pump",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC-002 Coolant Pump",
             "namespaceUri": CNC_NAMESPACE,
             "typeId": "coolant-pump-type",
             "parentId": "cnc-002-coolant",

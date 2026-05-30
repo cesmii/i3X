@@ -73,7 +73,7 @@ I3X_DATA = {
     "instances": [
         {
             "elementId": "pump-station",
-            "displayName": "pump-station",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-station",
             "namespaceUri": "https://isa.org/isa95",
             "typeId": "work-center-type",
             # A "/" is unsed to indicate this object is attached to the root
@@ -97,7 +97,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101",
-            "displayName": "pump-101",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-101",
             "namespaceUri": "https://isa.org/isa95",
             "typeId": "work-unit-type",
             "parentId": "pump-station",
@@ -120,7 +120,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-state",
-            "displayName": "pump-101 State",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-101 State",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "state-type",
             "parentId": "pump-101",
@@ -201,7 +201,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-production",
-            "displayName": "pump-101 Production",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-101 Production",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "production-type",
             "parentId": "pump-101",
@@ -217,7 +217,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-production-product",
-            "displayName": "pump-101 Product",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-101 Product",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "product-type",
             "parentId": "pump-101-production",
@@ -240,7 +240,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-measurements",
-            "displayName": "pump-101 Measurements",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-101 Measurements",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "measurements-type",
             "parentId": "pump-101",
@@ -255,7 +255,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-bearing-temperature",
-            "displayName": "pump-101 Bearing Temperature",
+            "displayName": "[DEPRECATED - See 1.0-RC] pump-101 Bearing Temperature",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "measurement-type",
             "parentId": "pump-101-measurements",
@@ -286,7 +286,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-measurements-bearing-temperature-value",
-            "displayName": "Pump 101 Bearing Temperature Value",
+            "displayName": "[DEPRECATED - See 1.0-RC] Pump 101 Bearing Temperature Value",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "measurement-value-type",
             "parentId": "pump-101-bearing-temperature",
@@ -312,7 +312,7 @@ I3X_DATA = {
         },
         {
             "elementId": "pump-101-measurements-bearing-temperature-health",
-            "displayName": "Pump 101 Bearing Health",
+            "displayName": "[DEPRECATED - See 1.0-RC] Pump 101 Bearing Health",
             "namespaceUri": "https://abelara.com/equipment",
             "typeId": "measurement-health-type",
             "parentId": "pump-101-bearing-temperature",
@@ -335,7 +335,7 @@ I3X_DATA = {
         },
         {
             "elementId": "tank-201",
-            "displayName": "tank-201",
+            "displayName": "[DEPRECATED - See 1.0-RC] tank-201",
             "namespaceUri": "https://isa.org/isa95",
             "typeId": "work-unit-type",
             "parentId": "pump-station",
@@ -347,7 +347,7 @@ I3X_DATA = {
         },
         {
             "elementId": "sensor-001",
-            "displayName": "TempSensor-101",
+            "displayName": "[DEPRECATED - See 1.0-RC] TempSensor-101",
             "namespaceUri": "https://thinkiq.com/equipment",
             "typeId": "sensor-type",
             "parentId": "pump-station",

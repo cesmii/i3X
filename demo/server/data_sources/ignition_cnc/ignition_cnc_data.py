@@ -217,7 +217,7 @@ IGNITION_CNC_DATA = {
         # Root folder
         {
             "elementId": "cnc-shop-floor",
-            "displayName": "CNC Shop Floor",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC Shop Floor",
             "namespaceUri": "http://opcfoundation.org/UA/",
             "typeId": TYPE_IDS["folder-type"],
             "parentId": "/",
@@ -231,7 +231,7 @@ IGNITION_CNC_DATA = {
         # CNC Machine
         {
             "elementId": "cnc-machine-001",
-            "displayName": "CNC Machine 001",
+            "displayName": "[DEPRECATED - See 1.0-RC] CNC Machine 001",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CNCBaseType"],
             "parentId": "cnc-shop-floor",
@@ -252,7 +252,7 @@ IGNITION_CNC_DATA = {
         # Machine Information
         {
             "elementId": "machine-info",
-            "displayName": "Machine Information",
+            "displayName": "[DEPRECATED - See 1.0-RC] Machine Information",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["MachineInformationType"],
             "parentId": "cnc-machine-001",
@@ -271,7 +271,7 @@ IGNITION_CNC_DATA = {
         # Identification
         {
             "elementId": "identification",
-            "displayName": "Identification",
+            "displayName": "[DEPRECATED - See 1.0-RC] Identification",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["Identification"],
             "parentId": "machine-info",
@@ -297,7 +297,7 @@ IGNITION_CNC_DATA = {
         # Machine Status
         {
             "elementId": "machine-status",
-            "displayName": "Machine Status",
+            "displayName": "[DEPRECATED - See 1.0-RC] Machine Status",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["MachineStatusType"],
             "parentId": "machine-info",
@@ -322,7 +322,7 @@ IGNITION_CNC_DATA = {
         # Coolant System
         {
             "elementId": "coolant-system",
-            "displayName": "Coolant System",
+            "displayName": "[DEPRECATED - See 1.0-RC] Coolant System",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CoolantSystemType"],
             "parentId": "machine-info",
@@ -340,7 +340,7 @@ IGNITION_CNC_DATA = {
         # Coolant Pump
         {
             "elementId": "coolant-pump",
-            "displayName": "Coolant Pump",
+            "displayName": "[DEPRECATED - See 1.0-RC] Coolant Pump",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["ICoolantPumpType"],
             "parentId": "coolant-system",
@@ -364,7 +364,7 @@ IGNITION_CNC_DATA = {
         # Coolant Tank
         {
             "elementId": "coolant-tank",
-            "displayName": "Coolant Tank",
+            "displayName": "[DEPRECATED - See 1.0-RC] Coolant Tank",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["ICoolantTankType"],
             "parentId": "coolant-system",
@@ -388,7 +388,7 @@ IGNITION_CNC_DATA = {
         # Coolant Filter
         {
             "elementId": "coolant-filter",
-            "displayName": "Coolant Filter",
+            "displayName": "[DEPRECATED - See 1.0-RC] Coolant Filter",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["ICoolantFilterType"],
             "parentId": "coolant-system",
@@ -411,7 +411,7 @@ IGNITION_CNC_DATA = {
         # Tool List Container
         {
             "elementId": "tool-list",
-            "displayName": "Tool List",
+            "displayName": "[DEPRECATED - See 1.0-RC] Tool List",
             "namespaceUri": "http://opcfoundation.org/UA/",
             "typeId": TYPE_IDS["folder-type"],
             "parentId": "machine-info",
@@ -425,7 +425,7 @@ IGNITION_CNC_DATA = {
         # Tool 001
         {
             "elementId": "tool-001",
-            "displayName": "Tool 001",
+            "displayName": "[DEPRECATED - See 1.0-RC] Tool 001",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["ToolType"],
             "parentId": "tool-list",
@@ -439,7 +439,7 @@ IGNITION_CNC_DATA = {
         # Tool 001 Information
         {
             "elementId": "tool-001-info",
-            "displayName": "Tool 001 Information",
+            "displayName": "[DEPRECATED - See 1.0-RC] Tool 001 Information",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["IToolInformationType"],
             "parentId": "tool-001",
@@ -466,7 +466,7 @@ IGNITION_CNC_DATA = {
         # Tool 001 Status
         {
             "elementId": "tool-001-status",
-            "displayName": "Tool 001 Status",
+            "displayName": "[DEPRECATED - See 1.0-RC] Tool 001 Status",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["ToolStatusType"],
             "parentId": "tool-001",
@@ -490,7 +490,7 @@ IGNITION_CNC_DATA = {
         # Channel 001
         {
             "elementId": "channel-001",
-            "displayName": "Channel 001",
+            "displayName": "[DEPRECATED - See 1.0-RC] Channel 001",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["ChannelType"],
             "parentId": "cnc-machine-001",
@@ -516,7 +516,7 @@ IGNITION_CNC_DATA = {
         # Position BCS (Basic Coordinate System)
         {
             "elementId": "position-bcs",
-            "displayName": "Position BCS",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position BCS",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["PositionType"],
             "parentId": "channel-001",
@@ -538,7 +538,7 @@ IGNITION_CNC_DATA = {
         # Position BCS X
         {
             "elementId": "position-bcs-x",
-            "displayName": "Position BCS X",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position BCS X",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "position-bcs",
@@ -562,7 +562,7 @@ IGNITION_CNC_DATA = {
         # Position BCS Y
         {
             "elementId": "position-bcs-y",
-            "displayName": "Position BCS Y",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position BCS Y",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "position-bcs",
@@ -586,7 +586,7 @@ IGNITION_CNC_DATA = {
         # Position BCS Z
         {
             "elementId": "position-bcs-z",
-            "displayName": "Position BCS Z",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position BCS Z",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "position-bcs",
@@ -610,7 +610,7 @@ IGNITION_CNC_DATA = {
         # Position WCS (Work Coordinate System)
         {
             "elementId": "position-wcs",
-            "displayName": "Position WCS",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position WCS",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["PositionType"],
             "parentId": "channel-001",
@@ -632,7 +632,7 @@ IGNITION_CNC_DATA = {
         # Position WCS X
         {
             "elementId": "position-wcs-x",
-            "displayName": "Position WCS X",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position WCS X",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "position-wcs",
@@ -656,7 +656,7 @@ IGNITION_CNC_DATA = {
         # Position WCS Y
         {
             "elementId": "position-wcs-y",
-            "displayName": "Position WCS Y",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position WCS Y",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "position-wcs",
@@ -680,7 +680,7 @@ IGNITION_CNC_DATA = {
         # Position WCS Z
         {
             "elementId": "position-wcs-z",
-            "displayName": "Position WCS Z",
+            "displayName": "[DEPRECATED - See 1.0-RC] Position WCS Z",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "position-wcs",
@@ -704,7 +704,7 @@ IGNITION_CNC_DATA = {
         # Spindle 001
         {
             "elementId": "spindle-001",
-            "displayName": "Spindle 001",
+            "displayName": "[DEPRECATED - See 1.0-RC] Spindle 001",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["SpindleType"],
             "parentId": "cnc-machine-001",
@@ -729,7 +729,7 @@ IGNITION_CNC_DATA = {
         # Spindle Motor
         {
             "elementId": "spindle-motor",
-            "displayName": "Spindle Motor",
+            "displayName": "[DEPRECATED - See 1.0-RC] Spindle Motor",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["MotorType"],
             "parentId": "spindle-001",
@@ -755,7 +755,7 @@ IGNITION_CNC_DATA = {
         # Spindle RPM Command
         {
             "elementId": "spindle-rpm",
-            "displayName": "Spindle RPM",
+            "displayName": "[DEPRECATED - See 1.0-RC] Spindle RPM",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["CommandType"],
             "parentId": "spindle-001",
@@ -779,7 +779,7 @@ IGNITION_CNC_DATA = {
         # Axis X
         {
             "elementId": "axis-x",
-            "displayName": "Axis X",
+            "displayName": "[DEPRECATED - See 1.0-RC] Axis X",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["AxisType"],
             "parentId": "cnc-machine-001",
@@ -806,7 +806,7 @@ IGNITION_CNC_DATA = {
         # Axis X Motor
         {
             "elementId": "axis-x-motor",
-            "displayName": "Axis X Motor",
+            "displayName": "[DEPRECATED - See 1.0-RC] Axis X Motor",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["MotorType"],
             "parentId": "axis-x",
@@ -832,7 +832,7 @@ IGNITION_CNC_DATA = {
         # Axis Y
         {
             "elementId": "axis-y",
-            "displayName": "Axis Y",
+            "displayName": "[DEPRECATED - See 1.0-RC] Axis Y",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["AxisType"],
             "parentId": "cnc-machine-001",
@@ -859,7 +859,7 @@ IGNITION_CNC_DATA = {
         # Axis Y Motor
         {
             "elementId": "axis-y-motor",
-            "displayName": "Axis Y Motor",
+            "displayName": "[DEPRECATED - See 1.0-RC] Axis Y Motor",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["MotorType"],
             "parentId": "axis-y",
@@ -885,7 +885,7 @@ IGNITION_CNC_DATA = {
         # Axis Z
         {
             "elementId": "axis-z",
-            "displayName": "Axis Z",
+            "displayName": "[DEPRECATED - See 1.0-RC] Axis Z",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["AxisType"],
             "parentId": "cnc-machine-001",
@@ -912,7 +912,7 @@ IGNITION_CNC_DATA = {
         # Axis Z Motor
         {
             "elementId": "axis-z-motor",
-            "displayName": "Axis Z Motor",
+            "displayName": "[DEPRECATED - See 1.0-RC] Axis Z Motor",
             "namespaceUri": "http://cesmii.net/profiles/CNC",
             "typeId": TYPE_IDS["MotorType"],
             "parentId": "axis-z",
