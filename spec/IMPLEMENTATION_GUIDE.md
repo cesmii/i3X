@@ -202,9 +202,13 @@ Examples:
 
 ### Bulk Response
 
-POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed.
+POST endpoints that accept an array of identifiers return a bulk shape. Each item is independently succeeded or failed. The top-level `success` is `false` if **any** item failed.
 
 The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
+
+Each item is keyed by the identifier of the resource the endpoint operates on:
+- `elementId` for endpoints that accept `elementIds` (object, type, and `/subscriptions/register` / `/subscriptions/unregister` endpoints).
+- `subscriptionId` for endpoints that accept `subscriptionIds` (`/subscriptions/list` and `/subscriptions/delete`).
 
 ```json
 {
@@ -1423,7 +1427,7 @@ Get one or more subscriptions by ID. Used to check if subscriptions exist and in
   "results": [
     {
       "success": true,
-      "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+      "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
       "result": {
         "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
         "displayName": "mySubscription",

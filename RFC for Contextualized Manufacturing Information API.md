@@ -340,7 +340,7 @@ All responses MUST be wrapped in a standard envelope. Successful single-item res
 ```json
 { "success": true, "result": <data> }
 ```
-Successful bulk responses (accepting an array of ElementIds) MUST use a `results` array with per-item success or failure indicated inline:
+Successful bulk responses (accepting an array of identifiers) MUST use a `results` array with per-item success or failure indicated inline. Each item is keyed by the identifier of the resource the endpoint operates on (typically `elementId`, save for endpoints that operate on subscriptions, which accept `subscriptionIds`):
 ```json
 { "success": false, "results": [ { "success": true, "elementId": "...", "result": <data> }, { "success": false, "elementId": "...", "responseDetail": { "title": "Not Found", "status": 404, "detail": "..." } } ] }
 ```
