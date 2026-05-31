@@ -392,6 +392,7 @@ I3X_DATA = {
             "isComposition": False,
             "description": "Primary coolant storage tank on the west production line, capacity 500L",
             "relationships": {
+                "HasParent": "pump-station",
                 "SuppliedBy": "pump-101",
                 "MonitoredBy": "sensor-001",
             },
@@ -404,6 +405,7 @@ I3X_DATA = {
             "isComposition": False,
             "description": "Temperature sensor monitoring coolant level in Tank 201",
             "relationships": {
+                "HasParent": "pump-station",
                 "Monitors": "tank-201"
             },
             # Optional object metadata (RFC 3.1.2) — instance-level properties not declared in the type schema,
@@ -466,6 +468,7 @@ I3X_DATA = {
             "parentId": "pump-station",
             "isComposition": False,
             "relationships": {
+                "HasParent": "pump-station",
                 "Monitors": "pump-101",
                 "InheritsFrom": "temperature-sensor-type"
             },
