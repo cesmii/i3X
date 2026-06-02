@@ -350,7 +350,7 @@ An instance of this type returns a bare scalar value:
 { "elementId": "zone-temp-01", "result": { "isComposition": false, "value": 592.0, "quality": "Good", "timestamp": "..." } }
 ```
 
-Clients SHOULD use `schema.type` to distinguish leaf objects (scalar type) from branch objects (`"object"` type) when rendering the address space.
+Clients MAY use `schema.type` to distinguish leaf objects (scalar type) from branch objects (`"object"` type) when rendering the address space.
 
 **Unknown types: `UnknownType`**
 
