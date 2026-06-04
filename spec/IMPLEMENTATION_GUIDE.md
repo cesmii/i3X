@@ -202,7 +202,7 @@ Examples:
 
 ### Bulk Response
 
-POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed.
+POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed. The `result` field within each entry conforms to the schema of the resource type being queried — an Object Type result, an Object instance result, and a Relationship Type result all share this envelope but have different `result` shapes. See each endpoint's response table for the concrete field definitions.
 
 The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
 
@@ -800,7 +800,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 | `displayName`   | string  | Yes      | Human-friendly name for display                                                                                                                                                                                        |
 | `typeElementId` | string  | Yes      | ElementId of the Object Type that defines this Object's schema                                                                                                                                                         |
 | `parentId`      | string? | Yes      | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object                                                                                                                        |
-| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
+| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. `false` means this Object has no HasComponent children — it does not imply a scalar value. An Object with `isComposition: false` may still have a structured value; the Object Type's `schema.type` is the authoritative signal for value shape. |
 | `isExtended`    | boolean | Yes      | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `schemaExtensions` below in the `metadata`.                   |
 
 The `metadata` key is included if `includeMetadata=true` in the request.
@@ -812,7 +812,7 @@ The `metadata` key is included if `includeMetadata=true` in the request.
 | `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
 | `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
 | `metadata.schemaExtensions` | object  | No                       | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
-|  `metadata.system`            | object | Yes if `isExtended=true` | Vendor-defined key/value pairs for platform-specific metadata not covered by the standard fields. Keys are vendor-defined strings; values are limited to strings, numbers, and booleans.|
+|  `metadata.system`            | object | Yes if `isExtended=true` | Opaque passthrough slot for Vendor or source-system specific metadata (e.g., OPC UA `nodeClass`, `nodeId`). Keys and values are defined by the underlying platform; i3X clients MUST NOT rely on any specific key for normative behavior. The authoritative signal for value shape is always the Object Type's `schema.type`, not any key within `metadata.system`.|
 
 
 - Note on `parentId` vs `relationships`: `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
@@ -1789,6 +1789,7 @@ Production Line A (parent)
 - If object A `HasParent` B, then B `HasChildren` A
 - `parentId` on instances MUST match the `HasParent` relationship
 - Traversing `HasChildren` returns distinct, independently-valued objects
+- `HasChildren` objects are **never** included in a `POST /objects/value` response, even when `maxDepth > 1`. `maxDepth` only recurses through `HasComponent`. A hierarchical child that sits visually under a parent in the tree must be queried independently.
 
 #### HasComponent / ComponentOf (Composition)
 
