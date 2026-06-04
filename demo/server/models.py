@@ -159,6 +159,12 @@ class RegisterMonitoredItemsRequest(BaseModel):
     maxDepth: Optional[int] = 1  # 0 means infinite recursion, 1 means no recursion, >1 recurses to that depth
 
 
+class UnregisterMonitoredItemsRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
+    subscriptionId: str = Field(..., description="The subscription to unregister items from")
+    elementIds: List[str]
+
+
 class StreamRequest(BaseModel):
     clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to open a stream for")

@@ -342,23 +342,20 @@ class MockDataSource(I3XDataSource):
         # Check if instance has explicit relationship metadata
         relationships_metadata = source_instance.get("relationships", {})
 
-        # If no relationship_type specified, return all related instances
+        # If no relationship_type specified, return all related instances.
+        # Each (relationshipType, target) edge produces one entry; the same target
+        # may appear multiple times if reachable via different relationship types.
         if relationship_type is None:
-            # Iterate per type to preserve edge metadata per object
-            seen_ids = set()
             for rel_type, related_ids in relationships_metadata.items():
                 if isinstance(related_ids, str):
                     related_ids = [related_ids]
                 if isinstance(related_ids, list):
                     for rid in related_ids:
-                        if rid in seen_ids:
-                            continue
                         for instance in self.data["instances"]:
                             if instance["elementId"] == rid:
                                 filtered = {k: v for k, v in instance.items() if k != "records"}
                                 filtered["sourceRelationship"] = rel_type
                                 related_objects.append(filtered)
-                                seen_ids.add(rid)
                                 break
         else:
             # Look for the specific relationship type (case-insensitive match)

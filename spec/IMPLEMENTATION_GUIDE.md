@@ -981,6 +981,10 @@ Returns a bulk response with the related Objects for each queried elementId.
 | `results[].sourceRelationship` | string | Yes      | The name of the relationship that links this Object to the Object in the request, or inbound edge. For example, if it's a parent/child relationship this would be `hasChild`. This helps support graph traversal without additional API calls. |
 | `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
 
+- If the same target is reachable via multiple relationship types, it appears once per matching edge (not deduplicated across relationship types).
+- Servers MUST omit targets that no longer exist in the address space rather than returning them as failed entries; a stale reference in `metadata.relationships` does not cause the containing result to fail.
+- Response order within each `result` array is unspecified.
+
 
 - **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
@@ -1280,6 +1284,8 @@ Returns a bulk response with a result per elementId.
 
 ---
 
+> `result: null` on a successful write entry is intentional — write operations confirm acceptance via `success: true` and do not echo the written VQT back. Use `POST /objects/value` to read the current value after a write.
+
 #### `PUT` /objects/history
 
 Update historical values of one or more Objects.
@@ -1505,7 +1511,7 @@ Register one or more Objects with a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to register items with. |
 | `elementIds` | string[] | Yes | One or more elementIds to register. |
-| `maxDepth` | integer | No | Controls recursion depth. See [maxDepth](#maxdepth-parameter-semantics) for more detail. |
+| `maxDepth` | integer | No | Controls recursion depth for all `elementIds` in this call. See [maxDepth](#maxdepth-parameter-semantics) for more detail. To register elements at different depths, use separate requests. |
 
 **Response:**
 
@@ -1538,8 +1544,7 @@ Unregister one or more Objects from a Subscription.
   "elementIds": [
     "object-elementid-1",
     "object-elementid-2"
-  ],
-  "maxDepth": 1
+  ]
 }
 ```
 
@@ -1548,7 +1553,6 @@ Unregister one or more Objects from a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to unregister items from. |
 | `elementIds` | string[] | Yes | One or more elementIds to unregister. |
-| `maxDepth` | integer | No | Controls recursion depth. |
 
 **Response:**
 
@@ -1729,7 +1733,8 @@ If the client does not call `/sync` frequently enough, the server's subscription
 - The Server SHOULD drop the oldest updates first
 - The Server MUST return HTTP 206 (Partial Content) 
 
-Below is an example of a 206 response from the Server.
+Below is an example of a 206 response from the Server. In this example the client's last acknowledged `sequenceNumber` was 100, meaning updates 101–150 were permanently dropped.
+
 ```json
 {
   "success": true,
@@ -1748,6 +1753,8 @@ Below is an example of a 206 response from the Server.
   }
 }
 ```
+
+Clients can calculate the exact gap: all sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped. Clients SHOULD record this gap and then continue polling normally using the returned `sequenceNumber` as the next `lastSequenceNumber`.
 ---
 
 ### Subscription Life Cycle
@@ -1827,7 +1834,7 @@ When a server limit is reached before the requested depth is satisfied, the serv
 - If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
 - If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
 
-Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data. This applies even when `maxDepth=0` (infinite depth) was requested — a server that cannot return the full tree due to its own limits MUST still return 206 rather than silently truncating.
 
 **Response Structure with maxDepth:**
 
