@@ -1588,10 +1588,8 @@ If the SSE connection is lost, the client can call the /stream endpoint again to
 Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
-  - [TODO] is this enough or should we spec what happens if you spam the /stream endpoint? Ignore? Close the old and open new?
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
-  - [TODO] should register require queuing the current value of the Object?
 
 **Body Parameters:**
 ```json
