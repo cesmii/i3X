@@ -4,7 +4,7 @@ This document provides guidance for implementing i3X (Industrial Information Int
 
 ## Status of This Document
 
-This document is a working draft, and should not be considered complete or normative. This guide is derived from RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to change.
+This document is a Release Candidate, and should be considered nearly complete and normative. This guide is informed by RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to minor changes.
 
 ## Table of Contents
 
