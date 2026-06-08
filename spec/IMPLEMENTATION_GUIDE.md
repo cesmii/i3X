@@ -982,7 +982,6 @@ Returns a bulk response with the related Objects for each queried elementId.
 | `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
 
 - If the same target is reachable via multiple relationship types, it appears once per matching edge (not deduplicated across relationship types).
-- Servers MUST omit targets that no longer exist in the address space rather than returning them as failed entries; a stale reference in `metadata.relationships` does not cause the containing result to fail.
 - Response order within each `result` array is unspecified.
 
 
