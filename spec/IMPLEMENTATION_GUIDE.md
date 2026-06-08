@@ -1753,7 +1753,7 @@ Below is an example of a 206 response from the Server. In this example the clien
 }
 ```
 
-Clients can calculate the exact gap: all sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped. Clients SHOULD record this gap and then continue polling normally using the returned `sequenceNumber` as the next `lastSequenceNumber`.
+Clients can calculate the exact gap: all sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped. Clients MAY note this gap and optionally resolve with a `objects/history` query, and continue polling normally using the returned `sequenceNumber` as the next `lastSequenceNumber`.
 ---
 
 ### Subscription Life Cycle
