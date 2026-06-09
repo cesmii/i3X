@@ -1588,6 +1588,7 @@ If the SSE connection is lost, the client can call the /stream endpoint again to
 Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
+  - If a client attempts to open a new stream on a subscription while one is already open, the Server MUST close the old stream
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
 
@@ -1645,6 +1646,8 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 - If `lastSequenceNumber` is provided, the server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
 - Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
 - Server MUST clear the queue if `lastSequenceNumber=-1` is provided, acknowledging all pending updates
+- The server MUST return an error if the subscription has an open stream
+  - Clients MUST close the stream before calling sync
 
 **Body Parameters:**
 
