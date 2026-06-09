@@ -98,6 +98,13 @@ app = FastAPI(
     lifespan=lifespan,
     docs_url=None,
     redoc_url=None,
+    openapi_tags=[
+        {"name": "Info"},
+        {"name": "Explore"},
+        {"name": "Query"},
+        {"name": "Update"},
+        {"name": "Subscribe"},
+    ],
 )
 
 # Mount static files directory

@@ -4,7 +4,7 @@ This document provides guidance for implementing i3X (Industrial Information Int
 
 ## Status of This Document
 
-This document is a working draft, and should not be considered complete or normative. This guide is derived from RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to change.
+This document is a Release Candidate, and should be considered nearly complete and normative. This guide is informed by RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to minor changes.
 
 ## Table of Contents
 
@@ -22,6 +22,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Namespaces](#namespaces)
   - [Object Types](#object-types)
   - [Relationship Types](#relationship-types)
+    - [Relationship Semantics](#relationship-semantics)
   - [Objects](#objects)
 - [Exploratory Methods](#exploratory-methods)
   - [Server Capabilities Endpoints](#server-capabilities-endpoints)
@@ -30,6 +31,7 @@ This document is a working draft, and should not be considered complete or norma
   - [Relationship Type Endpoints](#relationship-type-endpoints)
   - [Object Endpoints](#object-endpoints)
 - [Query Methods](#query-methods)
+  - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
   - [Null Value Handling](#null-value-handling)
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
@@ -40,11 +42,6 @@ This document is a working draft, and should not be considered complete or norma
     - [Sync Examples](#sync-examples)
     - [Sync Data Loss](#sync-data-loss)
   - [Subscription Life Cycle](#subscription-life-cycle)
-- [Appendix](#appendix-for-now)
-  - [Relationship Semantics](#relationship-semantics)
-    - [HasParent / HasChildren](#hasparent--haschildren)
-    - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
-  - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
 
 ## Introduction
 i3X is an HTTP-based API for interacting with industrial systems. It defines a standard interface between clients and servers for discovery, browsing, reading, writing, and subscribing to industrial data.
@@ -202,7 +199,7 @@ Examples:
 
 ### Bulk Response
 
-POST endpoints that accept an array of identifiers return a bulk shape. Each item is independently succeeded or failed. The top-level `success` is `false` if **any** item failed.
+POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed. The `result` field within each entry conforms to the schema of the resource type being queried — an Object Type result, an Object instance result, and a Relationship Type result all share this envelope but have different `result` shapes. See each endpoint's response table for the concrete field definitions.
 
 The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
 
@@ -334,6 +331,28 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 }
 ```
 
+**Scalar types**
+
+Object Type schemas are not limited to `"type": "object"`. A schema with a scalar `type` — `"number"`, `"integer"`, `"string"`, or `"boolean"` — defines a **leaf** type whose instances return a bare scalar in the VQT `value` field rather than a JSON object. Individual sensor readings, setpoints, and status flags are typically modelled this way.
+
+```json
+{
+  "elementId": "temperature-reading-type",
+  "displayName": "Temperature Reading",
+  "namespaceUri": "https://example.com/ns/sensors",
+  "version": "1.0.0",
+  "schema": { "type": "number" }
+}
+```
+
+An instance of this type returns a bare scalar value:
+
+```json
+{ "elementId": "zone-temp-01", "result": { "isComposition": false, "value": 592.0, "quality": "Good", "timestamp": "..." } }
+```
+
+Clients MAY use `schema.type` to distinguish leaf objects (scalar type) from branch objects (`"object"` type) when rendering the address space.
+
 **Unknown types: `UnknownType`**
 
 When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` in their type registry and use its `elementId` as the `typeElementId` on all affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. The `UnknownType` schema should be `{"type": "object"}`. The choice of `elementId` is implementation-specific.
@@ -407,6 +426,45 @@ Below is an example of two Relationship Type definitions.
 ```
 
 For more information on the types of Relationships supported in i3X, see the document [Understanding Relationships](UNDERSTANDING_RELATIONSHIPS.md).
+
+#### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
+
+##### HasParent / HasChildren
+
+These represent topological or organizational hierarchy where child objects are separate entities organized under a parent.
+
+```
+Production Line A (parent)
+├── Machine 1 (child)
+├── Machine 2 (child)
+└── Machine 3 (child)
+```
+
+**Requirements:**
+
+- If object A `HasParent` B, then B `HasChildren` A
+- `parentId` on instances MUST match the `HasParent` relationship
+- Traversing `HasChildren` returns distinct, independently-valued objects
+
+##### HasComponent / ComponentOf (Composition)
+
+These indicate when child data IS part of the parent's definition. The parent's value is composed of its children's values.
+
+```
+CNC Machine (parent, isComposition: true)
+├── Spindle (component)
+├── Coolant System (component)
+└── Control Panel (component)
+```
+
+**Requirements:**
+
+- If object A `HasComponent` B, then B `ComponentOf` A
+- Parent MUST have `isComposition: true`
+- Querying parent value with `maxDepth > 1` returns nested child values
+- Component children's values are part of the parent's logical value
 
 **Expressing type inheritance with `allOf`**
 
@@ -492,6 +550,7 @@ The definition of an Object looks as follows.
 - If `isExtended=true` the Object may have additional attributes not included in the `typeElementId` schema. Use `includeMetadata=true` to see the additional attributes.
 - Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
 - The Server MUST have at least one root Object which is queried using the `/objects?root=true` endpoint. This allows clients to progressively browse the address space from one or more root objects.
+- Objects whose Object Type schema has `"type": "object"` are **branch nodes** — they return structured values and may have composition children. Objects whose schema type is a scalar (`"number"`, `"integer"`, `"string"`, `"boolean"`) are **leaf nodes** — they return a bare scalar value and represent individual data points. Clients SHOULD use `schema.type` to determine rendering.
 
 ## Exploratory Methods
 
@@ -804,7 +863,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 | `displayName`   | string  | Yes      | Human-friendly name for display                                                                                                                                                                                        |
 | `typeElementId` | string  | Yes      | ElementId of the Object Type that defines this Object's schema                                                                                                                                                         |
 | `parentId`      | string? | Yes      | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object                                                                                                                        |
-| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
+| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. `false` means this Object has no HasComponent children — it does not imply a scalar value. An Object with `isComposition: false` may still have a structured value; the Object Type's `schema.type` is the authoritative signal for value shape. |
 | `isExtended`    | boolean | Yes      | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `schemaExtensions` below in the `metadata`.                   |
 
 The `metadata` key is included if `includeMetadata=true` in the request.
@@ -816,7 +875,7 @@ The `metadata` key is included if `includeMetadata=true` in the request.
 | `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
 | `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
 | `metadata.schemaExtensions` | object  | No                       | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
-|  `metadata.system`            | object | Yes if `isExtended=true` | Vendor-defined key/value pairs for platform-specific metadata not covered by the standard fields. Keys are vendor-defined strings; values are limited to strings, numbers, and booleans.|
+|  `metadata.system`            | object | Yes if `isExtended=true` | Opaque passthrough slot for Vendor or source-system specific metadata (e.g., OPC UA `nodeClass`, `nodeId`). Keys and values are defined by the underlying platform; i3X clients MUST NOT rely on any specific key for normative behavior. The authoritative signal for value shape is always the Object Type's `schema.type`, not any key within `metadata.system`.|
 
 
 - Note on `parentId` vs `relationships`: `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
@@ -985,8 +1044,11 @@ Returns a bulk response with the related Objects for each queried elementId.
 | `results[].sourceRelationship` | string | Yes      | The name of the relationship that links this Object to the Object in the request, or inbound edge. For example, if it's a parent/child relationship this would be `hasChild`. This helps support graph traversal without additional API calls. |
 | `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
 
+- Each (relationshipType, target) edge produces one entry; the same target may appear multiple times if reachable via different relationship types.
+- Response order within each `result` array is unspecified.
 
 - **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
+- **Implementation note — hierarchical relationships:** `POST /objects/related` MUST include all relationships (HasParent, HasChildren, HasComponent, ComponentOf AND Graph) in its response, not only graph relationships. Servers whose underlying data model stores hierarchy only via the `parentId` field (without explicit relationship records) MUST synthesize these entries in the `/objects/related` response. Relying on `parentId` alone is not sufficient — objects that have no graph relationships will return an empty result set, making them unreachable by pure graph traversal.
 
 ---
 
@@ -1033,6 +1095,64 @@ Below is an example of a temperature sensor value return.
   "timestamp": "2025-01-08T10:30:00Z"
 }
 ```
+
+### maxDepth Parameter Semantics
+
+The `maxDepth` parameter controls recursion through `HasComponent` relationships:
+
+| Value | Behavior |
+|-------|----------|
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
+| `N` | Recurse up to N levels deep through `HasComponent` relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
+
+**Response Structure**
+
+When `maxDepth > 1` and the element has components:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "machine-001",
+      "result": {
+        "value": { "status": "running" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z",
+        "components": {
+          "spindle-001": {
+            "value": { "rpm": 12000 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "coolant-001": {
+            "value": { "flow_rate": 5.2, "temp": 22.1 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
 
 ### Null Value Handling
 
@@ -1159,7 +1279,7 @@ Returns the last known value for one or more Objects.
 ```
 
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
-- `components` is present only on composition elements and contains child values keyed by `elementId`
+- `components` is present only on composition elements and contains child values keyed by `elementId`; a child whose Object Type has a scalar schema (e.g. `"type": "number"`) returns a bare number as its `value` — this is the leaf pattern for individual data points
 - If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
 
 ---
@@ -1168,8 +1288,6 @@ Returns the last known value for one or more Objects.
 
 > **Implementation note:** Not all implementations are required to become Historians; the intent is that whatever history the underlying platform already retains should be accessible through a consistent interface. A Historian, a cache, or no history at all should be accessed the same way.
 A server whose platform stores no history SHOULD still implement this endpoint and return `GoodNoData` for the requested range. Use `GET /info` `capabilities.query.history` to advertise whether historical data is available.
-
-Returns the historical values for one or more Objects between a start and end time.
 
 **Request Body:**
 
@@ -1274,7 +1392,7 @@ Returns a bulk response with a result per elementId.
 
 ```json
 {
-  "success": true,
+  "success": false,
   "results": [
     { "success": true, "elementId": "pump-101", "result": null },
     { "success": false, "elementId": "bad-id", "responseDetail": { "title": "Not Found", "status": 404, "detail": "Element not found: bad-id" } }
@@ -1283,6 +1401,8 @@ Returns a bulk response with a result per elementId.
 ```
 
 ---
+
+> `result: null` on a successful write entry is intentional — write operations confirm acceptance via `success: true` and do not echo the written VQT back. Use `POST /objects/value` to read the current value after a write.
 
 #### `PUT` /objects/history
 
@@ -1509,7 +1629,7 @@ Register one or more Objects with a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to register items with. |
 | `elementIds` | string[] | Yes | One or more elementIds to register. |
-| `maxDepth` | integer | No | Controls recursion depth. See [maxDepth](#maxdepth-parameter-semantics) for more detail. |
+| `maxDepth` | integer | No | Controls recursion depth for all `elementIds` in this call. See [maxDepth](#maxdepth-parameter-semantics) for more detail. To register elements at different depths, use separate requests. |
 
 **Response:**
 
@@ -1542,8 +1662,7 @@ Unregister one or more Objects from a Subscription.
   "elementIds": [
     "object-elementid-1",
     "object-elementid-2"
-  ],
-  "maxDepth": 1
+  ]
 }
 ```
 
@@ -1552,7 +1671,6 @@ Unregister one or more Objects from a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to unregister items from. |
 | `elementIds` | string[] | Yes | One or more elementIds to unregister. |
-| `maxDepth` | integer | No | Controls recursion depth. |
 
 **Response:**
 
@@ -1592,10 +1710,9 @@ If the SSE connection is lost, the client can call the /stream endpoint again to
 Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
-  - [TODO] is this enough or should we spec what happens if you spam the /stream endpoint? Ignore? Close the old and open new?
+  - If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one. The previously connected client will receive an SSE stream close with no error.
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
-  - [TODO] should register require queuing the current value of the Object?
 
 **Body Parameters:**
 ```json
@@ -1651,6 +1768,8 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 - If `lastSequenceNumber` is provided, the server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
 - Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
 - Server MUST clear the queue if `lastSequenceNumber=-1` is provided, acknowledging all pending updates
+- The server MUST return an error if the subscription has an open stream
+  - Clients MUST close the stream before calling sync
 
 **Body Parameters:**
 
@@ -1733,7 +1852,8 @@ If the client does not call `/sync` frequently enough, the server's subscription
 - The Server SHOULD drop the oldest updates first
 - The Server MUST return HTTP 206 (Partial Content) 
 
-Below is an example of a 206 response from the Server.
+Below is an example of a 206 response from the Server. In this example the client's last acknowledged `sequenceNumber` was 100, meaning updates 101–150 were permanently dropped.
+
 ```json
 {
   "success": true,
@@ -1752,6 +1872,8 @@ Below is an example of a 206 response from the Server.
   }
 }
 ```
+
+Clients can calculate the exact gap: all sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped. Clients MAY note this gap and optionally resolve with a `objects/history` query, and continue polling normally using the returned `sequenceNumber` as the next `lastSequenceNumber`.
 ---
 
 ### Subscription Life Cycle
@@ -1793,6 +1915,7 @@ Production Line A (parent)
 - If object A `HasParent` B, then B `HasChildren` A
 - `parentId` on instances MUST match the `HasParent` relationship
 - Traversing `HasChildren` returns distinct, independently-valued objects
+- `HasChildren` objects are **never** included in a `POST /objects/value` response, even when `maxDepth > 1`. `maxDepth` only recurses through `HasComponent`. A hierarchical child that sits visually under a parent in the tree must be queried independently.
 
 #### HasComponent / ComponentOf (Composition)
 
@@ -1830,7 +1953,7 @@ When a server limit is reached before the requested depth is satisfied, the serv
 - If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
 - If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
 
-Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data. This applies even when `maxDepth=0` (infinite depth) was requested — a server that cannot return the full tree due to its own limits MUST still return 206 rather than silently truncating.
 
 **Response Structure with maxDepth:**
 

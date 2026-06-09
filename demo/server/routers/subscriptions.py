@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from models import (
     CreateSubscriptionRequest,
     RegisterMonitoredItemsRequest,
+    UnregisterMonitoredItemsRequest,
     StreamRequest, SyncRequest,
     DeleteSubscriptionsRequest,
     ListSubscriptionsRequest,
@@ -41,6 +42,7 @@ class Subscription(BaseModel):
     ttl_seconds: int = 300          # Idle TTL: subscription auto-deleted if no /sync or active stream within this window
     last_activity: str = ""         # ISO timestamp of last /sync, /ack, or stream open
     is_streaming: bool = False  # True when SSE connection is active
+    stream_generation: int = 0  # incremented each time a new stream is opened; old generators exit when this changes
     # Exclude these fields from JSON serialization/schema
     handler: Callable[[Any], None] | None = Field(exclude=True, default=None)
     event_loop: Any | None = Field(exclude=True, default=None)
@@ -133,7 +135,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     response_model=BulkResponse[None],
     responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
-def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
+def unregister_objects(request: Request, req: UnregisterMonitoredItemsRequest):
     """Remove objects from the subscription. subscriptionId is passed in the request body."""
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
@@ -146,10 +148,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
         if not data_source.get_instance_by_id(eid):
             results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
-        tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
-        for item in tree:
-            item_id = item["elementId"]
-            sub.monitoredObjects = [m for m in sub.monitoredObjects if m["elementId"] != item_id]
+        sub.monitoredObjects = [m for m in sub.monitoredObjects if m["elementId"] != eid]
         results.append({"success": True, "elementId": eid, "result": None})
 
     return bulk_response(results)
@@ -168,37 +167,34 @@ async def stream_subscription(request: Request, req: StreamRequest):
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # If handler and streaming_response already exist, reuse them
-    if sub.handler is not None and sub.streaming_response is not None:
-        return sub.streaming_response
+    # Increment generation — any active stream polls this and exits when it no longer matches
+    my_generation = sub.stream_generation + 1
+    sub.stream_generation = my_generation
 
-    # Otherwise create queue, handler, and streaming response once.
-    # Use a threading.Queue so the MockDataUpdater thread can push without any
-    # event-loop cross-thread coordination (asyncio.Queue is not thread-safe).
     tq: thread_queue.Queue = thread_queue.Queue()
 
     async def event_stream():
         try:
-            while True:
+            while sub.stream_generation == my_generation:
                 try:
                     update = tq.get_nowait()
                     yield f"data: {json.dumps([update])}\n\n"
                 except thread_queue.Empty:
                     await asyncio.sleep(0.05)
+            print(f"[SSE] Subscription {req.subscriptionId} stream replaced by new connection")
         except Exception as e:
             print(f"[SSE] Stream ended: {e}")
         finally:
-            # When stream disconnects, switch back to queue mode
-            sub.is_streaming = False
-            sub.handler = None
-            sub.event_loop = None
-            sub.streaming_response = None
-            print(f"[SSE] Subscription {req.subscriptionId} switched back to queue mode")
+            if sub.stream_generation == my_generation:
+                sub.is_streaming = False
+                sub.handler = None
+                sub.event_loop = None
+                sub.streaming_response = None
+                print(f"[SSE] Subscription {req.subscriptionId} switched back to queue mode")
 
     def push_update_to_client(update):
         tq.put(update)
 
-    # Switch to streaming mode
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sub.is_streaming = True
     sub.handler = push_update_to_client
@@ -238,10 +234,15 @@ def sync_subscription(request: Request, req: SyncRequest):
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # Acknowledge batches the client has already processed
+    # Acknowledge batches the client has already processed.
+    # lastSequenceNumber=-1 is a sentinel meaning "ack all pending updates."
     if req.lastSequenceNumber is not None:
-        sub.batches = [b for b in sub.batches if b.get("sequenceNumber", 0) > req.lastSequenceNumber]
-        sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
+        if req.lastSequenceNumber == -1:
+            sub.batches.clear()
+            sub.lastAckedSequence = sub.nextSequence - 1
+        else:
+            sub.batches = [b for b in sub.batches if b.get("sequenceNumber", 0) > req.lastSequenceNumber]
+            sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
 
     # Detect data loss before resetting the counter
     has_drops = sub.droppedCount > 0
@@ -399,7 +400,6 @@ def subscription_worker(I3X_DATA_SUBSCRIPTIONS, running_flag):
 
 
 # Recursively collect an instance tree starting from root_id
-## TODO this should probably be a utility used by exploratory/browse as well?
 def collect_instance_tree(
     root_id: str, max_depth: int = 0, depth: int = 0, instances=[]
 ):
