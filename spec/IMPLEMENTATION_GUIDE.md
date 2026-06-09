@@ -22,6 +22,7 @@ This document is a Release Candidate, and should be considered nearly complete a
   - [Namespaces](#namespaces)
   - [Object Types](#object-types)
   - [Relationship Types](#relationship-types)
+    - [Relationship Semantics](#relationship-semantics)
   - [Objects](#objects)
 - [Exploratory Methods](#exploratory-methods)
   - [Server Capabilities Endpoints](#server-capabilities-endpoints)
@@ -30,6 +31,7 @@ This document is a Release Candidate, and should be considered nearly complete a
   - [Relationship Type Endpoints](#relationship-type-endpoints)
   - [Object Endpoints](#object-endpoints)
 - [Query Methods](#query-methods)
+  - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
   - [Null Value Handling](#null-value-handling)
 - [Update Methods](#update-methods)
 - [Subscribe Methods](#subscribe-methods)
@@ -40,11 +42,6 @@ This document is a Release Candidate, and should be considered nearly complete a
     - [Sync Examples](#sync-examples)
     - [Sync Data Loss](#sync-data-loss)
   - [Subscription Life Cycle](#subscription-life-cycle)
-- [Appendix](#appendix-for-now)
-  - [Relationship Semantics](#relationship-semantics)
-    - [HasParent / HasChildren](#hasparent--haschildren)
-    - [HasComponent / ComponentOf (Composition)](#hascomponent--componentof-composition)
-  - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
 
 ## Introduction
 i3X is an HTTP-based API for interacting with industrial systems. It defines a standard interface between clients and servers for discovery, browsing, reading, writing, and subscribing to industrial data.
@@ -425,6 +422,45 @@ Below is an example of two Relationship Type definitions.
 ```
 
 For more information on the types of Relationships supported in i3X, see the document [Understanding Relationships](UNDERSTANDING_RELATIONSHIPS.md).
+
+#### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
+
+##### HasParent / HasChildren
+
+These represent topological or organizational hierarchy where child objects are separate entities organized under a parent.
+
+```
+Production Line A (parent)
+├── Machine 1 (child)
+├── Machine 2 (child)
+└── Machine 3 (child)
+```
+
+**Requirements:**
+
+- If object A `HasParent` B, then B `HasChildren` A
+- `parentId` on instances MUST match the `HasParent` relationship
+- Traversing `HasChildren` returns distinct, independently-valued objects
+
+##### HasComponent / ComponentOf (Composition)
+
+These indicate when child data IS part of the parent's definition. The parent's value is composed of its children's values.
+
+```
+CNC Machine (parent, isComposition: true)
+├── Spindle (component)
+├── Coolant System (component)
+└── Control Panel (component)
+```
+
+**Requirements:**
+
+- If object A `HasComponent` B, then B `ComponentOf` A
+- Parent MUST have `isComposition: true`
+- Querying parent value with `maxDepth > 1` returns nested child values
+- Component children's values are part of the parent's logical value
 
 **Expressing type inheritance with `allOf`**
 
@@ -1056,6 +1092,64 @@ Below is an example of a temperature sensor value return.
 }
 ```
 
+### maxDepth Parameter Semantics
+
+The `maxDepth` parameter controls recursion through `HasComponent` relationships:
+
+| Value | Behavior |
+|-------|----------|
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
+| `N` | Recurse up to N levels deep through `HasComponent` relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
+
+**Response Structure**
+
+When `maxDepth > 1` and the element has components:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "machine-001",
+      "result": {
+        "value": { "status": "running" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z",
+        "components": {
+          "spindle-001": {
+            "value": { "rpm": 12000 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "coolant-001": {
+            "value": { "flow_rate": 5.2, "temp": 22.1 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
+
 ### Null Value Handling
 
 The top-level `value` field in a VQT is always nullable. A `null` value means the underlying platform currently has no valid data for this element — the element was reached and queried successfully, but the platform cannot provide a value at this time. This is a platform-level condition, not an API error.
@@ -1191,8 +1285,6 @@ Returns the last known value for one or more Objects.
 > **Implementation note:** Not all implementations are required to become Historians; the intent is that whatever history the underlying platform already retains should be accessible through a consistent interface. A Historian, a cache, or no history at all should be accessed the same way.
 A server whose platform stores no history SHOULD still implement this endpoint and return `GoodNoData` for the requested range. Use `GET /info` `capabilities.query.history` to advertise whether historical data is available.
 
-Returns the historical values for one or more Objects between a start and end time.
-
 **Request Body:**
 
 | Field | Type | Required | Description |
@@ -1296,7 +1388,7 @@ Returns a bulk response with a result per elementId.
 
 ```json
 {
-  "success": true,
+  "success": false,
   "results": [
     { "success": true, "elementId": "pump-101", "result": null },
     { "success": false, "elementId": "bad-id", "responseDetail": { "title": "Not Found", "status": 404, "detail": "Element not found: bad-id" } }
@@ -1451,7 +1543,7 @@ Get one or more subscriptions by ID. Used to check if subscriptions exist and in
   "results": [
     {
       "success": true,
-      "elementId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+      "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
       "result": {
         "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
         "displayName": "mySubscription",
@@ -1614,7 +1706,7 @@ If the SSE connection is lost, the client can call the /stream endpoint again to
 Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
-  - If a client attempts to open a new stream on a subscription while one is already open, the Server MUST close the old stream
+  - If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one. The previously connected client will receive an SSE stream close with no error.
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
 
