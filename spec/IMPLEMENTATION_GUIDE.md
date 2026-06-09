@@ -1278,6 +1278,8 @@ Returns the last known value for one or more Objects.
 }
 ```
 
+When `maxDepth=1` (default), a composition element returns its own VQT with no `components` key. `isComposition: true` in the result means the element has HasComponent children that were not fetched — re-request with `maxDepth: 0` to retrieve the full composed value.
+
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
 - `components` is present only on composition elements and contains child values keyed by `elementId`; a child whose Object Type has a scalar schema (e.g. `"type": "number"`) returns a bare number as its `value` — this is the leaf pattern for individual data points
 - If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
