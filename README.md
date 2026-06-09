@@ -2,11 +2,11 @@
 
 ## Status of This Effort
 
-**i3X is in a _1.0 Release Candidate_ state.**
+i3X is in a _pre-release_ Beta state. 
 
-> **This branch represents the _current state_ of the effort to establish a 1.0 specification. It contains breaking changes from the Beta branch released April 2026! See the [CHANGELOG.md](CHANGELOG.md) for the deltas from the Beta.**
+**This branch represents the effort to progress to a 1.0 specification. It contains breaking changes from the Alpha (main) branch.**
 
-The API definition is now largely stable, with only minor changes to response payloads and subscription API signatures expected through Q2 of 2026. If you want to help, please see [Contributing.md](https://github.com/cesmii/i3X/blob/1.0-Beta/Contributing.md).
+While the API signature is largely stable, expect significant changes to response structures, and minor changes to method calls over the first quarter of 2026 while we stabilize a 1.0 release. If you want to help, please see [Contributing.md](#Contributing.md).
 
 ## What is i3X?
 
@@ -45,16 +45,18 @@ This proposal has been created by industry participants with experience developi
 ## Trying it Out
 A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v1/](https://api.i3x.dev/v1/) with a Swagger page at [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs).
 
-If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) publishes the *official* cross-platform [i3X Explorer](https://www.acetechnologies.net/i3x) client you can use to explore the i3X functions, and any published or accessible i3X Address Space.
+If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) has provided a cross-platform [i3X Explorer](https://www.acetechnologies.net/i3x) client you can use to explore both the i3X functions and the Demo namespace.
 
 <img src="https://www.acetechnologies.net/i3X/screenshots/subscriptions.png" height=200 style="height:200px">
 
 The Demo data includes an exploration of the complex relationships supported by i3X. [Review the demo readme](demo/README.md) for an explanation of how these relationships work. 
 
 ## API Usage
+
 The block diagram below shows where the i3X API is most applicable, namely within the realm of software applications running on top of operating systems on PCs or servers. Information being accessed through the API are assumed to have already been processed by contexualization functions to make it ready for consumption by other applications.
 ![API Block Diagram](images/api-block-diagram.PNG)
 
 ## API tech stack within the Data Access Model
+
 The image below shows the tech stack for a general Web Browser compared to the i3X API, from the perspective of the Data Access Model.
 ![API Data Access Model](images/data-access-model.PNG)
