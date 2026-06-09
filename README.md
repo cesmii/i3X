@@ -43,7 +43,7 @@ With a stable 1.0 release, platform vendors and application developers, must wor
 This proposal has been created by industry participants with experience developing or using manufacturing information platforms such as those provided by Rockwell Automation, HighByte, ThinkIQ, Inductive Automation, ThingWorx and Siemens, are deep users and often contributors to related technology and standards efforts, and have more than 50 years of combined experience in designing, developing, implementing and using manufacturing information software.
 
 ## Trying it Out
-A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v1/](https://api.i3x.dev/v1/) with a Swagger page at [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs).
+A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v0/](https://api.i3x.dev/v0/) with a Swagger page at [https://api.i3x.dev/v0/docs](https://api.i3x.dev/v0/docs).
 
 If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) publishes the *official* cross-platform [i3X Explorer](https://www.acetechnologies.net/i3x) client you can use to explore the i3X functions, and any published or accessible i3X Address Space.
 
