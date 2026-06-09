@@ -981,9 +981,8 @@ Returns a bulk response with the related Objects for each queried elementId.
 | `results[].sourceRelationship` | string | Yes      | The name of the relationship that links this Object to the Object in the request, or inbound edge. For example, if it's a parent/child relationship this would be `hasChild`. This helps support graph traversal without additional API calls. |
 | `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
 
-- If the same target is reachable via multiple relationship types, it appears once per matching edge (not deduplicated across relationship types).
+- Each (relationshipType, target) edge produces one entry; the same target may appear multiple times if reachable via different relationship types.
 - Response order within each `result` array is unspecified.
-
 
 - **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
 
