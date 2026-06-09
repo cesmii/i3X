@@ -401,7 +401,6 @@ def subscription_worker(I3X_DATA_SUBSCRIPTIONS, running_flag):
 
 
 # Recursively collect an instance tree starting from root_id
-## TODO this should probably be a utility used by exploratory/browse as well?
 def collect_instance_tree(
     root_id: str, max_depth: int = 0, depth: int = 0, instances=[]
 ):
