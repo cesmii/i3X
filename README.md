@@ -6,7 +6,7 @@
 
 > **This branch represents the stable 1.0 specification. It supersedes all other releases, and should be considered normative for implementers. See the [CHANGELOG.md](CHANGELOG.md) for the deltas from the Beta.**
 
-The API definition is now stable, with final response payloads and subscription API signatures for 1.0. In late 2026, a new charter will be established to begin work on vNext. Until that time, only documentation and demo bugs will be addressed. Specification issues and features will be considered for vNext -- if you want to help, please see [Contributing.md](https://github.com/cesmii/i3X/blob/1.0/Contributing.md).
+The API definition is now stable, with final response payloads and subscription API signatures for 1.0. In late 2026, a new charter will be established to begin work on vNext. Until that time, only documentation and demo bugs will be addressed. Specification issues and features will be considered for vNext -- if you want to help, please see [Contributing.md](Contributing.md).
 
 ## What is i3X?
 
