@@ -159,6 +159,12 @@ class RegisterMonitoredItemsRequest(BaseModel):
     maxDepth: Optional[int] = 1  # 0 means infinite recursion, 1 means no recursion, >1 recurses to that depth
 
 
+class UnregisterMonitoredItemsRequest(BaseModel):
+    clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
+    subscriptionId: str = Field(..., description="The subscription to unregister items from")
+    elementIds: List[str]
+
+
 class StreamRequest(BaseModel):
     clientId: Optional[str] = Field(None, description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to open a stream for")
@@ -313,13 +319,17 @@ class HistoricalValueResult(BaseModel):
     values: List[VQT] = Field(..., description="Ordered array of VQT objects for the requested time range")
 
 
-class SyncUpdate(BaseModel):
+class SyncUpdateEntry(BaseModel):
     model_config = ConfigDict(extra='allow')
-    sequenceNumber: int
     elementId: str
     value: Any
     quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
     timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
+
+
+class SyncBatch(BaseModel):
+    sequenceNumber: int
+    updates: List[SyncUpdateEntry]
 
 
 class SubscriptionDetail(BaseModel):

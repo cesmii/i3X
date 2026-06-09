@@ -2,7 +2,6 @@ from typing import Dict, Any
 from .data_interface import I3XDataSource
 from .mock.mock_data_source import MockDataSource
 from .mqtt.mqtt_data_source import MQTTDataSource
-from .ignition_cnc.ignition_cnc_data_source import IgnitionCNCDataSource
 from .manager import DataSourceManager
 
 class DataSourceFactory:

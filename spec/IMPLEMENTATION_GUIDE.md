@@ -4,7 +4,7 @@ This document provides guidance for implementing i3X (Industrial Information Int
 
 ## Status of This Document
 
-This document is a working draft, and should not be considered complete or normative. This guide is derived from RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to change.
+This document is a Release Candidate, and should be considered nearly complete and normative. This guide is informed by RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to minor changes.
 
 ## Table of Contents
 
@@ -39,7 +39,8 @@ This document is a working draft, and should not be considered complete or norma
   - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
   - [Streaming](#streaming)
   - [Sync](#sync)
-    - [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses)
+    - [Sync Examples](#sync-examples)
+    - [Sync Data Loss](#sync-data-loss)
   - [Subscription Life Cycle](#subscription-life-cycle)
 
 ## Introduction
@@ -64,13 +65,13 @@ Below are the required capabilities for all i3X compliant Clients and Servers.
   * MUST support all [Exploratory Methods](#exploratory-methods)
 * Query
   * MUST support Current Value (`objects/value`) as defined in [Query Methods](#query-methods)
-  * MAY support History Value (`objects/history`)
+  * MUST support History Value (`objects/history`) — see note in [Query Methods](#query-methods)
 * Update
   * MAY support [Update Methods](#update-methods)
 * Subscribe
   * MUST support base [Subscribe Methods](#subscribe-methods) (create, delete, list, register objects, unregister objects)
   * MUST support Sync (`/subscriptions/sync`)
-  * SHOULD support Stream (`/subscriptions/stream`)
+  * MAY support Stream (`/subscriptions/stream`)
   
 ## Transport & Encoding
 
@@ -198,7 +199,7 @@ Examples:
 
 ### Bulk Response
 
-POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed.
+POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed. The `result` field within each entry conforms to the schema of the resource type being queried — an Object Type result, an Object instance result, and a Relationship Type result all share this envelope but have different `result` shapes. See each endpoint's response table for the concrete field definitions.
 
 The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
 
@@ -325,6 +326,28 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
   }
 }
 ```
+
+**Scalar types**
+
+Object Type schemas are not limited to `"type": "object"`. A schema with a scalar `type` — `"number"`, `"integer"`, `"string"`, or `"boolean"` — defines a **leaf** type whose instances return a bare scalar in the VQT `value` field rather than a JSON object. Individual sensor readings, setpoints, and status flags are typically modelled this way.
+
+```json
+{
+  "elementId": "temperature-reading-type",
+  "displayName": "Temperature Reading",
+  "namespaceUri": "https://example.com/ns/sensors",
+  "version": "1.0.0",
+  "schema": { "type": "number" }
+}
+```
+
+An instance of this type returns a bare scalar value:
+
+```json
+{ "elementId": "zone-temp-01", "result": { "isComposition": false, "value": 592.0, "quality": "Good", "timestamp": "..." } }
+```
+
+Clients MAY use `schema.type` to distinguish leaf objects (scalar type) from branch objects (`"object"` type) when rendering the address space.
 
 **Unknown types: `UnknownType`**
 
@@ -523,6 +546,7 @@ The definition of an Object looks as follows.
 - If `isExtended=true` the Object may have additional attributes not included in the `typeElementId` schema. Use `includeMetadata=true` to see the additional attributes.
 - Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
 - The Server MUST have at least one root Object which is queried using the `/objects?root=true` endpoint. This allows clients to progressively browse the address space from one or more root objects.
+- Objects whose Object Type schema has `"type": "object"` are **branch nodes** — they return structured values and may have composition children. Objects whose schema type is a scalar (`"number"`, `"integer"`, `"string"`, `"boolean"`) are **leaf nodes** — they return a bare scalar value and represent individual data points. Clients SHOULD use `schema.type` to determine rendering.
 
 ## Exploratory Methods
 
@@ -835,7 +859,7 @@ Returns a list of all Objects, optionally filtered by `typeElementId`. This allo
 | `displayName`   | string  | Yes      | Human-friendly name for display                                                                                                                                                                                        |
 | `typeElementId` | string  | Yes      | ElementId of the Object Type that defines this Object's schema                                                                                                                                                         |
 | `parentId`      | string? | Yes      | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object                                                                                                                        |
-| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. |
+| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. `false` means this Object has no HasComponent children — it does not imply a scalar value. An Object with `isComposition: false` may still have a structured value; the Object Type's `schema.type` is the authoritative signal for value shape. |
 | `isExtended`    | boolean | Yes      | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `schemaExtensions` below in the `metadata`.                   |
 
 The `metadata` key is included if `includeMetadata=true` in the request.
@@ -847,7 +871,7 @@ The `metadata` key is included if `includeMetadata=true` in the request.
 | `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
 | `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
 | `metadata.schemaExtensions` | object  | No                       | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
-|  `metadata.system`            | object | Yes if `isExtended=true` | Vendor-defined key/value pairs for platform-specific metadata not covered by the standard fields. Keys are vendor-defined strings; values are limited to strings, numbers, and booleans.|
+|  `metadata.system`            | object | Yes if `isExtended=true` | Opaque passthrough slot for Vendor or source-system specific metadata (e.g., OPC UA `nodeClass`, `nodeId`). Keys and values are defined by the underlying platform; i3X clients MUST NOT rely on any specific key for normative behavior. The authoritative signal for value shape is always the Object Type's `schema.type`, not any key within `metadata.system`.|
 
 
 - Note on `parentId` vs `relationships`: `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
@@ -1016,8 +1040,11 @@ Returns a bulk response with the related Objects for each queried elementId.
 | `results[].sourceRelationship` | string | Yes      | The name of the relationship that links this Object to the Object in the request, or inbound edge. For example, if it's a parent/child relationship this would be `hasChild`. This helps support graph traversal without additional API calls. |
 | `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
 
+- Each (relationshipType, target) edge produces one entry; the same target may appear multiple times if reachable via different relationship types.
+- Response order within each `result` array is unspecified.
 
 - **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
+- **Implementation note — hierarchical relationships:** `POST /objects/related` MUST include all relationships (HasParent, HasChildren, HasComponent, ComponentOf AND Graph) in its response, not only graph relationships. Servers whose underlying data model stores hierarchy only via the `parentId` field (without explicit relationship records) MUST synthesize these entries in the `/objects/related` response. Relying on `parentId` alone is not sufficient — objects that have no graph relationships will return an empty result set, making them unreachable by pure graph traversal.
 
 ---
 
@@ -1041,7 +1068,7 @@ Values in i3X have the following definition.
 |-------|------|----------|-------------|
 | `value` | any | Yes | The actual data value (any JSON type) |
 | `quality` | string | Yes | Data quality indicator |
-| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times must be UTC with no timezone offset. |
+| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times MUST be UTC with no timezone offset. Fractional seconds are supported: `"2025-01-08T10:30:00.123456Z"`. |
 
 
 | Quality | Description | When to Use |
@@ -1248,14 +1275,15 @@ Returns the last known value for one or more Objects.
 ```
 
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
-- `components` is present only on composition elements and contains child values keyed by `elementId`
+- `components` is present only on composition elements and contains child values keyed by `elementId`; a child whose Object Type has a scalar schema (e.g. `"type": "number"`) returns a bare number as its `value` — this is the leaf pattern for individual data points
 - If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
 
 ---
 
 #### `POST` /objects/history
 
-Returns the historical values for one or more Objects between a start and end time.
+> **Implementation note:** Not all implementations are required to become Historians; the intent is that whatever history the underlying platform already retains should be accessible through a consistent interface. A Historian, a cache, or no history at all should be accessed the same way.
+A server whose platform stores no history SHOULD still implement this endpoint and return `GoodNoData` for the requested range. Use `GET /info` `capabilities.query.history` to advertise whether historical data is available.
 
 **Request Body:**
 
@@ -1370,11 +1398,13 @@ Returns a bulk response with a result per elementId.
 
 ---
 
+> `result: null` on a successful write entry is intentional — write operations confirm acceptance via `success: true` and do not echo the written VQT back. Use `POST /objects/value` to read the current value after a write.
+
 #### `PUT` /objects/history
 
 Update historical values of one or more Objects.
 
-> **Note:** This endpoint is defined by the specification but not yet implemented by this server. It returns HTTP 501.
+> **Implementation note:** As with query history, implementations are not expected become Historians if they don't already have this capabilitiy. This endpoint allows clients to write historical records into whatever persistence the underlying platform supports. Servers whose platform does not support historical writes SHOULD return HTTP 501.
 
 **Request Body:**
 
@@ -1419,15 +1449,18 @@ Returns a bulk response with a result per elementId.
 
 ## Subscribe Methods
 
-Subscriptions allow clients to receive value changes in real-time for objects they are interested in. Subscriptions support two delivery modes:
+Subscriptions allow clients to receive the most recent values of objects they are interested in. Subscriptions support two delivery modes:
 
-| Mode | Description |
-|------|-------------|
-| **streaming** | Value changes are sent as fast as possible using SSE (Server Sent Events). |
-| **sync** | Value changes are queued and delivered when the client calls the sync API. |
+| Mode | Required | Description |
+|------|----------|-------------|
+| **sync** | MUST | Clients poll for batched updates; the server acknowledges delivery for high Quality of Service. |
+| **streaming** | MAY | The server pushes updates as they occur using SSE for low Quality of Service. |
 
-Streaming provides data as fast as possible, where Sync allows the client to control when data is delivered and acknowledge delivery. The following
-sections describe common methods to setup and configure a subscription, followed by more details on the stream and sync modes.
+Sync is the baseline delivery mode and MUST be supported by all servers. Streaming MAY be supported when the underlying data source provides real-time push notifications; see the note in the [Streaming](#streaming) section.
+
+> **Implementation note for non-real-time sources:** Servers backed by a historian, database, or other non-push data source MAY satisfy the sync requirement by reading the most recent value for each registered object at the time `/sync` is called, rather than maintaining a live change queue. The response format is identical — only the update granularity differs. Clients will observe the latest available value on each sync call, but intermediate changes between calls may not be captured.
+
+The following sections describe common methods to set up and configure a subscription, followed by more details on the stream and sync modes.
 
 ### Subscriptions
 
@@ -1592,7 +1625,7 @@ Register one or more Objects with a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to register items with. |
 | `elementIds` | string[] | Yes | One or more elementIds to register. |
-| `maxDepth` | integer | No | Controls recursion depth. |
+| `maxDepth` | integer | No | Controls recursion depth for all `elementIds` in this call. See [maxDepth](#maxdepth-parameter-semantics) for more detail. To register elements at different depths, use separate requests. |
 
 **Response:**
 
@@ -1625,8 +1658,7 @@ Unregister one or more Objects from a Subscription.
   "elementIds": [
     "object-elementid-1",
     "object-elementid-2"
-  ],
-  "maxDepth": 1
+  ]
 }
 ```
 
@@ -1635,7 +1667,6 @@ Unregister one or more Objects from a Subscription.
 | `clientId` | string | Yes | The clientId for the subscription. |
 | `subscriptionId` | string | Yes | The subscriptionId to unregister items from. |
 | `elementIds` | string[] | Yes | One or more elementIds to unregister. |
-| `maxDepth` | integer | No | Controls recursion depth. |
 
 **Response:**
 
@@ -1653,7 +1684,9 @@ Unregister one or more Objects from a Subscription.
 
 ### Streaming
 
-Streaming sends values on the subscription to the client as they occur using SSE (Server Sent Events) for a low Quality of Service.
+Streaming sends values as they occur using SSE (Server Sent Events) and MAY be supported when the underlying data source can push updates in real time. Streaming provides low Quality of Service — at-most-once delivery with no acknowledgement.
+
+> **Implementation note:** Streaming requires a data source capable of push notifications. Servers that use a polling-based sync implementation (see the note in [Subscribe Methods](#subscribe-methods)) SHOULD return HTTP 501 for `/subscriptions/stream`.
 
 **How it works:**
 
@@ -1707,64 +1740,32 @@ Sync allows the client to control when value changes are received, and to explic
 **How it works:**
 
 1. Client creates subscription via `POST /subscriptions`
-2. Client registers items via `POST /subscriptions/register`
-3. Server queues updates as they occur, each assigned a monotonically increasing `sequenceNumber`.  Each subscription uses a different `sequenceNumber` where the first update within a new subscription sets `sequenceNumber=1`.  `sequenceNumber` is a 64-bit unsigned integer so rollover happens after 2⁶⁴ − 1
+2. Client registers objects via `POST /subscriptions/register`
+3. Server queues object updates as they occur, or — for non-push sources — captures the latest value at sync time
 4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
-5. Server returns all pending updates
+5. Server returns all pending updates with a `sequenceNumber=1`
 6. Client processes the updates
-7. Client calls `POST /subscriptions/sync` again with `{"clientId": "...", "subscriptionId": "...", "lastSequenceNumber": <lastSequenceNumber>}` to acknowledge the previous batch and receive any new updates in a single round trip
-8. Server removes acknowledged updates (sequenceNumber ≤ `lastSequenceNumber`) then returns the remaining queue
+7. Client calls `POST /subscriptions/sync` again with `lastSequenceNumber: 1` to acknowledge the previous batch and receive any new updates in a single round trip
+8. Server removes acknowledged updates (`lastSequenceNumber` ≤ 1) then returns the remaining queue with `sequenceNumber=2`
 9. Continue this process
 
 This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
-
-#### Queue Overflow and Partial Responses
-
-Servers maintain a queue for each subscription. When the queue is full and a new update arrives, the server MUST drop the oldest pending update to make room. If a client polls infrequently relative to the rate of change, it may miss updates.
-
-When the server has dropped updates since the client's last acknowledged sequence number, it MUST return **HTTP 206 (Partial Content)**. The response body has the same shape as a normal 200, with one addition: a `responseDetail` object:
-
-```json
-HTTP 206
-{
-  "success": true,
-  "result": [
-    {"sequenceNumber": 151, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
-  ],
-  "responseDetail": {
-    "title": "Updates dropped due to queue overflow",
-    "status": 206,
-    "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
-  }
-}
-```
-
-**Inferring dropped sequence numbers:**
-
-The `sequenceNumber` on each update is monotonically increasing per update for a given subscription. When receiving an HTTP 206 response, a client can determine exactly which updates were lost by inspecting the :
-
-> All sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped.
-
-For example, if the client's last call used `"lastSequenceNumber": 100` and the first update in the 206 response has `"sequenceNumber": 151`, then the 50 updates with sequence numbers 101–150 are permanently gone.
-
-**Client requirements on 206:**
-
-- Clients MUST process returned updates in the `result` array normally
-- Clients MUST continue polling with the highest returned `sequenceNumber` as the next `lastSequenceNumber`
-- Clients MUST NOT attempt to retrieve dropped updates — they are no longer unavailable
-- Clients SHOULD log or raise an alert when a 206 is received, as it indicates data loss
-
----
 
 #### `POST` /subscriptions/sync
 
 Returns all pending updates, acknowledging a previously received batch in the same call.
 
 - Each queued update includes a `sequenceNumber`
-- If `lastSequenceNumber` is provided, the server removes all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
-- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted
+- Server MUST provide an incrementing `sequenceNumber` for new updates returned in the `/sync` response
+- The `sequenceNumber` MUST be a 64-bit unsigned integer to avoid rollover (2⁶⁴ − 1)
+- Server MUST return an empty array and no `sequenceNumber` if there are no new updates since the last `/sync` call
 - Clients SHOULD omit `lastSequenceNumber` only on the first call, when there is nothing yet to acknowledge
 - Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
+- If `lastSequenceNumber` is provided, the server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
+- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
+- Server MUST clear the queue if `lastSequenceNumber=-1` is provided, acknowledging all pending updates
+- The server MUST return an error if the subscription has an open stream
+  - Clients MUST close the stream before calling sync
 
 **Body Parameters:**
 
@@ -1774,7 +1775,9 @@ Returns all pending updates, acknowledging a previously received batch in the sa
 | `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
 | `lastSequenceNumber` | 64-bit unsigned integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
 
-First call (nothing to acknowledge yet):
+##### Sync Examples
+
+Assume the client setup the subscription and this is the first call to `/sync`. Note there is no `lastSequenceNumber`.
 ```json
 {
   "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
@@ -1782,7 +1785,46 @@ First call (nothing to acknowledge yet):
 }
 ```
 
-All subsequent calls (ack previous batch, fetch new):
+Server returns all pending updates with a sequence number.
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 1,
+      "updates": [
+        {"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+        {"elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+      ]
+    }
+  ]
+}
+```
+
+Client calls `/sync` again with no `lastSequenceNumber`. The response includes updates from the previous sequenceNumber and the new updates.
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 1, 
+      "updates": [
+        {"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+        {"elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+      ]
+    },
+    {
+      "sequenceNumber": 2,
+      "updates": [
+        {"elementId": "sensor-001", "value": 82.5, "quality": "Good", "timestamp": "2025-01-08T10:31:00Z"},
+        {"elementId": "sensor-002", "value": 28.3, "quality": "Good", "timestamp": "2025-01-08T10:31:01Z"}
+      ]
+    }
+  ]
+}
+```
+
+The client calls `/sync` again with `lastSequenceNumber=2`. 
 ```json
 {
   "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
@@ -1791,36 +1833,43 @@ All subsequent calls (ack previous batch, fetch new):
 }
 ```
 
-**Response (HTTP 200 — all updates delivered):**
-
+Assume there are no new updates. The server clears updates for sequenceNumber 1 and 2, and responds with no new updates.
 ```json
 {
   "success": true,
-  "result": [
-    {"sequenceNumber": 1, "elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
-    {"sequenceNumber": 2, "elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
-  ]
+  "result": []
 }
 ```
 
-**Response (HTTP 206 — some updates were dropped):**
+##### Sync Data Loss
+
+If the client does not call `/sync` frequently enough, the server's subscription queue may fill up and start dropping updates. 
+
+- The Server SHOULD drop the oldest updates first
+- The Server MUST return HTTP 206 (Partial Content) 
+
+Below is an example of a 206 response from the Server. In this example the client's last acknowledged `sequenceNumber` was 100, meaning updates 101–150 were permanently dropped.
 
 ```json
 {
   "success": true,
   "result": [
-    {"sequenceNumber": 151, "elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
+    {
+      "sequenceNumber": 151,
+      "updates": [
+        {"elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
+      ]
+    }
   ],
   "responseDetail": {
     "title": "Updates dropped due to queue overflow",
     "status": 206,
-    "detail": "Updates were dropped from the subscription queue because the server-imposed queue limit was reached. The client may assume that all sequence numbers between its last acknowledged sequence number and the first returned sequence number were dropped."
+    "detail": "Updates were dropped from the subscription queue. The server limit is 10k updates."
   }
 }
 ```
 
-See [Queue Overflow and Partial Responses](#queue-overflow-and-partial-responses) for how to interpret a 206 response and recover from data loss.
-
+Clients can calculate the exact gap: all sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped. Clients MAY note this gap and optionally resolve with a `objects/history` query, and continue polling normally using the returned `sequenceNumber` as the next `lastSequenceNumber`.
 ---
 
 ### Subscription Life Cycle
@@ -1838,4 +1887,111 @@ Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUS
 
 ---
 
-*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2025. All Rights Reserved.*
+## Appendix (for now)
+
+[TODO] This is useful stuff that I can't figure out yet whereto put
+
+### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
+
+#### HasParent / HasChildren
+
+These represent topological or organizational hierarchy where child objects are separate entities organized under a parent.
+
+```
+Production Line A (parent)
+├── Machine 1 (child)
+├── Machine 2 (child)
+└── Machine 3 (child)
+```
+
+**Requirements:**
+
+- If object A `HasParent` B, then B `HasChildren` A
+- `parentId` on instances MUST match the `HasParent` relationship
+- Traversing `HasChildren` returns distinct, independently-valued objects
+- `HasChildren` objects are **never** included in a `POST /objects/value` response, even when `maxDepth > 1`. `maxDepth` only recurses through `HasComponent`. A hierarchical child that sits visually under a parent in the tree must be queried independently.
+
+#### HasComponent / ComponentOf (Composition)
+
+These indicate when child data IS part of the parent's definition. The parent's value is composed of its children's values.
+
+```
+CNC Machine (parent, isComposition: true)
+├── Spindle (component)
+├── Coolant System (component)
+└── Control Panel (component)
+```
+
+**Requirements:**
+
+- If object A `HasComponent` B, then B `ComponentOf` A
+- Parent MUST have `isComposition: true`
+- Querying parent value with `maxDepth > 1` returns nested child values
+- Component children's values are part of the parent's logical value
+
+### maxDepth Parameter Semantics
+
+The `maxDepth` parameter controls recursion through HasComponent relationships:
+
+| Value | Behavior |
+|-------|----------|
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
+| `N` | Recurse up to N levels deep through HasComponent relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data. This applies even when `maxDepth=0` (infinite depth) was requested — a server that cannot return the full tree due to its own limits MUST still return 206 rather than silently truncating.
+
+**Response Structure with maxDepth:**
+
+When `maxDepth > 1` and the element has components:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "machine-001",
+      "result": {
+        "value": { "status": "running" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z",
+        "components": {
+          "spindle-001": {
+            "value": { "rpm": 12000 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "coolant-001": {
+            "value": { "flow_rate": 5.2, "temp": 22.1 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Key Points:**
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
+- Recursion only follows `HasComponent` relationships, not `HasChildren`
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
+
+---
+
+*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2026. All Rights Reserved.*
