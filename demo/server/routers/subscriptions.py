@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, ConfigDict
 from models import (
     CreateSubscriptionRequest,
     RegisterMonitoredItemsRequest,
+    UnregisterMonitoredItemsRequest,
     StreamRequest, SyncRequest,
     DeleteSubscriptionsRequest,
     ListSubscriptionsRequest,
@@ -133,7 +134,7 @@ def register_objects(request: Request, req: RegisterMonitoredItemsRequest):
     response_model=BulkResponse[None],
     responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
 )
-def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
+def unregister_objects(request: Request, req: UnregisterMonitoredItemsRequest):
     """Remove objects from the subscription. subscriptionId is passed in the request body."""
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
@@ -146,10 +147,7 @@ def unregister_objects(request: Request, req: RegisterMonitoredItemsRequest):
         if not data_source.get_instance_by_id(eid):
             results.append({"success": False, "elementId": eid, "responseDetail": {"title": "Not Found", "status": 404, "detail": f"Element not found: {eid}"}})
             continue
-        tree = collect_instance_tree(eid, req.maxDepth, 0, data_source.get_all_instances())
-        for item in tree:
-            item_id = item["elementId"]
-            sub.monitoredObjects = [m for m in sub.monitoredObjects if m["elementId"] != item_id]
+        sub.monitoredObjects = [m for m in sub.monitoredObjects if m["elementId"] != eid]
         results.append({"success": True, "elementId": eid, "result": None})
 
     return bulk_response(results)
@@ -238,10 +236,15 @@ def sync_subscription(request: Request, req: SyncRequest):
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # Acknowledge batches the client has already processed
+    # Acknowledge batches the client has already processed.
+    # lastSequenceNumber=-1 is a sentinel meaning "ack all pending updates."
     if req.lastSequenceNumber is not None:
-        sub.batches = [b for b in sub.batches if b.get("sequenceNumber", 0) > req.lastSequenceNumber]
-        sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
+        if req.lastSequenceNumber == -1:
+            sub.batches.clear()
+            sub.lastAckedSequence = sub.nextSequence - 1
+        else:
+            sub.batches = [b for b in sub.batches if b.get("sequenceNumber", 0) > req.lastSequenceNumber]
+            sub.lastAckedSequence = max(sub.lastAckedSequence, req.lastSequenceNumber)
 
     # Detect data loss before resetting the counter
     has_drops = sub.droppedCount > 0
