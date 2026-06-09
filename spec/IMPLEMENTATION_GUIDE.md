@@ -330,6 +330,28 @@ Below is an example of an Object Type in an i3X server. Note the `schema` attrib
 }
 ```
 
+**Scalar types**
+
+Object Type schemas are not limited to `"type": "object"`. A schema with a scalar `type` — `"number"`, `"integer"`, `"string"`, or `"boolean"` — defines a **leaf** type whose instances return a bare scalar in the VQT `value` field rather than a JSON object. Individual sensor readings, setpoints, and status flags are typically modelled this way.
+
+```json
+{
+  "elementId": "temperature-reading-type",
+  "displayName": "Temperature Reading",
+  "namespaceUri": "https://example.com/ns/sensors",
+  "version": "1.0.0",
+  "schema": { "type": "number" }
+}
+```
+
+An instance of this type returns a bare scalar value:
+
+```json
+{ "elementId": "zone-temp-01", "result": { "isComposition": false, "value": 592.0, "quality": "Good", "timestamp": "..." } }
+```
+
+Clients MAY use `schema.type` to distinguish leaf objects (scalar type) from branch objects (`"object"` type) when rendering the address space.
+
 **Unknown types: `UnknownType`**
 
 When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` in their type registry and use its `elementId` as the `typeElementId` on all affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. The `UnknownType` schema should be `{"type": "object"}`. The choice of `elementId` is implementation-specific.
@@ -488,6 +510,7 @@ The definition of an Object looks as follows.
 - If `isExtended=true` the Object may have additional attributes not included in the `typeElementId` schema. Use `includeMetadata=true` to see the additional attributes.
 - Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
 - The Server MUST have at least one root Object which is queried using the `/objects?root=true` endpoint. This allows clients to progressively browse the address space from one or more root objects.
+- Objects whose Object Type schema has `"type": "object"` are **branch nodes** — they return structured values and may have composition children. Objects whose schema type is a scalar (`"number"`, `"integer"`, `"string"`, `"boolean"`) are **leaf nodes** — they return a bare scalar value and represent individual data points. Clients SHOULD use `schema.type` to determine rendering.
 
 ## Exploratory Methods
 
@@ -1155,7 +1178,7 @@ Returns the last known value for one or more Objects.
 ```
 
 - The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
-- `components` is present only on composition elements and contains child values keyed by `elementId`
+- `components` is present only on composition elements and contains child values keyed by `elementId`; a child whose Object Type has a scalar schema (e.g. `"type": "number"`) returns a bare number as its `value` — this is the leaf pattern for individual data points
 - If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
 
 ---
