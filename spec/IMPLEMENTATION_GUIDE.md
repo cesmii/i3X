@@ -1580,8 +1580,7 @@ If the SSE connection is lost, the client can call the /stream endpoint again to
 Opens an SSE stream on the subscription to stream value changes from the server.
 
 - Server MUST only allow a single SSE stream per subscription
-  - [TODO] is this enough or should we spec what happens if you spam the /stream endpoint? Ignore? Close the old and open new?
-  - MGP - should multiple clients be allowed to connect in a multicast-type pattern?
+  - If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one. The previously connected client will receive an SSE stream close with no error.
 - The Server MUST send queued updates when the stream is open
 - Clients MAY not receive updates if there are no value changes
   - [TODO] should register require queuing the current value of the Object?

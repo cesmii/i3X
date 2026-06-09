@@ -23,6 +23,8 @@ from .utils import getSubscriptionValue, success_response, bulk_response, get_da
 
 PARTIAL_CONTENT_DESCRIPTION = "Some updates were dropped from the subscription queue due to overflow. See the `detail` field in the response body."
 
+_STREAM_CLOSED_SENTINEL = object()  # signals an active SSE stream to terminate
+
 
 # Not required, but showing what information is stored for simulated subscriptions
 class Subscription(BaseModel):
@@ -39,10 +41,12 @@ class Subscription(BaseModel):
     ttl_seconds: int = 300          # Idle TTL: subscription auto-deleted if no /sync or active stream within this window
     last_activity: str = ""         # ISO timestamp of last /sync, /ack, or stream open
     is_streaming: bool = False  # True when SSE connection is active
+    stream_generation: int = 0  # incremented each time a new stream is opened
     # Exclude these fields from JSON serialization/schema
     handler: Callable[[Any], None] | None = Field(exclude=True, default=None)
     event_loop: Any | None = Field(exclude=True, default=None)
     streaming_response: StreamingResponse | None = Field(exclude=True, default=None)
+    stream_queue: asyncio.Queue | None = Field(exclude=True, default=None)
     model_config = ConfigDict(
         arbitrary_types_allowed=True
     )  # Needed to allow for StreamingResponse in the model
@@ -166,42 +170,45 @@ async def stream_subscription(request: Request, req: StreamRequest):
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
-    # If handler and streaming_response already exist, reuse them
-    if sub.handler is not None and sub.streaming_response is not None:
-        return sub.streaming_response
+    # If a stream is already active, close it — one stream per subscription is allowed
+    if sub.stream_queue is not None:
+        await sub.stream_queue.put(_STREAM_CLOSED_SENTINEL)
 
-    # Otherwise create queue, loop, handler, and streaming response once
-    queue = asyncio.Queue()
+    my_generation = sub.stream_generation + 1
+    sub.stream_generation = my_generation
+
+    queue: asyncio.Queue = asyncio.Queue()
     loop = asyncio.get_event_loop()
 
     async def event_stream():
         try:
             while True:
                 update = await queue.get()
+                if update is _STREAM_CLOSED_SENTINEL:
+                    print(f"[SSE] Subscription {req.subscriptionId} stream replaced by new connection")
+                    return
                 yield f"data: {json.dumps([update])}\n\n"
         except Exception as e:
             print(f"[SSE] Stream ended: {e}")
         finally:
-            # When stream disconnects, switch back to queue mode
-            sub.is_streaming = False
-            sub.handler = None
-            sub.event_loop = None
-            sub.streaming_response = None
-            print(f"[SSE] Subscription {req.subscriptionId} switched back to queue mode")
+            if sub.stream_generation == my_generation:
+                sub.is_streaming = False
+                sub.handler = None
+                sub.event_loop = None
+                sub.streaming_response = None
+                sub.stream_queue = None
+                print(f"[SSE] Subscription {req.subscriptionId} switched back to queue mode")
 
     def push_update_to_client(update):
         asyncio.run_coroutine_threadsafe(queue.put(update), loop)
 
-    # Switch to streaming mode
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sub.is_streaming = True
     sub.handler = push_update_to_client
     sub.event_loop = loop
-    sub.streaming_response = StreamingResponse(
-        event_stream(), media_type="text/event-stream"
-    )
+    sub.stream_queue = queue
+    sub.streaming_response = StreamingResponse(event_stream(), media_type="text/event-stream")
 
-    # Clear the queue when switching to streaming (per requirements)
     sub.pendingUpdates.clear()
 
     return sub.streaming_response
