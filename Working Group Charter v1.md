@@ -1,5 +1,11 @@
 # Contextualized Manufacturing API Working Group Charter
 
+### Completion
+
+The Working Group completed this Charter in June of 2026 with the release of 1.0. A new charter will be established for future work in late 2026.
+
+Thank you to all who contributed!
+
 ### Duration
 - Start Date: November 2024
 - End Date: November 2025 (1 year)
@@ -28,7 +34,7 @@ This working group is guiding the creation of a common API, consisting of a base
 - Sample code in at least two programming languages demonstrating how to consume the API.
 - Sample test cases to support implementation validation.
 
-## Timeline
+## Planned Timeline
 - Nov 2024: Kickoff and 1.0 Publication
 - Dec 2025: Group Charter Publication
 - Feb 2025: Articulation of use-cases that this API is designed to support

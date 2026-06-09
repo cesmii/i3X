@@ -3,13 +3,16 @@
 Contributions to this project from the community are welcome -- but please do not start with a Pull Request.
 In the spirit of collaboration and consensus-driven evolution, changes to the project should follow these steps:
 
-1. [Read the RFC](https://github.com/cesmii/i3X/blob/1.0-Beta/RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md) in detail to ensure your proposed changes are within the spirit and intent of this effort.
+1. [Read the RFC](https://github.com/cesmii/i3X/blob/1.0/RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md) in detail to ensure your proposed changes are within the spirit and intent of this effort.
 2. [Review existing Issues](https://github.com/cesmii/i3X/issues), both open and closed, to ensure your ideas have not already been addressed or discussed.
 3. [Create a New Issue](https://github.com/cesmii/i3X/issues/new?template=bug_report.md) using the template to describe your proposed changes or problem. The Working Group triages issues twice a month.
-4. Fork the [1.0-Beta](https://github.com/cesmii/API/tree/1.0-Beta) branch to your GitHub account, and make any proposed changes related to the issue in your own fork.
-5. When you are ready, submit a Pull Request back to the [1.0-Beta](https://github.com/cesmii/API/tree/1.0-Beta) branch, and update your issue indicating readiness for Review.
-6. The Working Group will review your PR during a regular meeting, and provide feedback or merge your change, as appropriate.
-7. The Working Group may chose, at its discretion, to invite you or your team to an occurence of the regular meeting to represent your changes. 
+
+If an issue is accepted by the Working Group, and you wish to provide a proposed solution (which is much appreciated!) please follow these steps:
+
+1. Fork the [vNext](https://github.com/cesmii/API/tree/vNext) branch to your GitHub account, and make any proposed changes related to the issue in your own fork.
+2. When you are ready, submit a Pull Request back to the [vNext](https://github.com/cesmii/API/tree/vNext) branch, and update your issue indicating readiness for Review.
+3. The Working Group will review your PR during a regular meeting, and provide feedback or merge your change, as appropriate.
+4. The Working Group may chose, at its discretion, to invite you or your team to an occurence of the regular meeting to represent your changes. 
 If you want to be a part of that review, please indicate your preference in your issue.
 
 Please note we have a charter and code of conduct, please follow it in all your interactions with the project.
@@ -28,7 +31,7 @@ Do not use AI to comment on Issues or Pull Requests. While you may use AI to exp
 
 ## Charter
 
-Please review the [Working Group Charter](https://github.com/cesmii/API/blob/1.0-Beta/Working%20Group%20Charter.md) and ensure you can agree to its conditions.
+Please review the [Working Group Charter](https://github.com/cesmii/API/blob/1.0-Beta/Working%20Group%20Charter%20v1.md) and ensure you can agree to its conditions.
 If you are a part of an organization, your participation in this project commits your organization to the Charter as well.
 
 ## Code of Conduct
