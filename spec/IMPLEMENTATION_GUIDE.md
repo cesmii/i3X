@@ -1006,6 +1006,7 @@ Returns a bulk response with the related Objects for each queried elementId.
 
 
 - **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
+- **Implementation note — hierarchical relationships:** `POST /objects/related` MUST include all relationships (HasParent, HasChildren, HasComponent, ComponentOf AND Graph) in its response, not only graph relationships. Servers whose underlying data model stores hierarchy only via the `parentId` field (without explicit relationship records) MUST synthesize these entries in the `/objects/related` response. Relying on `parentId` alone is not sufficient — objects that have no graph relationships will return an empty result set, making them unreachable by pure graph traversal.
 
 ---
 

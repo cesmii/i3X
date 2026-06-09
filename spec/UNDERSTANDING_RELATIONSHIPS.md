@@ -80,9 +80,14 @@ i3X payload formats support all of these relationship types. The following code 
     "typeId": "state-type",
     "namespaceUri": "https://abelara.com/equipment",
     "parentId": "pump-101",
-    "isComposition": false
+    "isComposition": false,
+    "relationships": {
+      "HasParent": "pump-101"
+    }
 }
 ```
+
+> **Note:** `parentId` is a convenience field that allows a tree to be built from a flat list of objects. It is not a substitute for an explicit `HasParent` entry in the `relationships` field. Servers that omit `HasParent` from `relationships` and rely solely on `parentId` will return empty results from `POST /objects/related` for objects that have no other relationship types — clients browsing the graph will not be able to discover parent or sibling objects from those nodes.
 
 - Composition relationships showing an object encapsulating its members:
 
