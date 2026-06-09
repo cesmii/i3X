@@ -203,6 +203,10 @@ POST query endpoints that accept an array of `elementIds` return a bulk shape. E
 
 The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
 
+Each item is keyed by the identifier of the resource the endpoint operates on:
+- `elementId` for endpoints that accept `elementIds` (object, type, and `/subscriptions/register` / `/subscriptions/unregister` endpoints).
+- `subscriptionId` for endpoints that accept `subscriptionIds` (`/subscriptions/list` and `/subscriptions/delete`).
+
 ```json
 {
   "success": false,
