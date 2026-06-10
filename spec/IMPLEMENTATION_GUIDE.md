@@ -1479,6 +1479,8 @@ Clients must first create a subscription in the server. Subscriptions have the f
 - The `subscriptionId` MUST be scoped to the `clientId` to ensure that only the client has access to a subscription
 - Servers SHOULD NOT make subscriptions shareable across clients, but the standard doesn't enforce that
 - `subscriptionId` and `clientId` SHOULD be unique enough that the server can reasonably assume other clients cannot guess the identifiers
+- `clientId` is REQUIRED on every subscription request (create, list, delete, register, unregister, sync, and stream). A request that omits `clientId` is malformed and the server MUST reject it with `400 Bad Request`.
+- If a subscription is accessed with a `clientId` that does not own it, the server MUST respond as though the subscription does not exist (`404 Not Found`), so that a subscription belonging to another client is indistinguishable from one that was never created.
 
 ---
 
