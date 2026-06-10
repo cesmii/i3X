@@ -56,6 +56,14 @@ If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) publish
 
 The Demo data includes an exploration of the complex relationships supported by i3X. [Review the demo readme](demo/README.md) for an explanation of how these relationships work. 
 
+## Conformance Testing
+
+The 1.0 Release includes a Conformance Test suite that is available publically, or to run within a private network.
+
+If you'd like to validate a public endpoint, visit [https://www.i3x.dev/conformance](https://www.i3x.dev/conformance).
+
+To validate a private endpoint, download this repo and use the [conformance-tests/README.md](conformance-tests/README.md) to get started.
+
 ## API Usage
 
 The block diagram below shows where the i3X API is most applicable, namely within the realm of software applications running on top of operating systems on PCs or servers. Information being accessed through the API are assumed to have already been processed by contexualization functions to make it ready for consumption by other applications.
