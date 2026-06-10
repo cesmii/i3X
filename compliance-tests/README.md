@@ -99,7 +99,19 @@ PORT=8330 node server/serve.js
 # or: npx i3x-test-suite serve -p 8330
 ```
 
-Put it behind any TLS-terminating reverse proxy. Operational notes:
+Put it behind any TLS-terminating reverse proxy — either at the root of a (sub)domain or under a path prefix. The UI uses only relative URLs, so prefix-stripping proxies work; with nginx the trailing slash on `proxy_pass` is what strips the prefix:
+
+```nginx
+location /i3x-test/ {
+    proxy_pass http://127.0.0.1:8330/;   # trailing slash: /i3x-test/foo → /foo
+    proxy_http_version 1.1;
+    proxy_set_header Connection "";
+    proxy_buffering off;                  # required for the SSE progress stream
+    proxy_read_timeout 1h;                # test runs stream for minutes
+}
+```
+
+Operational notes:
 
 - `I3X_MAX_RUNS` caps concurrent test runs (default 4).
 - The runner makes outbound requests to user-supplied URLs by design. On a public deployment, isolate the process from internal networks (container/egress policy) as you would any URL-fetching service.

@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>i3X 1.0 Conformance Test Suite</title>
-<link rel="icon" href="/favicon.ico" sizes="any">
-<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
-<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="96x96" href="/assets/favicon-96x96.png">
-<link rel="apple-touch-icon" href="/assets/favicon-96x96.png">
+<link rel="icon" href="favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="assets/favicon-96x96.png">
+<link rel="apple-touch-icon" href="assets/favicon-96x96.png">
 <style>
   :root {
     --bg: #0f1419; --panel: #18202a; --panel2: #1f2a36; --text: #e6edf3; --muted: #8b98a5;
@@ -93,8 +93,8 @@
 <div class="wrap">
   <header>
     <div class="brand">
-      <img class="mark" src="/assets/favicon-96x96.png" alt="">
-      <img class="wordmark" src="/assets/i3X_logo_white.png" alt="i3X">
+      <img class="mark" src="assets/favicon-96x96.png" alt="">
+      <img class="wordmark" src="assets/i3X_logo_white.png" alt="i3X">
     </div>
     <h1>1.0 Conformance Test Suite</h1>
     <p>Validate an <a href="https://github.com/cesmii/i3X" target="_blank" rel="noopener">i3X</a> server implementation
@@ -291,7 +291,7 @@
 
     let results = [];
     try {
-      const res = await fetch('/api/run', {
+      const res = await fetch('api/run', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
