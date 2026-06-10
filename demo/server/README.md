@@ -1,6 +1,6 @@
 # I3X API Server
 
-This is a FastAPI-based HTTP server that implements the RFC 001 compliant I3X (Industrial Information Interface eXchange) API for Contextualized Manufacturing Information. The server provides endpoints for browsing equipment, sensors, and process data in a manufacturing environment. The server port is configurable via a config file.
+This is a FastAPI-based HTTP server that implements the RFC 001 compliant I3X (Industrial Information Interoperability eXchange) API for Contextualized Manufacturing Information. The server provides endpoints for browsing equipment, sensors, and process data in a manufacturing environment. The server port is configurable via a config file.
 
 ### Core Structure
 - **app.py**: Main FastAPI application with startup/shutdown lifecycle and configurable data source initialization
@@ -140,7 +140,7 @@ Note: `username`, `password`, and `excluded_topics` are optional.
     "debug": true,
     "app": {
         "title": "I3X API Prototype",
-        "description": "Industrial Information Interface eXchange API - RFC 001 Compliant",
+        "description": "Industrial Information Interoperability eXchange API - RFC 001 Compliant",
         "version": "0.0.1"
     },
     "data_sources": {
@@ -204,7 +204,7 @@ This script will:
 
 ## API Endpoints
 
-The I3X server implements RFC 001 - Common API for Industrial Information Interface eXchange (I3X). The available endpoints follow the specification exactly. Check the interactive document to explore the API.
+The I3X server implements RFC 001 - Common API for Industrial Information Interoperability eXchange (I3X). The available endpoints follow the specification exactly. Check the interactive document to explore the API.
 
 ### Interactive Documentation
 
@@ -289,7 +289,7 @@ The server supports connecting to MQTT brokers for real-time industrial data:
 
 ### RFC 001 Compliance
 
-This implementation follows RFC 001 - Common API for Industrial Information Interface eXchange (I3X) which provides a common API that Contextualized Manufacturing Information Platforms (CMIPs) can implement. The specification defines:
+This implementation follows RFC 001 - Common API for Industrial Information Interoperability eXchange (I3X) which provides a common API that Contextualized Manufacturing Information Platforms (CMIPs) can implement. The specification defines:
 
 - **Address Space Organization** (RFC 3) - Complete collection of contextualized information
 - **Object Elements** (RFC 3.1) - Objects with attributes and required metadata

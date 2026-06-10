@@ -1,6 +1,6 @@
 from datetime import datetime
 
-# SIMPLIFIED I3X API compliant mock data - Industrial Information Interface eXchange (RFC 001)
+# SIMPLIFIED I3X API compliant mock data - Industrial Information Interoperability eXchange (RFC 001)
 I3X_DATA = {
     "namespaces": [
         {"uri": "https://cesmii.org/i3x", "displayName": "I3X"},

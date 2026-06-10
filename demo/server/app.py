@@ -88,7 +88,7 @@ app = FastAPI(
     title=app_config.get("title", "I3X API"),
     description=app_config.get(
         "description",
-        "Industrial Information Interface eXchange API - RFC 001 Compliant",
+        "Industrial Information Interoperability eXchange API - RFC 001 Compliant",
     ),
     version=app_config.get("version", "1.0.0"),
     root_path=app_config.get("root_path", ""),

@@ -3,7 +3,7 @@ Request for Comments: 001\
 Category: Informational\
 Community Feedback Draft
 
-# Common API for Industrial Information Interface eXchange (I3X)
+# Common API for Industrial Information Interoperability eXchange (I3X)
 
 #### Status of this Memo
 
@@ -43,7 +43,7 @@ The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "S
 
 - **Address Space** - The complete collection of contextualized information that a platform makes available to clients
 - **API** - Application Programming Interface
-- **I3X** - Industrial Information Interface eXchange
+- **I3X** - Industrial Information Interoperability eXchange
 - **CMIP** - Contextualized Manufacturing Information Platform that supports I3X
 - **Element** - Any object or object attribute persisted by a CMIP
 - **ElementId** - A platform-specific, persistent and unique key for an Element that MUST be a string
