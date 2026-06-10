@@ -121,7 +121,7 @@ Operational notes:
 
 | Area | Tests | Notes |
 |---|---|---|
-| Transport & `/info` | CORE-01…07 | unauthenticated `/info`, success envelope, capabilities matrix, gzip; advisories for HTTPS and for accepting unauthenticated requests |
+| Transport & `/info` | CORE-01…06 | unauthenticated `/info`, capabilities matrix, gzip; advisories for HTTPS and for accepting unauthenticated requests |
 | Exploratory | EXP-01…22 | namespaces, object/relationship types, `reverseOf` symmetry, objects, roots, filters, metadata, bulk order/size, per-item 404s, bidirectional relationship traversal, hierarchy reachability |
 | Query | QRY-01…09 | VQT shape, quality/null pairing, **value-vs-type-schema conformance**, `maxDepth`/components semantics, history range & shapes |
 | Update (MAY) | UPD-01…05 | write-back of current values, read-after-write, partial failure, historical writes, 501 honesty |

@@ -67,7 +67,7 @@ Tests run sequentially and share `ctx` (client, config, namespaces, objectTypes/
 
 The canonical IMPLEMENTATION_GUIDE.md and UNDERSTANDING_RELATIONSHIPS.md live in the repo's top-level `spec/` — do not keep copies here; the suite versions together with the spec on this branch. The OpenAPI definition is generated from the demo server's Pydantic models (`demo/server/models.py`) and served live at https://api.i3x.dev/v1/openapi.json — no snapshot is kept; regenerate or curl it when re-deriving the SHAPES in `lib/validators.js`.
 
-If the spec changes: re-derive SHAPES and any quoted requirement text in test messages, and check the anchors in `lib/specrefs.js` still resolve against `../spec/IMPLEMENTATION_GUIDE.md` headings. Jon edits the Implementation Guide too — e.g. the "production implementations MUST require authentication" wording (auth note in the UI + CORE-07) was added to the guide *after* this suite referenced it.
+If the spec changes: re-derive SHAPES and any quoted requirement text in test messages, and check the anchors in `lib/specrefs.js` still resolve against `../spec/IMPLEMENTATION_GUIDE.md` headings. Jon edits the Implementation Guide too — e.g. the "production implementations MUST require authentication" wording (auth note in the UI + CORE-06) was added to the guide *after* this suite referenced it.
 
 npm publish note: this folder no longer has a `spec/` directory (`package.json` `files` keeps the entry for when it exists at pack time). Before publishing to npm, add a `prepack` step that copies `../spec/IMPLEMENTATION_GUIDE.md` and `../spec/UNDERSTANDING_RELATIONSHIPS.md` into `spec/` (and ignore the copies), so the tarball stays self-contained.
 

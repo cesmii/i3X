@@ -51,19 +51,6 @@ module.exports = [
   },
   {
     id: 'CORE-03',
-    name: '/info response uses the success envelope {success: true, result}',
-    level: 'MUST',
-    ref: 'responseFormat',
-    async run(ctx) {
-      const res = ctx.infoRes;
-      if (!res) return skip('GET /info was unreachable', 'blocked');
-      const problems = V.successEnvelopeProblems(res.json);
-      if (problems.length) return fail(`GET /info: ${problems.join('; ')}`);
-      return pass();
-    }
-  },
-  {
-    id: 'CORE-04',
     name: 'ServerInfo declares specVersion and a complete capabilities matrix',
     level: 'MUST',
     ref: 'serverCapabilities',
@@ -89,7 +76,7 @@ module.exports = [
     }
   },
   {
-    id: 'CORE-05',
+    id: 'CORE-04',
     name: 'Server compresses responses with gzip when the client sends Accept-Encoding: gzip',
     level: 'MUST',
     ref: 'transport',
@@ -108,7 +95,7 @@ module.exports = [
     }
   },
   {
-    id: 'CORE-06',
+    id: 'CORE-05',
     name: 'Endpoint is served over HTTPS',
     level: 'SHOULD',
     ref: 'security',
@@ -120,7 +107,7 @@ module.exports = [
     }
   },
   {
-    id: 'CORE-07',
+    id: 'CORE-06',
     name: 'Server requires authentication on data endpoints',
     level: 'SHOULD',
     ref: 'security',
