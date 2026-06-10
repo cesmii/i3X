@@ -185,6 +185,45 @@ module.exports = [
     }
   },
   {
+    // SUB-13 runs between SUB-07 and SUB-08 so the subscription still has all
+    // its registered objects; the id is appended per the numbering convention.
+    id: 'SUB-13',
+    name: 'Sync acknowledgement: lastSequenceNumber = -1 clears all pending updates',
+    level: 'MUST',
+    ref: 'sync',
+    async run(ctx) {
+      if (!ctx.subscriptionId || !ctx.firstSyncBatches) return skip('Sync did not succeed', 'blocked');
+      const first = await ctx.client.request('POST', '/subscriptions/sync', {
+        body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId }
+      });
+      if (!okJson(first) || !Array.isArray(first.json.result)) return fail(httpProblem(first, 'POST /subscriptions/sync'));
+      if (!first.json.result.length) {
+        return skip('No pending updates were observed (server may capture values only on change); clearing the queue with lastSequenceNumber=-1 could not be exercised', 'untestable');
+      }
+      const maxSeen = Math.max(...first.json.result.map((b) => b.sequenceNumber));
+      const ackAll = await ctx.client.request('POST', '/subscriptions/sync', {
+        body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId, lastSequenceNumber: -1 }
+      });
+      if (!okJson(ackAll) || !Array.isArray(ackAll.json.result)) {
+        return fail(
+          httpProblem(ackAll, 'POST /subscriptions/sync (lastSequenceNumber=-1)') +
+            ' — "Server MUST clear the queue if lastSequenceNumber=-1 is provided, acknowledging all pending updates".'
+        );
+      }
+      const next = await ctx.client.request('POST', '/subscriptions/sync', {
+        body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId }
+      });
+      if (!okJson(next) || !Array.isArray(next.json.result)) return fail(httpProblem(next, 'POST /subscriptions/sync (after -1)'));
+      const stale = [...ackAll.json.result, ...next.json.result].filter((b) => b.sequenceNumber <= maxSeen);
+      if (stale.length) {
+        return fail(
+          `After lastSequenceNumber=-1 the server returned batch(es) with sequenceNumber ≤ ${maxSeen} ([${stale.map((b) => b.sequenceNumber).join(', ')}]). The server MUST clear the entire queue when -1 is provided.`
+        );
+      }
+      return pass(`queue cleared through sequence ${maxSeen} in a single round trip`);
+    }
+  },
+  {
     id: 'SUB-08',
     name: 'POST /subscriptions/unregister removes objects with per-item results',
     level: 'MUST',
@@ -232,6 +271,75 @@ module.exports = [
         return pass();
       } finally {
         try { await res.body?.cancel(); } catch { /* closing the probe stream */ }
+      }
+    }
+  },
+  {
+    // SUB-14 runs after SUB-09, while the suite's subscription still exists.
+    id: 'SUB-14',
+    name: 'Opening a second stream closes the existing stream (single stream per subscription)',
+    level: 'MAY',
+    feature: 'subscribe.stream',
+    ref: 'streaming',
+    async run(ctx) {
+      if (!ctx.subscriptionId) return skip('No subscription was created', 'blocked');
+      let resA;
+      try {
+        resA = await ctx.client.open('POST', '/subscriptions/stream', {
+          body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId },
+          timeout: 30000
+        });
+      } catch (e) {
+        return skip(`Could not open the first stream (${e.message}) — stream behavior is covered by SUB-09`, 'blocked');
+      }
+      if (resA.status !== 200 || !resA.body) {
+        try { await resA.body?.cancel(); } catch { /* probe cleanup */ }
+        return skip(`First stream did not open (HTTP ${resA.status}) — stream behavior is covered by SUB-09`, 'blocked');
+      }
+      const readerA = resA.body.getReader();
+      // Drain stream A in the background; resolves "closed" on a clean end-of-stream.
+      const closedA = (async () => {
+        try {
+          for (;;) {
+            const { done } = await readerA.read();
+            if (done) return 'closed';
+          }
+        } catch (e) {
+          return `error: ${e.message}`;
+        }
+      })();
+      let resB;
+      try {
+        resB = await ctx.client.open('POST', '/subscriptions/stream', {
+          body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId },
+          timeout: 10000
+        });
+      } catch (e) {
+        try { await readerA.cancel(); } catch { /* probe cleanup */ }
+        return fail(`Opening a second stream failed (${e.message}). "If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one".`);
+      }
+      try {
+        const ctype = resB.headers.get('content-type') || '';
+        if (resB.status !== 200 || !ctype.includes('text/event-stream')) {
+          return fail(
+            `The second stream was refused (HTTP ${resB.status}, Content-Type "${ctype}"). "If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one".`
+          );
+        }
+        const outcome = await Promise.race([closedA, new Promise((r) => setTimeout(r, 5000, 'timeout'))]);
+        if (outcome === 'timeout') {
+          return fail(
+            'The first stream was still open 5s after the server accepted a second stream. "Server MUST only allow a single SSE stream per subscription" — the existing stream must be closed when a new one opens.'
+          );
+        }
+        if (outcome !== 'closed') {
+          return fail(
+            `The first stream was terminated abruptly (${outcome}). "The previously connected client will receive an SSE stream close with no error" — the server must end the stream cleanly.`
+          );
+        }
+        return pass('previous stream closed cleanly when the new stream opened');
+      } finally {
+        try { await readerA.cancel(); } catch { /* probe cleanup */ }
+        try { await resB.body?.cancel(); } catch { /* probe cleanup */ }
       }
     }
   },

@@ -15,6 +15,8 @@
 //     badbulk       - return bulk results in reverse order
 //     omit-updates  - declare update capabilities false (verdict: 1.0 Compatible)
 //     primitive     - strip properties from object schemas (verdict: Immature Type System)
+//     noclearall    - ignore lastSequenceNumber=-1 instead of clearing the queue
+//     nosinglestream - leave an existing SSE stream open when a new one is opened
 
 const http = require('node:http');
 const zlib = require('node:zlib');
@@ -534,8 +536,8 @@ const routes = {
     }
     if (sub.streamRes) return sendError(req, res, 400, 'Bad Request', 'Subscription has an open SSE stream; close it before calling sync');
     const last = body.lastSequenceNumber;
-    if (last === -1) sub.batches = [];
-    else if (typeof last === 'number') sub.batches = sub.batches.filter((b) => b.sequenceNumber > last);
+    if (last === -1 && !BREAK.has('noclearall')) sub.batches = [];
+    else if (typeof last === 'number' && last >= 0) sub.batches = sub.batches.filter((b) => b.sequenceNumber > last);
     // Poll-style capture: stage the latest values of monitored objects as a new batch.
     stageBatch(sub);
     send(req, res, 200, { success: true, result: sub.batches });
@@ -548,8 +550,9 @@ const routes = {
     if (!sub || (body.clientId && sub.clientId && sub.clientId !== body.clientId)) {
       return sendError(req, res, 404, 'Not Found', `Subscription not found: ${body.subscriptionId}`);
     }
-    if (sub.streamRes) {
+    if (sub.streamRes && !BREAK.has('nosinglestream')) {
       try { sub.streamRes.end(); } catch { /* prior stream */ }
+      sub.streamRes = null;
     }
     res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', Connection: 'keep-alive' });
     sub.streamRes = res;

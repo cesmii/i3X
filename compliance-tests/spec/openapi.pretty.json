@@ -1,7 +1,7 @@
 {
     "openapi": "3.1.0",
     "info": {
-        "title": "i3X API Prototype",
+        "title": "i3X API 1.0",
         "description": "Industrial Information Interface eXchange API - 1.0 Release",
         "version": "release"
     },

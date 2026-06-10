@@ -7,7 +7,7 @@ Conformance test suite for i3X 1.0 server implementations, built for the CESMII 
 ```bash
 npm start                                  # web UI on :8330 (same page as the hosted version)
 npm run mock                               # compliant reference server on :8331 (/v1 prefix)
-npm test                                   # self-test: suite vs mock in 6 configs, asserts each verdict
+npm test                                   # self-test: suite vs mock in 7 configs, asserts each verdict
 node bin/i3x-test.js run <endpoint> [...]  # CLI runner (see --help)
 ```
 
@@ -43,7 +43,8 @@ server/serve.js      web server: static UI + POST /api/run → SSE event stream
 server/public/       single-file UI (inline CSS/JS, no framework) + logo/favicon assets
 mock/server.js       compliant reference server (demo pump-station model)
 test/selftest.js     asserts the verdict for 6 mock configurations
-spec/                snapshots of the normative documents (see below)
+spec/                snapshot of the OpenAPI definition (see below); the normative
+                     markdown documents live in the repo's top-level spec/
 ```
 
 ### Test definition shape
@@ -66,19 +67,20 @@ Tests run sequentially and share `ctx` (client, config, namespaces, objectTypes/
 
 ## Normative sources & spec drift
 
-`spec/` holds snapshots of:
-- https://api.i3x.dev/v1/openapi.json (response shapes — mirrored by hand in `lib/validators.js` SHAPES)
-- IMPLEMENTATION_GUIDE.md and UNDERSTANDING_RELATIONSHIPS.md (cesmii/i3X, branch `1.0`)
+The canonical IMPLEMENTATION_GUIDE.md and UNDERSTANDING_RELATIONSHIPS.md live in the repo's top-level `spec/` — do not keep copies here; the suite versions together with the spec on this branch. This folder's `spec/` holds only a snapshot of https://api.i3x.dev/v1/openapi.json (response shapes — mirrored by hand in `lib/validators.js` SHAPES).
 
-If the spec changes: re-download snapshots, re-derive SHAPES and any quoted requirement text in test messages, and check the anchors in `lib/specrefs.js` still resolve. Jon edits the Implementation Guide too — e.g. the "production implementations MUST require authentication" wording (auth note in the UI + CORE-07) was added to the guide *after* this suite referenced it.
+If the spec changes: re-derive SHAPES and any quoted requirement text in test messages, refresh the openapi snapshot, and check the anchors in `lib/specrefs.js` still resolve against `../spec/IMPLEMENTATION_GUIDE.md` headings. Jon edits the Implementation Guide too — e.g. the "production implementations MUST require authentication" wording (auth note in the UI + CORE-07) was added to the guide *after* this suite referenced it.
+
+npm publish note: `package.json` `files` includes `spec/`, which no longer contains the guides. Before publishing to npm, add a `prepack` step that copies `../spec/IMPLEMENTATION_GUIDE.md` and `../spec/UNDERSTANDING_RELATIONSHIPS.md` in (and ignore the copies), so the tarball stays self-contained.
 
 ## Mock server switches
 
 `MOCK_TOKEN=secret` — require bearer auth (except `/info`, which the spec keeps open).
-`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these.
+`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` | `noclearall` | `nosinglestream` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these.
 
 ## History / open threads
 
+- 2026-06-10: full audit against the current Implementation Guide and CHANGELOG (all entries through #313). Existing tests already matched (history-as-MUST with GoodNoData, sync batches, POST-style subscription endpoints, UTC-only timestamps); added SUB-13 (`lastSequenceNumber=-1` clear-all, #311) and SUB-14 (single-stream takeover with clean close, #313). SUB-13/14 run mid-phase (after SUB-07/SUB-09) while the suite's subscription is still alive — array order ≠ id order there, deliberately.
 - An independent server implementation was validated against this suite (2026-06-10); the suite's findings were confirmed correct.
 - The project was moved into the main i3X repo from a standalone folder; it was never published to npm under `i3x-test-suite` (README `npx` forms are aspirational until published).
 - Hosted deployment target not yet stood up; `server/serve.js` is ready (see README "Deploying the public instance": `I3X_MAX_RUNS`, egress isolation note).

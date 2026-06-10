@@ -4,7 +4,7 @@ Validates an [i3X](https://github.com/cesmii/i3X) server implementation against 
 
 > This suite is part of the i3X repository but is fully self-contained: all commands below are run **from this folder** (`cd` into it from the repo root first). It has zero runtime dependencies and needs only Node.js ≥ 18.17.
 
-- **55 conformance tests** covering every required (MUST) behavior — transport & encoding, the `/info` capabilities contract, all Exploratory methods, current/historical value queries, the Subscribe lifecycle and sync acknowledgement — plus every optional (MAY) feature the server declares (updates, SSE streaming).
+- **57 conformance tests** covering every required (MUST) behavior — transport & encoding, the `/info` capabilities contract, all Exploratory methods, current/historical value queries, the Subscribe lifecycle and sync acknowledgement — plus every optional (MAY) feature the server declares (updates, SSE streaming).
 - **Optional features are never penalized for being omitted.** If a server *declares* a capability in `GET /info` but implements it incorrectly, that is a failure.
 - Every failure explains **what's wrong** and links to the **exact section of the Implementation Guide** to consult.
 - Zero runtime dependencies. Requires only **Node.js ≥ 18.17**.
@@ -88,7 +88,7 @@ i3x-test mock                  # http://localhost:8331/v1
 i3x-test run http://localhost:8331/v1
 ```
 
-It can also simulate spec violations to exercise the failure reporting (`MOCK_BREAK=reverseof,nullgood,nogzip,badbulk`), require auth (`MOCK_TOKEN=secret`), omit optional features (`MOCK_BREAK=omit-updates` → *1.0 Compatible*), or serve a primitive-only type registry (`MOCK_BREAK=primitive` → *Immature Type System*).
+It can also simulate spec violations to exercise the failure reporting (`MOCK_BREAK=reverseof,nullgood,nogzip,badbulk,noclearall,nosinglestream`), require auth (`MOCK_TOKEN=secret`), omit optional features (`MOCK_BREAK=omit-updates` → *1.0 Compatible*), or serve a primitive-only type registry (`MOCK_BREAK=primitive` → *Immature Type System*).
 
 ## Deploying the public instance
 
@@ -113,16 +113,16 @@ Put it behind any TLS-terminating reverse proxy. Operational notes:
 | Exploratory | EXP-01…22 | namespaces, object/relationship types, `reverseOf` symmetry, objects, roots, filters, metadata, bulk order/size, per-item 404s, bidirectional relationship traversal, hierarchy reachability |
 | Query | QRY-01…09 | VQT shape, quality/null pairing, **value-vs-type-schema conformance**, `maxDepth`/components semantics, history range & shapes |
 | Update (MAY) | UPD-01…05 | write-back of current values, read-after-write, partial failure, historical writes, 501 honesty |
-| Subscribe | SUB-01…12 | create/list/register (idempotent, partial failure)/sync (batch shape, sequence acknowledgement)/unregister/SSE stream (MAY)/delete/404 after delete |
+| Subscribe | SUB-01…14 | create/list/register (idempotent, partial failure)/sync (batch shape, sequence acknowledgement, `lastSequenceNumber=-1` clear-all)/unregister/SSE stream (MAY, incl. single-stream takeover)/delete/404 after delete |
 
-Normative sources: the [Implementation Guide](https://github.com/cesmii/i3X/blob/1.0/spec/IMPLEMENTATION_GUIDE.md), the [OpenAPI definition](https://api.i3x.dev/v1/openapi.json) (response shapes mirrored in `lib/validators.js`), and [Understanding Relationships](https://github.com/cesmii/i3X/blob/1.0/spec/UNDERSTANDING_RELATIONSHIPS.md). Snapshots of all three are kept in this folder's `spec/` directory and reflect the documents as of the suite's last update; if the specification is revised, refresh the snapshots and re-check the validators against them. Implementer help: [i3X Server Developer SDK docs](https://www.i3x.dev/sdk/category/server-developers).
+Normative sources: the [Implementation Guide](../spec/IMPLEMENTATION_GUIDE.md) and [Understanding Relationships](../spec/UNDERSTANDING_RELATIONSHIPS.md) in this repository's `spec/` directory, and the [OpenAPI definition](https://api.i3x.dev/v1/openapi.json) (response shapes mirrored in `lib/validators.js`; a snapshot is kept in this folder's `spec/`). The suite and the specification version together on this branch; if the specification is revised, re-check the validators and test messages against it. Implementer help: [i3X Server Developer SDK docs](https://www.i3x.dev/sdk/category/server-developers).
 
 ## Development
 
 ```bash
-npm test     # self-test: runs the suite against the mock in 6 configurations
-             # (compliant, updates-omitted, primitive types, broken, auth ok, auth wrong)
-             # and asserts the expected verdict for each
+npm test     # self-test: runs the suite against the mock in 7 configurations
+             # (compliant, updates-omitted, primitive types, broken, broken
+             # subscriptions, auth ok, auth wrong) and asserts each verdict
 ```
 
 Layout:
