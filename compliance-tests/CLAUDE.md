@@ -1,0 +1,84 @@
+# i3X 1.0 Conformance Test Suite — project context
+
+Conformance test suite for i3X 1.0 server implementations, built for the CESMII i3X working group. Community implementers use it via a hosted web page, a self-hosted web UI, or a CLI — all from this one package.
+
+## Commands
+
+```bash
+npm start                                  # web UI on :8330 (same page as the hosted version)
+npm run mock                               # compliant reference server on :8331 (/v1 prefix)
+npm test                                   # self-test: suite vs mock in 6 configs, asserts each verdict
+node bin/i3x-test.js run <endpoint> [...]  # CLI runner (see --help)
+```
+
+There is no build step, linter config, or test framework — plain Node, run directly.
+
+## Hard invariants (do not change casually)
+
+- **Zero runtime dependencies, Node ≥ 18.17.** This is deliberate so community members can run it with nothing but Node. Don't add packages; built-in `fetch`, `node:http`, `node:zlib` cover everything.
+- **Verdict strings are working-group-approved wording** and are string-matched in `bin/i3x-test.js`, `server/public/index.html`, and `test/selftest.js`:
+  - `Full 1.0 Compliance` (green)
+  - `1.0 Compliance, Immature Type System` (green) — all passed but every ObjectType schema is a primitive scalar
+  - `1.0 Compatible` (teal/cyan — deliberately not orange; orange is reserved for warnings)
+  - `Not Compliant` (red)
+- **MAY features omitted ⇒ never a failure** (verdict caps at "1.0 Compatible"). A *declared* capability that misbehaves ⇒ failure.
+- **SHOULD-level findings are warnings only** and never affect the verdict (e.g. plain HTTP, accepting unauthenticated requests, 501-honesty). The working group explicitly does not want to block people who disable auth for testing.
+- **Write tests are non-destructive**: they write each object's current value back to itself. UPD-02 read-after-write does NOT require equality — live data sources legitimately move between write and read; a mismatch is a pass with a "Note:" message.
+- **CLI exit code**: 0 for any compliance/compatible verdict, 1 only for Not Compliant/Error (CI-friendly).
+
+## Architecture
+
+```
+lib/engine.js        orchestrator: resolves base URL (auto-probes <url>/v1 as fallback),
+                     runs phases sequentially, emits events, feature-gates MAY tests
+lib/report.js        verdict computation + isRichTypeSystem()
+lib/validators.js    mini JSON Schema validator + SHAPES registry mirroring the OpenAPI
+                     components + envelope/VQT semantic checks
+lib/client.js        fetch wrapper (auth, timeout); rawGzipProbe uses node:http because
+                     fetch hides Content-Encoding
+lib/specrefs.js      REFS map: every test's `ref` key → Implementation Guide anchor URL
+lib/tests/*.js       test definitions per phase (transport, exploratory, query, update, subscribe)
+bin/i3x-test.js      CLI (run / serve / mock)
+server/serve.js      web server: static UI + POST /api/run → SSE event stream
+server/public/       single-file UI (inline CSS/JS, no framework) + logo/favicon assets
+mock/server.js       compliant reference server (demo pump-station model)
+test/selftest.js     asserts the verdict for 6 mock configurations
+spec/                snapshots of the normative documents (see below)
+```
+
+### Test definition shape
+
+```js
+{ id: 'QRY-01', name: '…', level: 'MUST'|'MAY'|'SHOULD',
+  feature: 'update.current',   // MAY only: dotted path into /info capabilities; engine
+                               // auto-skips (reason 'omitted') when declared false
+  ref: 'queryMethods',         // key into lib/specrefs.js REFS
+  async run(ctx) { return pass/fail/warn/skip(message) } }   // helpers in lib/results.js
+```
+
+Tests run sequentially and share `ctx` (client, config, namespaces, objectTypes/typesById, relationshipTypes/relById, objects/objectsById, currentValues, subscriptionId/clientId, …). Missing prerequisites ⇒ `skip(…, 'blocked')`. Test IDs are referenced in the README table — keep numbering stable, append new ones.
+
+### Display conventions
+
+- `pass()` messages are normally hidden; a pass message starting with **`Note:`** is rendered (muted gray) in both CLI and web UI — used when a pass needs an honest caveat.
+- Warnings are itemized in `summary.warnings` and repeated in the final CLI summary and web verdict banner.
+- Web UI consumes `POST /api/run` as SSE (`fetch` + reader, since EventSource can't POST). Event types: `start`, `note`, `phase`, `test:start`, `test:end`, `done`.
+
+## Normative sources & spec drift
+
+`spec/` holds snapshots of:
+- https://api.i3x.dev/v1/openapi.json (response shapes — mirrored by hand in `lib/validators.js` SHAPES)
+- IMPLEMENTATION_GUIDE.md and UNDERSTANDING_RELATIONSHIPS.md (cesmii/i3X, branch `1.0`)
+
+If the spec changes: re-download snapshots, re-derive SHAPES and any quoted requirement text in test messages, and check the anchors in `lib/specrefs.js` still resolve. Jon edits the Implementation Guide too — e.g. the "production implementations MUST require authentication" wording (auth note in the UI + CORE-07) was added to the guide *after* this suite referenced it.
+
+## Mock server switches
+
+`MOCK_TOKEN=secret` — require bearer auth (except `/info`, which the spec keeps open).
+`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these.
+
+## History / open threads
+
+- An independent server implementation was validated against this suite (2026-06-10); the suite's findings were confirmed correct.
+- The project was moved into the main i3X repo from a standalone folder; it was never published to npm under `i3x-test-suite` (README `npx` forms are aspirational until published).
+- Hosted deployment target not yet stood up; `server/serve.js` is ready (see README "Deploying the public instance": `I3X_MAX_RUNS`, egress isolation note).

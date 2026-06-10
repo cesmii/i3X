@@ -1,0 +1,2003 @@
+# i3X Implementation Guide
+
+This document provides guidance for implementing i3X (Industrial Information Interface eXchange), and is intended to be used by developers creating i3X servers and clients.
+
+## Status of This Document
+
+This document is a Release Candidate, and should be considered nearly complete and normative. This guide is informed by RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to minor changes.
+
+## Table of Contents
+
+- [Introduction](#introduction)
+- [Compliance](#compliance)
+- [Transport & Encoding](#transport--encoding)
+  - [Security & Authentication](#security--authentication)
+  - [Versioning](#versioning)
+- [Response Format](#response-format)
+  - [Success](#success)
+  - [Failure](#failure)
+  - [Bulk Response](#bulk-response)
+- [Address Space](#address-space)
+  - [ElementId and DisplayName](#elementid-and-displayname)
+  - [Namespaces](#namespaces)
+  - [Object Types](#object-types)
+  - [Relationship Types](#relationship-types)
+    - [Relationship Semantics](#relationship-semantics)
+  - [Objects](#objects)
+- [Exploratory Methods](#exploratory-methods)
+  - [Server Capabilities Endpoints](#server-capabilities-endpoints)
+  - [Namespace Endpoints](#namespace-endpoints)
+  - [Object Type Endpoints](#object-type-endpoints)
+  - [Relationship Type Endpoints](#relationship-type-endpoints)
+  - [Object Endpoints](#object-endpoints)
+- [Query Methods](#query-methods)
+  - [maxDepth Parameter Semantics](#maxdepth-parameter-semantics)
+  - [Null Value Handling](#null-value-handling)
+- [Update Methods](#update-methods)
+- [Subscribe Methods](#subscribe-methods)
+  - [Subscriptions](#subscriptions)
+  - [Registering and Unregistering Objects](#registering-and-unregistering-objects)
+  - [Streaming](#streaming)
+  - [Sync](#sync)
+    - [Sync Examples](#sync-examples)
+    - [Sync Data Loss](#sync-data-loss)
+  - [Subscription Life Cycle](#subscription-life-cycle)
+
+## Introduction
+i3X is an HTTP-based API for interacting with industrial systems. It defines a standard interface between clients and servers for discovery, browsing, reading, writing, and subscribing to industrial data.
+
+i3X exposes industrial systems through schema-aware information models. Data is represented as typed objects with attributes, metadata, and relationships, allowing clients to interact with both values and structure in a consistent way.
+
+## Compliance
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD NOT", "RECOMMENDED", "MAY", and "OPTIONAL" are interpreted as described in Internet RFC 2119.
+
+i3X consists of the following high level capabilities.
+
+- **Exploratory** browse and discover the address space
+- **Query** read the current or historical values of Objects
+- **Update** write current or historical data to Objects
+- **Subscribe** subscribe to data changes for Objects
+
+Below are the required capabilities for all i3X compliant Clients and Servers.
+
+**Requirements**
+* Exploratory
+  * MUST support all [Exploratory Methods](#exploratory-methods)
+* Query
+  * MUST support Current Value (`objects/value`) as defined in [Query Methods](#query-methods)
+  * MUST support History Value (`objects/history`) — see note in [Query Methods](#query-methods)
+* Update
+  * MAY support [Update Methods](#update-methods)
+* Subscribe
+  * MUST support base [Subscribe Methods](#subscribe-methods) (create, delete, list, register objects, unregister objects)
+  * MUST support Sync (`/subscriptions/sync`)
+  * MAY support Stream (`/subscriptions/stream`)
+  
+## Transport & Encoding
+
+i3X is RESTful HTTP-based API and relies on HTTP for transport. It includes typical request/response patterns as well as SSE (Server Sent Events) for Subscribe capabilities.
+
+In addition to an HTTP based transport, i3X uses JSON encoding to exchange data between the client and the server and clients may request compression through gzip.
+
+- All i3X requests MUST include `Content-Type: application/json` and `Accept: application/json` in the HTTP header.
+- When i3X requests include `Accept-Encoding: gzip`, servers MUST respond with `Content-Encoding: gzip` where the response is compressed using gzip.
+
+### Security & Authentication
+
+i3X relies on HTTP security best practices to secure communication between the client and server. This includes the use of HTTPs.
+
+- Implementations MUST support encrypted transport (HTTPS) in production
+- TLS 1.2 or higher SHOULD be used
+- Self-signed certificates MAY be used for development
+- Servers SHOULD limit client access based on the token
+
+### Versioning
+
+The i3X specification uses **semantic versioning** (`MAJOR.MINOR`):
+
+All servers MUST implement a `GET /info` endpoint that returns information about the server's capabilities. This endpoint can also be used for health checks, as it is assumed the server will respond to this request when running. See the [Server Capabilities Endpoints](#server-capabilities-endpoints) section for details.
+
+Clients SHOULD use `GET /info` to discover the `specVersion` and `capabilities` supported by a server before making other API calls.
+
+The server MUST prefix API endpoints with `baseURL/v1/namespaces` where the `v1` is the version number. This version will only be incremented (ex. v2) if there is a future
+version of the API with a breaking change. `baseURL` is server dependent.
+
+## Response Format
+
+i3X supports standard success and failure response shapes to make it easy for clients to handle success and failure regardless of the 
+endpoint. The below sections cover success, failure, and bulk responses.
+
+### Success
+Successful responses return an HTTP 200 with the following shape. Note the `result` shape is specific to the endpoint being called.
+
+```json
+{
+  "success": true,
+  "result": <data>
+}
+```
+
+Success responses (HTTP 2xx, including partial success) MAY include `responseDetail` ([RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) - Problem Details for HTTP APIs) to convey informational context: 
+```json
+{
+  "success": true,
+  "result": <data>,
+  "responseDetail": {
+    "title": <title>,
+    "status": 2xx,
+    "detail": <detail>
+  }
+}
+```
+
+| Field                           | Type    | Required | Description                                                 |
+|---------------------------------|---------|----------|-------------------------------------------------------------|
+| `success`                       | boolean | Yes      | True if the request is successful. HTTP return must be 200. |
+| `result`                        | any     | Yes      | Endpoint specific result. 
+| `responseDetail.title`    | string  | No      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
+| `responseDetail.status`   | number  | No      | The HTTP status code.                                                   |
+| `responseDetail.detail`   | string  | No      | Human-readable explanation specific to this occurrence.                 |
+
+Examples:
+
+```json
+// GET /namespaces
+{ "success": true, "result": [{ "uri": "https://cesmii.org/i3x", "displayName": "i3X" }] }
+
+// POST /subscriptions
+{ "success": true, "result": { "subscriptionId": "Xf9q8wL1...", "displayName": "mySubscription" } }
+
+// PUT /objects/value (write succeeded)
+{ "success": true, "results": [{ "success": true, "elementId": "pump-101", "result": null }] }
+
+// POST /subscriptions/sync (overflow occurred, POST returns HTTP 206 Partial Content)
+{
+  "success": true, "result": [...], "responseDetail": { "title": "Partial results returned", "status": 206, "detail": "Result set was truncated due to server-imposed depth limits." }
+}
+```
+
+### Failure
+
+Failures return an HTTP error code with the following shape. The `responseDetail` object follows [RFC 9457](https://www.rfc-editor.org/rfc/rfc9457) (Problem Details for HTTP APIs) and communicates additional context about a response. It MUST be present on failure responses.
+
+```json
+{
+  "success": false,
+  "responseDetail": {
+    "title": "Not Found",
+    "status": 404,
+    "detail": "Element not found: pump-101"
+  }
+}
+```
+| Field                    | Type    | Required | Description                                                             |
+|--------------------------|---------|----------|-------------------------------------------------------------------------|
+| `success`                | boolean | Yes      | `false` for any error response.                                         |
+| `responseDetail.title`    | string  | Yes      | Short, human-readable summary of the problem type (e.g. `"Not Found"`). |
+| `responseDetail.status`   | number  | Yes      | The HTTP status code.                                                   |
+| `responseDetail.detail`   | string  | Yes      | Human-readable explanation specific to this occurrence.                 |
+
+The following HTTP status codes are used:
+
+| Code | Meaning | When to Use |
+|------|---------|-------------|
+| 200 | OK | Successful request |
+| 206 | Partial Content | Server fulfilled part of the request due to server-imposed limits. The response body includes a top-level `responseDetail` object. |
+| 400 | Bad Request | Invalid parameters, malformed request body, or request the server cannot fulfill at all |
+| 401 | Unauthorized | Missing or invalid authentication |
+| 403 | Forbidden | Authenticated but not authorized |
+| 404 | Not Found | ElementId or resource doesn't exist |
+| 500 | Internal Server Error | Server-side error |
+| 501 | Not Implemented | Optional feature not supported
+
+Examples:
+
+```json
+// GET /namespaces
+{ "success": false, "responseDetail": { "title": "Unauthorized", "status": 401, "detail": "User does not have access" }}
+```
+
+### Bulk Response
+
+POST query endpoints that accept an array of `elementIds` return a bulk shape. Each element is independently succeeded or failed. The top-level `success` is `false` if **any** element failed. The `result` field within each entry conforms to the schema of the resource type being queried — an Object Type result, an Object instance result, and a Relationship Type result all share this envelope but have different `result` shapes. See each endpoint's response table for the concrete field definitions.
+
+The Server's response MUST be in the same order and the same size as the request, allowing clients to quickly index results.
+
+Each item is keyed by the identifier of the resource the endpoint operates on:
+- `elementId` for endpoints that accept `elementIds` (object, type, and `/subscriptions/register` / `/subscriptions/unregister` endpoints).
+- `subscriptionId` for endpoints that accept `subscriptionIds` (`/subscriptions/list` and `/subscriptions/delete`).
+
+```json
+{
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "pump-101",
+      "result": { ... }
+    },
+    {
+      "success": false,
+      "elementId": "non-existent",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: non-existent"
+      }
+    }
+  ]
+}
+```
+
+---
+
+## Address Space
+The i3X server address space consists of the following elements.
+
+- **Namespaces**
+  - A logical way to group elements in an i3X server. Object Types, Objects, and Relationship Types all belong to a namespace.
+- **Object Types** 
+  - Schema definitions that describe the shape of an Object's value. For example a Boiler might have a schema with temperature and pressure attributes.
+- **Objects** 
+  - Instantiations or instances of an Object Type. Objects can be read, written and subscribed to. For example, a server might have Boiler1 and Boiler2 Objects that represent two boilers at a facility, and both are backed by a Boiler Object Type. When the Boiler1 value is read, it returns data that conforms to the Boiler Object Type schema.
+- **Relationship Types** 
+  - Objects can be related to one another via Relationship Types. The simplest example is parent and child relationship, but graph and other relationship types are supported.
+
+The example response payloads used in this section are meant to be representative but not exhaustive, and are used to provide a general overview of the address space. See the corresponding Method sections below for full descriptions of request/response.
+
+### ElementId and DisplayName
+All elements in the namespace must have an ElementId and DisplayName.
+
+An ElementId is a platform-specific unique string identifier. Each element in the address space must have a unique elementId. The following are requirements for ElementIds.
+
+**Requirements:**
+- ElementIds MUST be strings with the following constraints
+  - MUST not contain leading or trailing white spaces
+  - MUST not contain non-printable characters
+- ElementIds MUST be unique within the scope of the platform
+- ElementIds SHOULD be persistent (the same element always has the same ID)
+- ElementIds SHOULD be human-readable when practical
+
+Below are examples of ElementIds.
+```
+machine-001
+sensor_temperature_01
+urn:example:equipment:pump:123
+MachineType
+HasParent
+```
+
+DisplayName is the human readable name often used when displaying the Namespace, Object, etc to a user. For example a Boiler Object might have the following definition, where the elementId makes it unique in the server, and the displayName makes it easy to display to a user.
+
+```json
+{
+  "elementId": "site-area-line-boiler1",
+  "displayName": "Boiler1",
+  "namespaceUri": "https://example.com/ns/sensors"
+}
+```
+
+### Namespaces
+
+A Namespace provides a logical grouping of *types* within the i3X address space — specifically ObjectTypes and Relationship Types. Object instances do not belong to a Namespace; they exist in the server's implicit address space. The namespace of an instance's type is accessible via `typeNamespaceUri` on the instance response when `includeMetadata=true`.
+
+When used to reference an external Namespace definition (eg: an OPC UA Companion Specification), the URI should match that of the external Namespace.
+
+When an implementation of an external Namespace is in-exact, by convention, the Namespace URI SHOULD be suffixed with a `projection` query string indicating the source of the adaption.
+
+For example, by default the project MAY be called i3X: http://opcfoundation.org/UA/Robotics/?projection=i3X
+
+The following is an example of a Namespace definition.
+
+```json
+  {
+    "uri": "https://cesmii.org/i3X",
+    "displayName": "i3X"
+  }
+```
+
+**Requirements**
+- A server MUST have at least one Namespace
+- Each Namespace MUST have a unique URI
+- Each ObjectType and Relationship Type MUST belong to one and only one Namespace
+
+Below are example URI patterns:
+
+```
+https://www.company.com/ns/equipment
+https://www.isa.org/isa95
+urn:i3x:relationships
+```
+
+### Object Types
+
+Object Types define the schema (structure, attributes) for a class of Objects. They are analogous to classes in object-oriented programming. When an Object is read, the value returned conforms to the schema defined by the Object Type.
+
+Below is an example of an Object Type in an i3X server. Note the `schema` attribute contains the JSON Schema definition of the object. For more information on JSON Schema see https://json-schema.org/. i3X used JSON Schema to define Object Types.
+
+```json
+{
+  "elementId": "TemperatureSensorType",
+  "displayName": "Temperature Sensor",
+  "namespaceUri": "https://example.com/ns/sensors",
+  "version": "1.0.0",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "temperature": { "type": "number" },
+      "unit": { "type": "string", "enum": ["C", "F", "K"] }
+    }
+  }
+}
+```
+
+**Scalar types**
+
+Object Type schemas are not limited to `"type": "object"`. A schema with a scalar `type` — `"number"`, `"integer"`, `"string"`, or `"boolean"` — defines a **leaf** type whose instances return a bare scalar in the VQT `value` field rather than a JSON object. Individual sensor readings, setpoints, and status flags are typically modelled this way.
+
+```json
+{
+  "elementId": "temperature-reading-type",
+  "displayName": "Temperature Reading",
+  "namespaceUri": "https://example.com/ns/sensors",
+  "version": "1.0.0",
+  "schema": { "type": "number" }
+}
+```
+
+An instance of this type returns a bare scalar value:
+
+```json
+{ "elementId": "zone-temp-01", "result": { "isComposition": false, "value": 592.0, "quality": "Good", "timestamp": "..." } }
+```
+
+Clients MAY use `schema.type` to distinguish leaf objects (scalar type) from branch objects (`"object"` type) when rendering the address space.
+
+**Unknown types: `UnknownType`**
+
+When an instance's type cannot be determined at discovery or import time, implementations SHOULD register a placeholder type named `UnknownType` in their type registry and use its `elementId` as the `typeElementId` on all affected instances. This ensures the Types response always contains an entry for every `typeElementId` referenced by instances. The `UnknownType` schema should be `{"type": "object"}`. The choice of `elementId` is implementation-specific.
+
+**Nullable fields**
+
+By default, a field declared in an ObjectType schema is non-nullable — `"type": "number"` means the field must be a number, never `null`. To permit a field to be null, declare it using a JSON Schema type union:
+
+```json
+{
+  "elementId": "PumpType",
+  "displayName": "Pump",
+  "namespaceUri": "https://example.com/ns/equipment",
+  "schema": {
+    "type": "object",
+    "properties": {
+      "flowRate":   { "type": "number" },
+      "outletTemp": { "type": ["number", "null"] },
+      "alarmCode":  { "type": ["string", "null"] }
+    },
+    "required": ["flowRate"]
+  }
+}
+```
+
+Here `flowRate` is required and non-nullable. `outletTemp` and `alarmCode` are nullable — the platform may not always have a value for them. See [Null Value Handling](#null-value-handling) for how nulls appear in read responses and write requests.
+
+**Requirements**
+- An Object Type MUST have a JSON Schema definition
+- An Object Type MUST belong to one Namespace
+- An Object Type SHOULD have a version in Semantic Versioning format (e.g. `"1.0.0"`)
+- Fields not declared nullable in the schema MUST NOT carry `null` values in read responses or write requests
+- Field nullability MUST be declared in the ObjectType schema; it MUST NOT be inferred from observed values
+
+The standard creates the necessary hooks to identify the version of an object type, but it is up to implementations to manage multiple versions if necessary.
+
+### Relationship Types
+
+Relationship Types define the relationships between Objects. The most common relationship type is often parent/child, but relationship types include hierarchical, composition and graph.
+Every Relationship Type MUST define a `reverseOf` that is also registered in the address space.
+
+Below is an example of two Relationship Type definitions.
+
+```json
+[
+ {
+    "elementId": "HasParent",
+    "displayName": "HasParent",
+    "namespaceUri": "https://cesmii.org/i3x",
+    "reverseOf": "HasChildren"
+  },
+  {
+    "elementId": "HasChildren",
+    "displayName": "HasChildren",
+    "namespaceUri": "https://cesmii.org/i3x",
+    "reverseOf": "HasParent"
+  },
+  {
+    "elementId": "HasComponent",
+    "displayName": "HasComponent",
+    "namespaceUri": "https://cesmii.org/i3x",
+    "reverseOf": "ComponentOf"
+  },
+  {
+    "elementId": "ComponentOf",
+    "displayName": "ComponentOf",
+    "namespaceUri": "https://cesmii.org/i3x",
+    "reverseOf": "HasComponent"
+  }
+]
+```
+
+For more information on the types of Relationships supported in i3X, see the document [Understanding Relationships](UNDERSTANDING_RELATIONSHIPS.md).
+
+#### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
+
+##### HasParent / HasChildren
+
+These represent topological or organizational hierarchy where child objects are separate entities organized under a parent.
+
+```
+Production Line A (parent)
+├── Machine 1 (child)
+├── Machine 2 (child)
+└── Machine 3 (child)
+```
+
+**Requirements:**
+
+- If object A `HasParent` B, then B `HasChildren` A
+- `parentId` on instances MUST match the `HasParent` relationship
+- Traversing `HasChildren` returns distinct, independently-valued objects
+
+##### HasComponent / ComponentOf (Composition)
+
+These indicate when child data IS part of the parent's definition. The parent's value is composed of its children's values.
+
+```
+CNC Machine (parent, isComposition: true)
+├── Spindle (component)
+├── Coolant System (component)
+└── Control Panel (component)
+```
+
+**Requirements:**
+
+- If object A `HasComponent` B, then B `ComponentOf` A
+- Parent MUST have `isComposition: true`
+- Querying parent value with `maxDepth > 1` returns nested child values
+- Component children's values are part of the parent's logical value
+
+**Expressing type inheritance with `allOf`**
+
+When one Object Type is a specialization of another (i.e., it `InheritsFrom` a base type), express this in the JSON Schema using `allOf`. The derived type references the base type within the same namespace schema file and adds its own properties:
+
+```json
+"temperature-sensor-type": {
+    "type": "object",
+    "properties": {
+        "temperature": { "type": "number" },
+        "unit": { "type": "string" }
+    }
+},
+"precision-temperature-sensor-type": {
+    "description": "Temperature sensor extended with accuracy and calibration metadata",
+    "allOf": [
+        { "$ref": "#/types/temperature-sensor-type" },
+        {
+            "type": "object",
+            "properties": {
+                "accuracy": { "type": "number" },
+                "calibrationDate": { "type": "string" }
+            },
+            "required": ["accuracy", "calibrationDate"]
+        }
+    ]
+}
+```
+
+Both types are independent entries in the flat `types` map. The server resolves the `$ref` and inlines the base type's properties when serving the schema, so clients receive the fully expanded shape.
+
+The corresponding Object Type entries in the address space record the relationship:
+
+```json
+{ "elementId": "temperature-sensor-type", ... },
+{
+  "elementId": "precision-temperature-sensor-type",
+  ...
+  "related": { "relationshipType": "InheritsFrom", "types": ["temperature-sensor-type"] }
+}
+```
+
+An instance typed as `precision-temperature-sensor-type` simply sets `typeElementId` to that type's `elementId` — no other change is needed on the instance:
+
+```json
+{
+  "elementId": "sensor-302",
+  "typeElementId": "precision-temperature-sensor-type",
+  ...
+}
+```
+
+Distinguish inheritance from composition: `allOf` with `$ref` means "is a kind of" (`InheritsFrom`); a `$ref` inside `properties` means "is made up of" (`HasComponent`).
+
+### Objects
+
+Objects are actual equipment, sensors, or processes with values. Their values are defined by Object Types and they can be related via Relationship Types. For example, we may have the following Objects in the server.
+
+```
+Production Line A (Line) [parent]
+├── Machine 1 (CNCType) [child]
+├── Machine 2 (PressType) [child]
+└── Machine 3 (PackagingType) [child]
+```
+Here `Production Line A` is the parent object of type `Line`, and the machines are child objects of different types.
+
+The definition of an Object looks as follows.
+
+```json
+{
+  "elementId": "string",
+  "displayName": "string",
+  "typeElementId": "string",
+  "parentId": "string",
+  "isComposition": false,
+  "isExtended": false
+}
+```
+
+**Requirements:**
+
+- The Object's value, which is queried in the `objects/value` endpoint MUST conform to the ObjectType schema set by the `typeElementId` attribute. 
+- If `isExtended=true` the Object may have additional attributes not included in the `typeElementId` schema. Use `includeMetadata=true` to see the additional attributes.
+- Objects whose type cannot be determined SHOULD set `typeElementId` to the `elementId` of the `UnknownType` placeholder registered in the type registry.
+- The Server MUST have at least one root Object which is queried using the `/objects?root=true` endpoint. This allows clients to progressively browse the address space from one or more root objects.
+- Objects whose Object Type schema has `"type": "object"` are **branch nodes** — they return structured values and may have composition children. Objects whose schema type is a scalar (`"number"`, `"integer"`, `"string"`, `"boolean"`) are **leaf nodes** — they return a bare scalar value and represent individual data points. Clients SHOULD use `schema.type` to determine rendering.
+
+## Exploratory Methods
+
+i3X Servers exposes exploratory methods to browse the i3X address space. This includes the ability to browse Namespaces, Types, Objects, and Object relationships. This section covers the API calls included in Exploratory methods.
+
+### Server Capabilities Endpoints
+
+#### `GET` /info
+
+Returns the server version and capabilities. Clients SHOULD call this endpoint before making other API calls to confirm the server supports the features they require. This endpoint also serves as a health check.
+
+- This endpoint MUST NOT require authentication
+
+**Parameters:** None
+
+**Response:**
+
+```json
+{
+  "specVersion": "1.0",
+  "serverVersion": "2.3.1",
+  "serverName": "myi3XServer",
+  "capabilities": {
+    "query": {
+      "history": false
+    },
+    "update": {
+      "current": false,
+      "history": false
+    },
+    "subscribe": {
+      "stream": true
+    }
+  }
+}
+```
+
+| Field                           | Type | Required | Description                                                        |
+|---------------------------------|------|----------|--------------------------------------------------------------------|
+| `specVersion`                   | string | Yes | The i3X specification version implemented, e.g., `"1.0"`           |
+| `serverVersion`                 | string | No | The server implementation's own version. Format is vendor-defined. |
+| `serverName`                    | string | No | Human-readable name for this server or deployment                  |
+| `capabilities`                       | object | Yes | Declares which optional features this server supports              |
+| `capabilities.query.history`         | boolean | Yes | True if `POST /objects/history` is supported                       |
+| `capabilities.update.current`        | boolean | Yes | True if `PUT /objects/value` is supported              |
+| `capabilities.update.history`        | boolean | Yes | True if `PUT /objects/history` is supported            |
+| `capabilities.subscribe.stream`      | boolean | Yes | True if `POST /subscriptions/stream` is supported                  |
+
+
+### Namespace Endpoints
+
+#### `GET` /namespaces
+
+Returns all the Namespaces for the server.
+
+**Parameters:** None
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "uri": "string",
+      "displayName": "string"
+    }
+  ]
+}
+```
+
+---
+
+### Object Type Endpoints
+
+#### `GET` /objecttypes
+
+Returns a list of all Object Types, optionally filtered by Namespace.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `namespaceUri` | string | No | When set, returns Object Types that belong to the Namespace. If not set, all Object Types are returned. |
+
+**Response:**
+
+Note the JSON Schema definition for the Object Type is placed under the `schema` attribute.
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "namespaceUri": "string",
+      "sourceTypeId": "string",
+      "version": "1.0.0",
+      "schema": {...}
+    }
+  ]
+}
+```
+
+| Field          | Type        | Required | Description                                                                    |
+|----------------|-------------|----------|--------------------------------------------------------------------------------|
+| `elementId`    | string      | Yes      | Unique identifier                                                              |
+| `displayName`  | string      | Yes      | Friendly name                                                                  |
+| `namespaceUri` | string      | Yes      | Namespace that the type is associated with                                     |
+| `sourceTypeId`       | string      | Yes      | Class or member of the Namespace that defines this type                        |
+| `version`      | string      | No       | Optional type version in Semantic Versioning format (e.g. `"1.0.0"`)           |
+| `schema`       | json schema | Yes      | The JSON Schema definition for the type                                        |
+
+---
+
+#### `POST` /objecttypes/query
+
+Returns one or more Object Types given a collection of elementIds.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | Yes | One or more elementIds to query |
+
+```json
+{
+  "elementIds": [
+    "string"
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "elementId": "string",
+        "displayName": "string",
+        "namespaceUri": "string",
+        "sourceTypeId": "string",
+        "version": "1.0.0",
+        "schema": {}
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Object type not found: string"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Relationship Type Endpoints
+
+#### `GET` /relationshiptypes
+
+Returns a list of all Relationship Types, optionally filtered by Namespace.
+
+**Parameters:**
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `namespaceUri` | string | No | When set, returns types that belong to the Namespace. If not set, all types are returned. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "namespaceUri": "string",
+      "relationshipId": "string",
+      "reverseOf": "string"
+    }
+  ]
+}
+```
+
+| Field            | Type        | Required | Description                                                                    |
+|------------------|-------------|----------|--------------------------------------------------------------------------------|
+| `elementId`      | string      | Yes      | Unique identifier                                                              |
+| `displayName`    | string      | Yes      | Friendly name                                                                  |
+| `namespaceUri`   | string      | Yes      | Namespace that the type is associated with                                     |
+| `relationshipId` | string      | Yes      | Class or member of the Namespace that defines this relationshipType            |
+| `reverseOf `     | string      | Yes      | The elementId of the reverse relationship. All relationships MUST have a reverse |
+
+---
+
+#### `POST` /relationshiptypes/query
+
+Returns one or more Relationship Types given a collection of elementIds.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | Yes | One or more elementIds to query |
+
+```json
+{
+  "elementIds": [
+    "string"
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "elementId": "string",
+        "displayName": "string",
+        "namespaceUri": "string",
+        "relationshipId": "string",
+        "reverseOf": "string"
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Relationship type not found: string"
+      }
+    }
+  ]
+}
+```
+
+---
+
+### Object Endpoints
+
+#### `GET` /objects
+
+Returns a list of all Objects, optionally filtered by `typeElementId`. This allows a client to ask for all Objects of a given type.
+
+**Parameters:**
+
+| Name              | Type | Required | Description                                                                                 |
+|-------------------|------|----------|---------------------------------------------------------------------------------------------|
+| `typeElementId`   | string | No | When set, returns Objects of the given typeElementId. If not set, all Objects are returned. |
+| `includeMetadata` | boolean | No | Optionally include metadata in the response.                                                |
+| `root`            | boolean | No | Returns the root Objects for the server when set to true.                                   |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "elementId": "string",
+      "displayName": "string",
+      "typeElementId": "string",
+      "parentId": "",
+      "isComposition": false,
+      "isExtended": true,
+      "metadata": {
+        "description": "A human-readable description of this Object.",
+        "typeNamespaceUri": "string",
+        "sourceTypeId": "string",
+        "relationships": {
+          "HasParent": "/",
+          "HasChildren": ["child1", "child2"]
+        },
+        "schemaExtensions": {
+          "serial_number": { "type": "string" },
+          "firmware_version": { "type": "string" }
+        },
+        "system": {
+          "<vendor-key-1>": "string",
+          "<vendor-key-2>": 123,
+          "<vendor-key-3>": true
+        }
+      }
+    }
+  ]
+}
+```
+
+| Field           | Type    | Required | Description                                                                                                                                                                                                            |
+|-----------------|---------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `elementId`     | string  | Yes      | Unique identifier for this Object within the i3X address space                                                                                                                                                         |
+| `displayName`   | string  | Yes      | Human-friendly name for display                                                                                                                                                                                        |
+| `typeElementId` | string  | Yes      | ElementId of the Object Type that defines this Object's schema                                                                                                                                                         |
+| `parentId`      | string? | Yes      | ElementId of the parent Object in the organizational hierarchy; `null` if this is a root Object                                                                                                                        |
+| `isComposition` | boolean | Yes      | `true` if this Object encapsulates composed child elements (HasComponent). Composition children contribute to the parent's value and are returned together under `components` when reading values with `maxDepth > 1`. `false` means this Object has no HasComponent children — it does not imply a scalar value. An Object with `isComposition: false` may still have a structured value; the Object Type's `schema.type` is the authoritative signal for value shape. |
+| `isExtended`    | boolean | Yes      | `true` if the Object's current value contains attributes not declared in its ObjectType schema. The Object carries data the type doesn't describe. See `schemaExtensions` below in the `metadata`.                   |
+
+The `metadata` key is included if `includeMetadata=true` in the request.
+
+| Field                         | Type    | Required                 | Description |
+|-------------------------------|---------|--------------------------|-------------|
+| `metadata.description`        | string | No | A human-readable description of this Object. SHOULD be used to convey context or intent beyond what `displayName` communicates. |
+| `metadata.typeNamespaceUri`   | string  | Yes                      | The namespace the ObjectType *definition* belongs to — identifies which namespace's schema this Object conforms to (e.g., an ISA-95 or OPC UA standard namespace, or a vendor namespace). An Object instance's type may come from any namespace; this field makes that provenance explicit. For example, if the external Namespace was the OPC UA for Machinery Companion spec, the typeNamespaceUri would be `http://opcfoundation.org/UA/Machinery/`. |
+| `metadata.sourceTypeId`       | string  | Yes                      | An identifier of this type within its *source namespace*. Provided so clients can correlate back to the originating definition. Distinct from `typeElementId`, which is the i3X address space identifier. For example, if the external Type was JobOrderControl from the OPC UA for Machinery Companion spec, the typeElementId may be the BrowseName, `JobOrderControl` OR the NodeId `ns=1;i=5058`. |
+| `metadata.relationships`      | object  | No                       | The Object's outgoing relationship edges, keyed by relationship type. Enables clients to plan graph traversal without an additional `/objects/related` call. Only elementIds are returned here; use `/objects/related` to get the full related Object records. |
+| `metadata.schemaExtensions` | object  | No                       | Present only when `isExtended=true`. Contains the non-conformant attributes and their inferred JSON Schema fragments, keyed by attribute name. Declared (conformant) attributes are omitted — they can be looked up from the `typeElementId`. |
+|  `metadata.system`            | object | Yes if `isExtended=true` | Opaque passthrough slot for Vendor or source-system specific metadata (e.g., OPC UA `nodeClass`, `nodeId`). Keys and values are defined by the underlying platform; i3X clients MUST NOT rely on any specific key for normative behavior. The authoritative signal for value shape is always the Object Type's `schema.type`, not any key within `metadata.system`.|
+
+
+- Note on `parentId` vs `relationships`: `parentId` always travels with the Object so a tree can be constructed from a flat list. `relationships` is returned only when `includeMetadata=true` and lets clients traverse the full graph without an additional `/objects/related` call. `/objects/related` returns the full related Object records; `relationships` returns only the elementIds.
+
+---
+
+#### `POST` /objects/list
+
+Returns one or more Objects without data/values given a collection of elementIds.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | Yes | One or more elementIds to query |
+| `includeMetadata` | boolean | No | Optionally include metadata in the response. |
+
+```json
+{
+  "elementIds": [
+    "string"
+  ],
+  "includeMetadata": false
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "elementId": "string",
+        "displayName": "string",
+        "typeElementId": "string",
+        "parentId": "",
+        "isComposition": false,
+        "isExtended": false
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
+      }
+    }
+  ]
+}
+```
+
+**Response (with `includeMetadata=true`):**
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "elementId": "string",
+        "displayName": "string",
+        "typeElementId": "string",
+        "parentId": "",
+        "isComposition": false,
+        "isExtended": false,
+        "metadata": {
+          "description": "A human-readable description of this Object.",
+          "typeNamespaceUri": "string",
+          "sourceTypeId": "string",
+          "relationships": {
+            "HasParent": "/",
+            "HasChildren": ["child1", "child2"]
+          }
+        }
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
+      }
+    }
+  ]
+}
+```
+| Field              | Type    | Required | Description                                                                                                   |
+|--------------------|---------|----------|---------------------------------------------------------------------------------------------------------------|
+| `results[].result` | Object  | Yes | See the [Objects](#objects) section for a full description of the Object response fields including `metadata`. |
+
+---
+
+#### `POST` /objects/related
+
+Returns related Objects, with the option to filter on a Relationship Type.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | Yes | List of elementIds to browse for relationships |
+| `relationshipType` | string | No | The elementId of the Relationship Type to filter on. Leave out or set to null to get all related Objects. |
+| `includeMetadata` | boolean | No | When true, includes all extended metadata fields on each returned Object. |
+
+```json
+{
+  "elementIds": [
+    "string"
+  ],
+  "relationshipType": "string",
+  "includeMetadata": false
+}
+```
+
+**Response:**
+
+Returns a bulk response with the related Objects for each queried elementId.
+
+```json
+{
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": [
+        {
+          "sourceRelationship": "string",
+          "object": {
+            "elementId": "string",
+            "displayName": "string",
+            "typeElementId": "string",
+            "parentId": "",
+            "isComposition": false,
+            "isExtended": false
+          }
+        }
+      ]
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
+      }
+    }
+  ]
+}
+```
+
+| Field                          | Type   | Required | Description                                                                                                                                                                                                                                    |
+|--------------------------------|--------|----------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `elementId`                    | string | Yes      | The elementId from the request                                                                                                                                                                                                                 |
+| `results[].sourceRelationship` | string | Yes      | The name of the relationship that links this Object to the Object in the request, or inbound edge. For example, if it's a parent/child relationship this would be `hasChild`. This helps support graph traversal without additional API calls. |
+| `results[].object`            | object | Yes      | See the [Objects](#objects) section for a full description of the Object response fields.                                                                                                                                                      |
+
+- Each (relationshipType, target) edge produces one entry; the same target may appear multiple times if reachable via different relationship types.
+- Response order within each `result` array is unspecified.
+
+- **Note** Servers MUST ensure that all relationship types used in Object `metadata.relationships` fields are registered in `/relationshiptypes` and have a defined `reverseOf`. This guarantees that clients can traverse the graph in both directions from any returned Object without additional discovery calls.
+- **Implementation note — hierarchical relationships:** `POST /objects/related` MUST include all relationships (HasParent, HasChildren, HasComponent, ComponentOf AND Graph) in its response, not only graph relationships. Servers whose underlying data model stores hierarchy only via the `parentId` field (without explicit relationship records) MUST synthesize these entries in the `/objects/related` response. Relying on `parentId` alone is not sufficient — objects that have no graph relationships will return an empty result set, making them unreachable by pure graph traversal.
+
+---
+
+## Query Methods
+
+Query methods are used to read the current and historical value for an Object.
+
+Values in i3X have the following definition.
+
+```json
+{
+  "value": <any>,
+  "quality": "Good" | "GoodNoData" | "Bad" | "Uncertain",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
+
+**Fields:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `value` | any | Yes | The actual data value (any JSON type) |
+| `quality` | string | Yes | Data quality indicator |
+| `timestamp` | string | Yes | RFC 3339 timestamp when data was recorded. Times MUST be UTC with no timezone offset. Fractional seconds are supported: `"2025-01-08T10:30:00.123456Z"`. |
+
+
+| Quality | Description | When to Use |
+|---------|-------------|-------------|
+| `Good` | Value is valid and current | Normal operation, value is reliable. Value is never `null`. |
+| `GoodNoData` | Connection is good but no data exists | Source connected but has never reported a value; historical query returned no data points in the requested range. Value is `null`. |
+| `Bad` | Value is unavailable due to an error | Communication failure, sensor malfunction, source unreachable. Value is `null`. |
+| `Uncertain` | Value exists but reliability is in question | Sensor in calibration, source temporarily degraded, stale value being held. Value is present (not `null`). |
+
+Below is an example of a temperature sensor value return.
+
+```json
+// Object Value read for tempSensor1
+{
+  "value": {
+    "temperature": 20,
+    "unit": "C"
+  },
+  "quality": "Good",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
+
+### maxDepth Parameter Semantics
+
+The `maxDepth` parameter controls recursion through `HasComponent` relationships:
+
+| Value | Behavior |
+|-------|----------|
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
+| `N` | Recurse up to N levels deep through `HasComponent` relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data.
+
+**Response Structure**
+
+When `maxDepth > 1` and the element has components:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "machine-001",
+      "result": {
+        "value": { "status": "running" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z",
+        "components": {
+          "spindle-001": {
+            "value": { "rpm": 12000 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "coolant-001": {
+            "value": { "flow_rate": 5.2, "temp": 22.1 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
+
+### Null Value Handling
+
+The top-level `value` field in a VQT is always nullable. A `null` value means the underlying platform currently has no valid data for this element — the element was reached and queried successfully, but the platform cannot provide a value at this time. This is a platform-level condition, not an API error.
+
+**Rules for null values on reads:**
+
+- `value` MAY be `null`
+- When `value` is `null`, `quality` MUST be `Bad` or `GoodNoData`
+- `value: null` paired with `quality: "Good"` or `quality: "Uncertain"` is invalid — both imply a value is present
+- `quality` and `timestamp` are never `null`
+
+```json
+// Sensor is connected but has not yet reported a value
+{ "value": null, "quality": "GoodNoData", "timestamp": "2025-01-08T10:30:00Z" }
+
+// Communication failure — last known timestamp preserved
+{ "value": null, "quality": "Bad", "timestamp": "2025-01-08T09:00:00Z" }
+```
+
+**Null fields within structured values**
+
+When an Object's value is a structured object, individual fields may be `null` if the ObjectType schema declares them nullable (see [Object Types](#object-types)). A null field and an absent field are semantically equivalent on reads — clients MUST treat an absent nullable field as `null`.
+
+```json
+// These two responses are semantically equivalent when alarmCode is declared nullable:
+{ "value": { "flowRate": 12.5, "alarmCode": null }, "quality": "Good", "timestamp": "..." }
+{ "value": { "flowRate": 12.5 },                    "quality": "Good", "timestamp": "..." }
+```
+
+Implementations MAY omit null fields from structured values to reduce payload size. Clients MUST NOT rely on the presence or absence of a null field to infer whether the field was queried.
+
+**Non-nullable API fields**
+
+The following API-level fields are never `null` regardless of platform state: `elementId`, `displayName`, `typeElementId`, `quality`, `timestamp`. These are structural fields required for correct API operation.
+
+**Rules for null values on writes**
+
+A client MAY write `null` to any field declared nullable in the ObjectType schema. The server MUST pass the `null` through to the underlying platform without coercion or substitution. The platform determines whether a null write is accepted; if it is not, the server MUST return an error response.
+
+```json
+// Write null to clear a nullable field
+{
+  "value": { "flowRate": 12.5, "alarmCode": null },
+  "quality": "Good",
+  "timestamp": "2025-01-08T10:30:00Z"
+}
+```
+
+#### `POST` /objects/value
+
+Returns the last known value for one or more Objects.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | Yes | One or more elementIds to query |
+| `maxDepth` | integer | No | Controls recursion through `HasComponent` relationships. `0` = infinite, `1` = no recursion (default), `N` = recurse up to N levels. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics). |
+
+```json
+{
+  "elementIds": [
+    "string"
+  ],
+  "maxDepth": 1
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "string",
+      "result": {
+        "isComposition": false,
+        "value": {
+          "temperature": 1,
+          "inletPressure": "2",
+          "outletPressure": 0.11
+        },
+        "quality": "Good",
+        "timestamp": "2026-01-29T16:37:41Z"
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
+      }
+    }
+  ]
+}
+```
+
+**Result shape — simple (leaf) element:**
+
+```json
+{ "success": true, "elementId": "sensor-001", "result": { "isComposition": false, "value": 67.1, "quality": "Good", "timestamp": "2025-10-28T10:15:30Z" } }
+```
+
+**Result shape — composition element** (when `maxDepth > 1`):
+
+```json
+{
+  "success": true,
+  "elementId": "pump-101-measurements",
+  "result": {
+    "value": null,
+    "quality": "GoodNoData",
+    "timestamp": "...",
+    "components": {
+      "pump-101-bearing-temperature": { "value": 70.34, "quality": "Good", "timestamp": "..." }
+    }
+  }
+}
+```
+
+When `maxDepth=1` (default), a composition element returns its own VQT with no `components` key. `isComposition: true` in the result means the element has HasComponent children that were not fetched — re-request with `maxDepth: 0` to retrieve the full composed value.
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by `elementId`; a child whose Object Type has a scalar schema (e.g. `"type": "number"`) returns a bare number as its `value` — this is the leaf pattern for individual data points
+- If the server could not return the full composition tree due to its own limits, it returns HTTP 206. See [maxDepth Parameter Semantics](#maxdepth-parameter-semantics).
+
+---
+
+#### `POST` /objects/history
+
+> **Implementation note:** Not all implementations are required to become Historians; the intent is that whatever history the underlying platform already retains should be accessible through a consistent interface. A Historian, a cache, or no history at all should be accessed the same way.
+A server whose platform stores no history SHOULD still implement this endpoint and return `GoodNoData` for the requested range. Use `GET /info` `capabilities.query.history` to advertise whether historical data is available.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `elementIds` | string[] | No | One or more elementIds to query |
+| `startTime` | string | Yes | RFC 3339 timestamp for range start |
+| `endTime` | string | Yes | RFC 3339 timestamp for range end |
+| `maxDepth` | integer | No | Controls recursion depth |
+
+```json
+{
+  "elementIds": [
+    "string"
+  ],
+  "startTime": "string",
+  "endTime": "string",
+  "maxDepth": 1
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": false,
+  "results": [
+    {
+      "success": true,
+      "elementId": "object-elementid-1",
+      "result": {
+        "isComposition": false,
+        "values": [
+          { "value": { "temperature": 1, "inletPressure": "2", "outletPressure": 0.11 }, "quality": "Good", "timestamp": "2026-01-29T16:00:00Z" },
+          { "value": { "temperature": 3, "inletPressure": "4", "outletPressure": 0.22 }, "quality": "Good", "timestamp": "2026-01-29T15:00:00Z" }
+        ]
+      }
+    },
+    {
+      "success": false,
+      "elementId": "string",
+      "responseDetail": {
+        "title": "Not Found",
+        "status": 404,
+        "detail": "Element not found: string"
+      }
+    }
+  ]
+}
+```
+
+- `isComposition` is at the `result` envelope level, not per value entry
+- `values` is an ordered array of VQT objects for the requested time range
+
+---
+
+## Update Methods
+
+Update methods allow clients to write current and historical values to an Object. Update methods have the following limitations.
+
+- Clients MUST write the full value to the Object. Partial updates are currently not supported.
+
+It is the responsibility of the implementing platform to validate the input, including verification of the schema, and return the appropriate error if the input fails.
+
+---
+
+#### `PUT` /objects/value
+
+Update the current value of one or more Objects.
+
+**Request Body:**
+
+The value to write in VQT format. The value will replace the current Object value in its entirety. Partial writes of attributes are not currently supported.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `updates` | array | Yes | Array of elementId/value pairs to write |
+| `updates[].elementId` | string | Yes | The elementId of the Object to update |
+| `updates[].value` | object | Yes | The VQT value to write. `value` must conform to the Object's type schema. `null` is permitted for nullable fields — see [Null Value Handling](#null-value-handling). |
+| `updates[].value.value` | any | Yes | The data value to write |
+| `updates[].value.quality` | string | No | Quality indicator. Defaults to `"Good"` if omitted. |
+| `updates[].value.timestamp` | string | No | RFC 3339 timestamp. Defaults to server time if omitted. |
+
+```json
+{
+  "updates": [
+    {
+      "elementId": "pump-101",
+      "value": {
+        "value": { "temperature": 20, "unit": "C" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z"
+      }
+    }
+  ]
+}
+```
+
+**Response:**
+
+Returns a bulk response with a result per elementId.
+
+```json
+{
+  "success": false,
+  "results": [
+    { "success": true, "elementId": "pump-101", "result": null },
+    { "success": false, "elementId": "bad-id", "responseDetail": { "title": "Not Found", "status": 404, "detail": "Element not found: bad-id" } }
+  ]
+}
+```
+
+---
+
+> `result: null` on a successful write entry is intentional — write operations confirm acceptance via `success: true` and do not echo the written VQT back. Use `POST /objects/value` to read the current value after a write.
+
+#### `PUT` /objects/history
+
+Update historical values of one or more Objects.
+
+> **Implementation note:** As with query history, implementations are not expected become Historians if they don't already have this capabilitiy. This endpoint allows clients to write historical records into whatever persistence the underlying platform supports. Servers whose platform does not support historical writes SHOULD return HTTP 501.
+
+**Request Body:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `updates` | array | Yes | Array of elementId/value pairs to write |
+| `updates[].elementId` | string | Yes | The elementId of the Object to update |
+| `updates[].value` | object | Yes | A VQT object. The `timestamp` field identifies which historical record to create or replace. |
+| `updates[].value.value` | any | Yes | The data value to write |
+| `updates[].value.quality` | string | Yes | Quality indicator |
+| `updates[].value.timestamp` | string | Yes | RFC 3339 timestamp of the historical record to write |
+
+```json
+{
+  "updates": [
+    {
+      "elementId": "pump-101",
+      "value": {
+        "value": { "temperature": 19.5, "unit": "C" },
+        "quality": "Good",
+        "timestamp": "2025-01-07T08:00:00Z"
+      }
+    }
+  ]
+}
+```
+
+**Response:**
+
+Returns a bulk response with a result per elementId.
+
+```json
+{
+  "success": true,
+  "results": [
+    { "success": true, "elementId": "pump-101", "result": null }
+  ]
+}
+```
+
+---
+
+## Subscribe Methods
+
+Subscriptions allow clients to receive the most recent values of objects they are interested in. Subscriptions support two delivery modes:
+
+| Mode | Required | Description |
+|------|----------|-------------|
+| **sync** | MUST | Clients poll for batched updates; the server acknowledges delivery for high Quality of Service. |
+| **streaming** | MAY | The server pushes updates as they occur using SSE for low Quality of Service. |
+
+Sync is the baseline delivery mode and MUST be supported by all servers. Streaming MAY be supported when the underlying data source provides real-time push notifications; see the note in the [Streaming](#streaming) section.
+
+> **Implementation note for non-real-time sources:** Servers backed by a historian, database, or other non-push data source MAY satisfy the sync requirement by reading the most recent value for each registered object at the time `/sync` is called, rather than maintaining a live change queue. The response format is identical — only the update granularity differs. Clients will observe the latest available value on each sync call, but intermediate changes between calls may not be captured.
+
+The following sections describe common methods to set up and configure a subscription, followed by more details on the stream and sync modes.
+
+### Subscriptions
+
+Clients must first create a subscription in the server. Subscriptions have the following requirements:
+
+- The client must provide a unique `clientId` to scope subscriptions to the client
+- The server MUST provide a unique `subscriptionId` to the client
+- The `subscriptionId` MUST be scoped to the `clientId` to ensure that only the client has access to a subscription
+- Servers SHOULD NOT make subscriptions shareable across clients, but the standard doesn't enforce that
+- `subscriptionId` and `clientId` SHOULD be unique enough that the server can reasonably assume other clients cannot guess the identifiers
+
+---
+
+#### `POST` /subscriptions
+
+Creates a subscription scoped to a client.
+
+The client MUST pass in a `clientId` unique to the client to scope the subscription to the client. The `clientId` SHOULD be reasonably complex and difficult for other clients to guess. Examples are authentication tokens or other unique client identifiers.
+
+The server returns a unique `subscriptionId` for the subscription. This SHOULD also be reasonably complex. Both the server and the client MUST cache the `clientId` and `subscriptionId` for future requests on the subscription.
+
+The client can optionally pass in a friendly name for the subscription. This is intended to assist clients and servers in logging and tracking subscriptions.
+
+**Parameters:**
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "displayName": "mySubscription"
+}
+```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | Unique identifier for the client. |
+| `displayName` | string | No | Optional name to associate with the subscription. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "result": {
+    "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+    "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+    "displayName": "mySubscription"
+  }
+}
+```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId passed in the request. |
+| `subscriptionId` | string | Yes | Unique ID for the subscription. |
+| `displayName` | string | Yes | Friendly name for the subscription. |
+
+---
+
+#### `POST` /subscriptions/list
+
+Get one or more subscriptions by ID. Used to check if subscriptions exist and inspect their current configuration.
+
+**Body Parameters:**
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
+}
+```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscriptions. |
+| `subscriptionIds` | string array | Yes | List of subscription IDs to retrieve. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+      "result": {
+        "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+        "displayName": "mySubscription",
+        "monitoredObjects": [
+          { "elementId": "object-elementid-1", "maxDepth": 1 }
+        ]
+      }
+    }
+  ]
+}
+```
+---
+
+#### `POST` /subscriptions/delete
+
+Delete one or more subscriptions.
+
+- Servers SHOULD stop collecting data for Objects being monitored by the Subscription when it's deleted.
+
+**Body Parameters:**
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionIds": ["Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"]
+}
+```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscriptions. |
+| `subscriptionIds` | string array | Yes | List of subscription IDs to delete. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "results": [
+    { "success": true, "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt", "result": null }
+  ]
+}
+```
+
+---
+
+### Registering and Unregistering Objects
+
+Once a Subscription is created, a client can add and remove Objects to the Subscription to start collecting data changes.
+
+- Once an Object is registered the server MUST start collecting data changes for the Object
+- Servers SHOULD queue the updates and deliver them FIFO to clients
+- Servers SHOULD have a limit on how many updates they can queue, and when reached, start dropping older updates first
+
+---
+
+#### `POST` /subscriptions/register
+
+Register one or more Objects with a Subscription.
+
+- If an Object is registered more than once the Server MUST return success and ignore the subsequent registration
+- The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
+
+**Request Body:**
+
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "elementIds": [
+    "object-elementid-1",
+    "object-elementid-2"
+  ],
+  "maxDepth": 1
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId to register items with. |
+| `elementIds` | string[] | Yes | One or more elementIds to register. |
+| `maxDepth` | integer | No | Controls recursion depth for all `elementIds` in this call. See [maxDepth](#maxdepth-parameter-semantics) for more detail. To register elements at different depths, use separate requests. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "results": [
+    { "success": true, "elementId": "object-elementid-1", "result": null },
+    { "success": true, "elementId": "object-elementid-2", "result": null }
+  ]
+}
+```
+
+---
+
+#### `POST` /subscriptions/unregister
+
+Unregister one or more Objects from a Subscription.
+
+- Once an Object is unregistered the server SHOULD stop queuing new values for the Object on the Subscription
+- The server SHOULD NOT delete any prior queued values for the Object
+- The Server MUST support partial failures (e.g. bad elementId) and not fail the full request
+
+**Request Body:**
+
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "elementIds": [
+    "object-elementid-1",
+    "object-elementid-2"
+  ]
+}
+```
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId to unregister items from. |
+| `elementIds` | string[] | Yes | One or more elementIds to unregister. |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "results": [
+    { "success": true, "elementId": "object-elementid-1", "result": null },
+    { "success": true, "elementId": "object-elementid-2", "result": null }
+  ]
+}
+```
+
+---
+
+### Streaming
+
+Streaming sends values as they occur using SSE (Server Sent Events) and MAY be supported when the underlying data source can push updates in real time. Streaming provides low Quality of Service — at-most-once delivery with no acknowledgement.
+
+> **Implementation note:** Streaming requires a data source capable of push notifications. Servers that use a polling-based sync implementation (see the note in [Subscribe Methods](#subscribe-methods)) SHOULD return HTTP 501 for `/subscriptions/stream`.
+
+**How it works:**
+
+1. Client creates subscription via `POST /subscriptions`
+2. Client registers items via `POST /subscriptions/register`
+   - The server starts queuing value changes for Objects
+3. Client opens SSE stream via `POST /subscriptions/stream`
+   - The server sends any values queued while the stream was closed
+4. Server sends values as they occur, with "at most once" delivery. If a client misses a message, it cannot be retrieved.
+
+If the SSE connection is lost, the client can call the /stream endpoint again to re-open it.
+
+---
+
+#### `POST` /subscriptions/stream
+
+Opens an SSE stream on the subscription to stream value changes from the server.
+
+- Server MUST only allow a single SSE stream per subscription
+  - If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one. The previously connected client will receive an SSE stream close with no error.
+- The Server MUST send queued updates when the stream is open
+- Clients MAY not receive updates if there are no value changes
+
+**Body Parameters:**
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
+}
+```
+
+| Name | Type | Required | Description |
+|------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to stream. |
+
+**Response:**
+
+The response includes value updates over SSE in the following format:
+
+```json
+[{"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"}]
+```
+
+---
+
+### Sync
+
+Sync allows the client to control when value changes are received, and to explicitly acknowledge receipt for a high Quality of Service.
+
+**How it works:**
+
+1. Client creates subscription via `POST /subscriptions`
+2. Client registers objects via `POST /subscriptions/register`
+3. Server queues object updates as they occur, or — for non-push sources — captures the latest value at sync time
+4. Client polls via `POST /subscriptions/sync` (no `lastSequenceNumber` on first call)
+5. Server returns all pending updates with a `sequenceNumber=1`
+6. Client processes the updates
+7. Client calls `POST /subscriptions/sync` again with `lastSequenceNumber: 1` to acknowledge the previous batch and receive any new updates in a single round trip
+8. Server removes acknowledged updates (`lastSequenceNumber` ≤ 1) then returns the remaining queue with `sequenceNumber=2`
+9. Continue this process
+
+This approach ensures updates are not lost if the client crashes between receiving and processing data, while keeping acknowledgement and polling as a single call.
+
+#### `POST` /subscriptions/sync
+
+Returns all pending updates, acknowledging a previously received batch in the same call.
+
+- Each queued update includes a `sequenceNumber`
+- Server MUST provide an incrementing `sequenceNumber` for new updates returned in the `/sync` response
+- The `sequenceNumber` MUST be a 64-bit unsigned integer to avoid rollover (2⁶⁴ − 1)
+- Server MUST return an empty array and no `sequenceNumber` if there are no new updates since the last `/sync` call
+- Clients SHOULD omit `lastSequenceNumber` only on the first call, when there is nothing yet to acknowledge
+- Clients SHOULD provide `lastSequenceNumber` on every subsequent call, set to the highest `sequenceNumber` received in the previous response
+- If `lastSequenceNumber` is provided, the server MUST remove all updates with sequenceNumber ≤ `lastSequenceNumber` before returning the remaining queue
+- Server MUST NOT clear the queue if `lastSequenceNumber` is omitted or is invalid
+- Server MUST clear the queue if `lastSequenceNumber=-1` is provided, acknowledging all pending updates
+- The server MUST return an error if the subscription has an open stream
+  - Clients MUST close the stream before calling sync
+
+**Body Parameters:**
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `clientId` | string | Yes | The clientId for the subscription. |
+| `subscriptionId` | string | Yes | The subscriptionId for the Subscription to sync. |
+| `lastSequenceNumber` | 64-bit unsigned integer | No — omit only on first call | Acknowledge all updates with sequenceNumber ≤ this value before returning new ones. |
+
+##### Sync Examples
+
+Assume the client setup the subscription and this is the first call to `/sync`. Note there is no `lastSequenceNumber`.
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt"
+}
+```
+
+Server returns all pending updates with a sequence number.
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 1,
+      "updates": [
+        {"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+        {"elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+      ]
+    }
+  ]
+}
+```
+
+Client calls `/sync` again with no `lastSequenceNumber`. The response includes updates from the previous sequenceNumber and the new updates.
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 1, 
+      "updates": [
+        {"elementId": "sensor-001", "value": 72.5, "quality": "Good", "timestamp": "2025-01-08T10:30:00Z"},
+        {"elementId": "sensor-002", "value": 18.3, "quality": "Good", "timestamp": "2025-01-08T10:30:01Z"}
+      ]
+    },
+    {
+      "sequenceNumber": 2,
+      "updates": [
+        {"elementId": "sensor-001", "value": 82.5, "quality": "Good", "timestamp": "2025-01-08T10:31:00Z"},
+        {"elementId": "sensor-002", "value": 28.3, "quality": "Good", "timestamp": "2025-01-08T10:31:01Z"}
+      ]
+    }
+  ]
+}
+```
+
+The client calls `/sync` again with `lastSequenceNumber=2`. 
+```json
+{
+  "clientId": "myClient.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+  "subscriptionId": "Xf9q8wL1b3YpQjV2Z7nRmK6sH4v0TgNd5eP2jF8hB1cQvLkS0UoMxZwA3yE6RrJt",
+  "lastSequenceNumber": 2
+}
+```
+
+Assume there are no new updates. The server clears updates for sequenceNumber 1 and 2, and responds with no new updates.
+```json
+{
+  "success": true,
+  "result": []
+}
+```
+
+##### Sync Data Loss
+
+If the client does not call `/sync` frequently enough, the server's subscription queue may fill up and start dropping updates. 
+
+- The Server SHOULD drop the oldest updates first
+- The Server MUST return HTTP 206 (Partial Content) 
+
+Below is an example of a 206 response from the Server. In this example the client's last acknowledged `sequenceNumber` was 100, meaning updates 101–150 were permanently dropped.
+
+```json
+{
+  "success": true,
+  "result": [
+    {
+      "sequenceNumber": 151,
+      "updates": [
+        {"elementId": "sensor-001", "value": 74.1, "quality": "Good", "timestamp": "2025-01-08T10:35:00Z"}
+      ]
+    }
+  ],
+  "responseDetail": {
+    "title": "Updates dropped due to queue overflow",
+    "status": 206,
+    "detail": "Updates were dropped from the subscription queue. The server limit is 10k updates."
+  }
+}
+```
+
+Clients can calculate the exact gap: all sequence numbers between `lastSequenceNumber + 1` and `result[0].sequenceNumber - 1` were dropped. Clients MAY note this gap and optionally resolve with a `objects/history` query, and continue polling normally using the returned `sequenceNumber` as the next `lastSequenceNumber`.
+---
+
+### Subscription Life Cycle
+
+Once a Subscription has been created and one or more Objects have been registered, the Server SHALL begin queuing data change events for those Objects.
+
+If neither an active SSE stream nor a call to `/sync` is received within the configured Time-To-Live (TTL) interval, the Server MUST delete the Subscription. Deletion MUST include:
+
+- All queued Object values associated with the Subscription
+- Any internal resources allocated to maintain the Subscription
+
+This requirement prevents abandoned Subscriptions from consuming Server resources.
+
+Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUST be re-created by the Client. Subsequent calls to `/sync` or `/stream` for a deleted or non-existent Subscription MUST return 404 Not Found.
+
+---
+
+## Appendix (for now)
+
+[TODO] This is useful stuff that I can't figure out yet whereto put
+
+### Relationship Semantics
+
+All relationships MUST be stored bidirectionally. If object A has a relationship of type X to object B, then B MUST store the inverse relationship back to A. This guarantee allows clients to discover the complete graph starting from any known node using `POST /objects/related`, without needing prior knowledge of which objects reference a given element.
+
+#### HasParent / HasChildren
+
+These represent topological or organizational hierarchy where child objects are separate entities organized under a parent.
+
+```
+Production Line A (parent)
+├── Machine 1 (child)
+├── Machine 2 (child)
+└── Machine 3 (child)
+```
+
+**Requirements:**
+
+- If object A `HasParent` B, then B `HasChildren` A
+- `parentId` on instances MUST match the `HasParent` relationship
+- Traversing `HasChildren` returns distinct, independently-valued objects
+- `HasChildren` objects are **never** included in a `POST /objects/value` response, even when `maxDepth > 1`. `maxDepth` only recurses through `HasComponent`. A hierarchical child that sits visually under a parent in the tree must be queried independently.
+
+#### HasComponent / ComponentOf (Composition)
+
+These indicate when child data IS part of the parent's definition. The parent's value is composed of its children's values.
+
+```
+CNC Machine (parent, isComposition: true)
+├── Spindle (component)
+├── Coolant System (component)
+└── Control Panel (component)
+```
+
+**Requirements:**
+
+- If object A `HasComponent` B, then B `ComponentOf` A
+- Parent MUST have `isComposition: true`
+- Querying parent value with `maxDepth > 1` returns nested child values
+- Component children's values are part of the parent's logical value
+
+### maxDepth Parameter Semantics
+
+The `maxDepth` parameter controls recursion through HasComponent relationships:
+
+| Value | Behavior |
+|-------|----------|
+| `0` | Infinite recursion — include all nested composed elements, subject to server limits |
+| `1` | No recursion — return only this element's direct value (default) |
+| `N` | Recurse up to N levels deep through HasComponent relationships |
+
+Recursion only follows `HasComponent` relationships, not `HasChildren`. `HasChildren` represents organizational hierarchy; those objects are independent and must be queried separately.
+
+**Server Limits**
+
+When a server limit is reached before the requested depth is satisfied, the server MUST NOT silently return an incomplete result as if it were complete. Instead:
+- If the server can return a partial result (e.g., the composition tree up to its depth limit), it MUST return HTTP 206 with the standard response body containing what it could fetch
+- If the server cannot satisfy any meaningful part of the request, it MUST return HTTP 400 with an error response
+
+Clients that receive HTTP 206 SHOULD issue follow-up requests targeting specific `elementId`s to retrieve the remaining composition data. This applies even when `maxDepth=0` (infinite depth) was requested — a server that cannot return the full tree due to its own limits MUST still return 206 rather than silently truncating.
+
+**Response Structure with maxDepth:**
+
+When `maxDepth > 1` and the element has components:
+
+```json
+{
+  "success": true,
+  "results": [
+    {
+      "success": true,
+      "elementId": "machine-001",
+      "result": {
+        "value": { "status": "running" },
+        "quality": "Good",
+        "timestamp": "2025-01-08T10:30:00Z",
+        "components": {
+          "spindle-001": {
+            "value": { "rpm": 12000 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          },
+          "coolant-001": {
+            "value": { "flow_rate": 5.2, "temp": 22.1 },
+            "quality": "Good",
+            "timestamp": "2025-01-08T10:30:00Z"
+          }
+        }
+      }
+    }
+  ]
+}
+```
+
+**Key Points:**
+
+- The top-level `value`, `quality`, and `timestamp` always reflect the parent element's own VQT
+- `components` is present only on composition elements and contains child values keyed by their `elementId`
+- Each child value is in VQT format (`value`, `quality`, `timestamp`)
+- Recursion only follows `HasComponent` relationships, not `HasChildren`
+- When server limits prevent returning the full depth, the server returns HTTP 206 (see **Server Limits** above)
+
+---
+
+*Copyright (C) CESMII, the Smart Manufacturing Institute, 2024-2026. All Rights Reserved.*

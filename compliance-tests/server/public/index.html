@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i3X 1.0 Conformance Test Suite</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16x16.png">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="96x96" href="/assets/favicon-96x96.png">
+<link rel="apple-touch-icon" href="/assets/favicon-96x96.png">
+<style>
+  :root {
+    --bg: #0f1419; --panel: #18202a; --panel2: #1f2a36; --text: #e6edf3; --muted: #8b98a5;
+    --green: #3fb950; --red: #f85149; --yellow: #d29922; --blue: #58a6ff; --teal: #2dd4bf; --border: #2d3a48;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         background: var(--bg); color: var(--text); line-height: 1.5; }
+  .wrap { max-width: 880px; margin: 0 auto; padding: 32px 20px 80px; }
+  header .brand { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  header .brand .mark { width: 46px; height: 46px; flex: none; }
+  header .brand .wordmark { height: 30px; width: auto; }
+  header h1 { font-size: 26px; margin: 0 0 4px; }
+  header p { color: var(--muted); margin: 0 0 28px; }
+  header a { color: var(--blue); text-decoration: none; }
+
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px 22px; margin-bottom: 20px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 14px 0 4px; }
+  input[type=text], input[type=password], select {
+    width: 100%; padding: 9px 11px; border-radius: 6px; border: 1px solid var(--border);
+    background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit;
+  }
+  input:focus, select:focus { outline: none; border-color: var(--blue); }
+  .row { display: flex; gap: 14px; } .row > div { flex: 1; }
+  .auth-note-col { display: flex; align-items: flex-end; }
+  .auth-note { margin: 0 0 2px; font-size: 12px; color: var(--muted); }
+  .auth-note a { color: var(--blue); }
+  .check { display: flex; align-items: center; gap: 8px; margin-top: 16px; font-size: 14px; color: var(--text); }
+  .check input { accent-color: var(--blue); }
+  .check span.hint { color: var(--muted); font-size: 12.5px; }
+
+  button.primary {
+    margin-top: 20px; width: 100%; padding: 12px; font-size: 15px; font-weight: 600; border: none;
+    border-radius: 8px; background: var(--blue); color: #04101f; cursor: pointer;
+  }
+  button.primary:disabled { opacity: .5; cursor: default; }
+  button.ghost { background: none; border: 1px solid var(--border); color: var(--text); border-radius: 6px;
+                 padding: 7px 14px; font-size: 13px; cursor: pointer; }
+
+  .progress-outer { height: 8px; background: var(--panel2); border-radius: 4px; overflow: hidden; margin: 10px 0 4px; }
+  .progress-inner { height: 100%; width: 0%; background: var(--blue); transition: width .25s; }
+  .progress-label { font-size: 13px; color: var(--muted); }
+
+  .phase { margin-top: 18px; font-weight: 600; font-size: 14px; color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 5px; }
+  .test { display: flex; gap: 10px; padding: 6px 2px; font-size: 13.5px; border-bottom: 1px solid #1b2530; align-items: baseline; }
+  .test .sym { width: 18px; text-align: center; flex: none; font-weight: 700; }
+  .test .tid { color: var(--muted); font-family: ui-monospace, monospace; font-size: 12px; flex: none; width: 64px; }
+  .sym.pass { color: var(--green); } .sym.fail { color: var(--red); }
+  .sym.warn { color: var(--yellow); } .sym.skip { color: var(--muted); } .sym.run { color: var(--blue); }
+  .detail { margin: 2px 0 6px 92px; font-size: 12.5px; }
+  .detail.fail { color: var(--red); } .detail.warn { color: var(--yellow); }
+  .detail.skip, .detail.pass { color: var(--muted); }
+  .detail a { color: var(--blue); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner { display: inline-block; animation: spin 1s linear infinite; }
+
+  .verdict { border-radius: 10px; padding: 22px 24px; margin-bottom: 20px; border: 1px solid; }
+  .verdict h2 { margin: 0 0 6px; font-size: 21px; }
+  .verdict p { margin: 0; font-size: 14px; }
+  .verdict .counts { margin-top: 12px; font-size: 13px; color: var(--muted); }
+  .verdict.full { background: #12261a; border-color: var(--green); }
+  .verdict.full h2 { color: var(--green); }
+  .verdict.compat { background: #0c2724; border-color: var(--teal); }
+  .verdict.compat h2 { color: var(--teal); }
+  .verdict.fail { background: #2b1517; border-color: var(--red); }
+  .verdict.fail h2 { color: var(--red); }
+  .verdict ul { margin: 12px 0 0; padding-left: 20px; font-size: 13.5px; }
+  .verdict li { margin-bottom: 10px; }
+  .verdict li a { color: var(--blue); }
+  .note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+  .warn-head { color: var(--yellow); font-size: 13px; margin: 14px 0 0; font-weight: 600; }
+  .warn-list { margin: 6px 0 0; padding-left: 20px; font-size: 13px; color: var(--yellow); }
+  .warn-list li { margin-bottom: 6px; }
+  .warn-list a { color: var(--blue); }
+  .actions { display: flex; gap: 10px; margin-top: 14px; }
+  .hidden { display: none; }
+  footer { color: var(--muted); font-size: 12.5px; margin-top: 30px; }
+  footer a { color: var(--blue); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand">
+      <img class="mark" src="/assets/favicon-96x96.png" alt="">
+      <img class="wordmark" src="/assets/i3X_logo_white.png" alt="i3X">
+    </div>
+    <h1>1.0 Conformance Test Suite</h1>
+    <p>Validate an <a href="https://github.com/cesmii/i3X" target="_blank" rel="noopener">i3X</a> server implementation
+       against the 1.0 specification. Enter your server's public endpoint below — the suite exercises every required
+       (MUST) behavior and any optional (MAY) features your server declares, then reports a compliance level: Full 1.0 Compliance, 1.0 Compatible or Not Compliant</p>
+  </header>
+
+  <div class="card" id="configCard">
+    <label for="endpoint">Server endpoint URL — the full versioned base, including the <code>/v1</code> prefix</label>
+    <input type="text" id="endpoint" placeholder="https://your-server.example.com/i3x/v1" autocomplete="off">
+
+    <div class="row">
+      <div>
+        <label for="authType">Authentication</label>
+        <select id="authType">
+          <option value="none">None</option>
+          <option value="bearer">Bearer token</option>
+          <option value="basic">Basic (username / password)</option>
+          <option value="header">Custom header</option>
+        </select>
+      </div>
+      <div class="auth-note-col">
+        <p class="auth-note">Production implementations MUST require authentication →
+          <a href="https://github.com/cesmii/i3X/blob/1.0/spec/IMPLEMENTATION_GUIDE.md#security--authentication"
+             target="_blank" rel="noopener">Implementation Guide § Security &amp; Authentication</a></p>
+      </div>
+    </div>
+    <div id="authFields"></div>
+
+    <div class="check">
+      <input type="checkbox" id="includeWrites" checked>
+      <span>Run write tests if the server declares update capabilities</span>
+    </div>
+    <div class="check" style="margin-top:6px">
+      <span class="hint">Write tests are non-destructive: they write each object's <em>current value back to itself</em>.
+      Untick if you'd rather not write to this server at all (update features will then be reported as unverified).</span>
+    </div>
+
+    <button class="primary" id="runBtn">Run conformance tests</button>
+  </div>
+
+  <div class="card hidden" id="progressCard">
+    <div class="progress-label" id="progressLabel">Starting…</div>
+    <div class="progress-outer"><div class="progress-inner" id="progressBar"></div></div>
+    <div id="testList"></div>
+  </div>
+
+  <div id="verdictArea"></div>
+
+  <footer>
+    Normative references: <a href="https://github.com/cesmii/i3X/blob/1.0/spec/IMPLEMENTATION_GUIDE.md" target="_blank" rel="noopener">Implementation Guide</a> ·
+    <a href="https://api.i3x.dev/v1/openapi.json" target="_blank" rel="noopener">OpenAPI definition</a> ·
+    <a href="https://github.com/cesmii/i3X/blob/1.0/spec/UNDERSTANDING_RELATIONSHIPS.md" target="_blank" rel="noopener">Understanding Relationships</a>
+    &nbsp;|&nbsp; Help for implementers: <a href="https://www.i3x.dev/sdk/category/server-developers" target="_blank" rel="noopener">i3X Server Developer SDK docs</a>
+    <br>Testing a private/internal server? Download the suite and run <code>npm start</code> to get this exact page
+    on your own network, or use the CLI: <code>node bin/i3x-test.js run &lt;endpoint&gt;</code>.
+  </footer>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const $ = (id) => document.getElementById(id);
+  let report = null;
+
+  const AUTH_FIELDS = {
+    none: '',
+    bearer: '<label for="f1">Token</label><input type="password" id="f1" autocomplete="off" placeholder="token">',
+    basic: '<label for="f1">Username</label><input type="text" id="f1" autocomplete="off">' +
+           '<label for="f2">Password</label><input type="password" id="f2" autocomplete="off">',
+    header: '<label for="f1">Header name</label><input type="text" id="f1" placeholder="X-Api-Key" autocomplete="off">' +
+            '<label for="f2">Header value</label><input type="password" id="f2" autocomplete="off">'
+  };
+  $('authType').addEventListener('change', () => {
+    $('authFields').innerHTML = AUTH_FIELDS[$('authType').value];
+  });
+
+  function buildAuth() {
+    const t = $('authType').value;
+    if (t === 'bearer') return { type: 'bearer', token: $('f1').value };
+    if (t === 'basic') return { type: 'basic', username: $('f1').value, password: $('f2').value };
+    if (t === 'header') return { type: 'header', name: $('f1').value, value: $('f2').value };
+    return { type: 'none' };
+  }
+
+  const SYM = { pass: '✓', fail: '✗', warn: '⚠', skip: '–' };
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  }
+
+  function addPhase(name) {
+    const el = document.createElement('div');
+    el.className = 'phase';
+    el.textContent = name;
+    $('testList').appendChild(el);
+  }
+
+  function addTest(e) {
+    const el = document.createElement('div');
+    el.className = 'test';
+    el.id = 'test-' + e.id;
+    el.innerHTML = '<span class="sym run"><span class="spinner">◐</span></span>' +
+      '<span class="tid">' + esc(e.id) + '</span><span>' + esc(e.name) + '</span>';
+    $('testList').appendChild(el);
+    el.scrollIntoView({ block: 'nearest' });
+  }
+
+  function finishTest(e) {
+    const el = $('test-' + e.id);
+    if (!el) return;
+    el.querySelector('.sym').outerHTML = '<span class="sym ' + e.status + '">' + (SYM[e.status] || '?') + '</span>';
+    if ((e.status === 'fail' || e.status === 'warn' || (e.status === 'skip' && e.message) ||
+         (e.status === 'pass' && e.message && e.message.startsWith('Note:'))) && e.message) {
+      const d = document.createElement('div');
+      d.className = 'detail ' + e.status;
+      let html = esc(e.message);
+      if (e.status === 'fail' && e.refUrl) {
+        html += ' <br>→ <a href="' + esc(e.refUrl) + '" target="_blank" rel="noopener">' + esc(e.refTitle || 'Specification reference') + '</a>';
+      }
+      d.innerHTML = html;
+      el.insertAdjacentElement('afterend', d);
+    }
+  }
+
+  function verdictClass(v) {
+    if (v === 'Full 1.0 Compliance' || v === '1.0 Compliance, Immature Type System') return 'full';
+    if (v === '1.0 Compatible') return 'compat';
+    return 'fail';
+  }
+
+  function showVerdict(summary) {
+    const failures = (summary.mustFailures || []).concat(summary.mayFailures || []);
+    let failuresHtml = '';
+    if (failures.length) {
+      failuresHtml = '<ul>' + failures.map((f) =>
+        '<li><strong>' + esc(f.id) + '</strong> (' + esc(f.level) + ') — ' + esc(f.name) +
+        '<br>' + esc(f.message || '') +
+        (f.refUrl ? '<br>→ <a href="' + esc(f.refUrl) + '" target="_blank" rel="noopener">' + esc(f.refTitle || 'Spec reference') + '</a>' : '') +
+        '</li>').join('') + '</ul>' +
+        '<p class="note">Implementer resources: <a href="' + esc(summary.docsUrl) + '" target="_blank" rel="noopener">i3X Server Developer SDK documentation</a></p>';
+    }
+    let warningsHtml = '';
+    if ((summary.warnings || []).length) {
+      warningsHtml = '<p class="warn-head">Warnings (advisory — do not affect the verdict):</p><ul class="warn-list">' +
+        summary.warnings.map((w) =>
+          '<li><strong>' + esc(w.id) + '</strong> — ' + esc(w.message || w.name) +
+          (w.refUrl ? ' → <a href="' + esc(w.refUrl) + '" target="_blank" rel="noopener">' + esc(w.refTitle || 'Spec reference') + '</a>' : '') +
+          '</li>').join('') + '</ul>';
+    }
+    const c = summary.counts || {};
+    const notes = (summary.notes || []).map((n) => '<p class="note">' + esc(n) + '</p>').join('');
+    $('verdictArea').innerHTML =
+      '<div class="verdict ' + verdictClass(summary.verdict) + '">' +
+      '<h2>' + esc(summary.verdict) + '</h2>' +
+      '<p>' + esc(summary.headline) + '</p>' +
+      '<div class="counts">' + (c.pass || 0) + ' passed · ' + (c.fail || 0) + ' failed · ' +
+      (c.warn || 0) + ' warnings · ' + (c.skip || 0) + ' skipped</div>' +
+      failuresHtml + warningsHtml + notes +
+      '<div class="actions"><button class="ghost" id="dlBtn">Download JSON report</button>' +
+      '<button class="ghost" id="againBtn">Run again</button></div>' +
+      '</div>';
+    $('dlBtn').addEventListener('click', () => {
+      const blob = new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'i3x-conformance-report.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    });
+    $('againBtn').addEventListener('click', () => {
+      $('verdictArea').innerHTML = '';
+      $('progressCard').classList.add('hidden');
+      $('runBtn').disabled = false;
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  }
+
+  async function run() {
+    const endpoint = $('endpoint').value.trim();
+    if (!endpoint) { $('endpoint').focus(); return; }
+    $('runBtn').disabled = true;
+    $('verdictArea').innerHTML = '';
+    $('testList').innerHTML = '';
+    $('progressCard').classList.remove('hidden');
+    $('progressBar').style.width = '0%';
+    $('progressLabel').textContent = 'Connecting to ' + endpoint + ' …';
+
+    const body = {
+      endpoint,
+      auth: buildAuth(),
+      includeWrites: $('includeWrites').checked
+    };
+
+    let results = [];
+    try {
+      const res = await fetch('/api/run', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || ('Server returned HTTP ' + res.status));
+      }
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const events = buffer.split('\n\n');
+        buffer = events.pop();
+        for (const block of events) {
+          const line = block.split('\n').find((l) => l.startsWith('data: '));
+          if (!line) continue;
+          const e = JSON.parse(line.slice(6));
+          if (e.type === 'phase') addPhase(e.name);
+          else if (e.type === 'test:start') {
+            addTest(e);
+            $('progressLabel').textContent = 'Running test ' + e.index + ' of ' + e.total + ' — ' + e.name;
+            $('progressBar').style.width = ((e.index - 1) / e.total * 100) + '%';
+          } else if (e.type === 'test:end') {
+            finishTest(e);
+            results.push(e);
+            $('progressBar').style.width = (e.index / e.total * 100) + '%';
+          } else if (e.type === 'done') {
+            $('progressBar').style.width = '100%';
+            $('progressLabel').textContent = 'Finished — ' + (e.summary.counts.pass || 0) + ' of ' +
+              (e.summary.counts.total || 0) + ' tests passed.';
+            report = { generatedBy: 'i3x-test-suite', endpoint, summary: e.summary, results };
+            showVerdict(e.summary);
+          }
+        }
+      }
+    } catch (err) {
+      $('progressLabel').textContent = '';
+      $('verdictArea').innerHTML = '<div class="verdict fail"><h2>Run failed</h2><p>' + esc(err.message) + '</p>' +
+        '<div class="actions"><button class="ghost" onclick="location.reload()">Reset</button></div></div>';
+    } finally {
+      $('runBtn').disabled = false;
+    }
+  }
+
+  $('runBtn').addEventListener('click', run);
+  $('endpoint').addEventListener('keydown', (e) => { if (e.key === 'Enter') run(); });
+})();
+</script>
+</body>
+</html>

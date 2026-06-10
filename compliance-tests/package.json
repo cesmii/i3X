@@ -1,0 +1,34 @@
+{
+  "name": "i3x-test-suite",
+  "version": "1.0.0",
+  "description": "Conformance test suite for i3X 1.0 server implementations (Industrial Information Interface eXchange)",
+  "license": "MIT",
+  "bin": {
+    "i3x-test": "bin/i3x-test.js"
+  },
+  "main": "lib/engine.js",
+  "scripts": {
+    "start": "node bin/i3x-test.js serve",
+    "serve": "node bin/i3x-test.js serve",
+    "mock": "node bin/i3x-test.js mock",
+    "test": "node test/selftest.js"
+  },
+  "engines": {
+    "node": ">=18.17"
+  },
+  "files": [
+    "bin/",
+    "lib/",
+    "server/",
+    "mock/",
+    "spec/",
+    "README.md"
+  ],
+  "keywords": [
+    "i3x",
+    "cesmii",
+    "conformance",
+    "manufacturing",
+    "test-suite"
+  ]
+}
