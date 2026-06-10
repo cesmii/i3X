@@ -18,8 +18,8 @@ eggs/
 .eggs/
 lib/
 # lib/ above is for Python packaging output; the conformance suite's engine
-# lives in compliance-tests/lib and must be tracked
-!/compliance-tests/lib/
+# lives in conformance-tests/lib and must be tracked
+!/conformance-tests/lib/
 lib64/
 parts/
 sdist/
