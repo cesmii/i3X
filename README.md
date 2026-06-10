@@ -58,7 +58,7 @@ The Demo data includes an exploration of the complex relationships supported by 
 
 ## Conformance Testing
 
-The 1.0 Release includes a Conformance Test suite that is available publically, or to run within a private network.
+The 1.0 Release includes a Conformance Test suite that is available publicly, or to run within a private network.
 
 If you'd like to validate a public endpoint, visit [https://www.i3x.dev/conformance](https://www.i3x.dev/conformance).
 
