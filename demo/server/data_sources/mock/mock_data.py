@@ -163,6 +163,8 @@ I3X_DATA = {
             "records": [
                 {
                     "value": {
+                        # state-type schema requires a timestamp field inside the value
+                        "timestamp": "2025-10-29T18:20:44Z",
                         "description": "Pump is in maintenance",
                         "color": "#800080",
                         "type": {
@@ -187,6 +189,7 @@ I3X_DATA = {
                 },
                 {
                     "value": {
+                        "timestamp": "2025-10-28T18:20:44Z",
                         "description": "Pump is in operation",
                         "color": "#00FF00",
                         "type": {
@@ -209,6 +212,7 @@ I3X_DATA = {
                 },
                 {
                     "value": {
+                        "timestamp": "2025-10-27T18:20:44Z",
                         "description": "Pump is in operation",
                         "color": "#FFFF00",
                         "type": {
@@ -256,13 +260,14 @@ I3X_DATA = {
                 "HasParent": "pump-101-production",
             },
             "records": [
+                # product-type declares "type": "object", so values must be objects, not bare strings
                 {
-                    "value": "Product A",
+                    "value": {"name": "Product A"},
                     "quality": "Good",
                     "timestamp": "2025-10-28T18:20:44Z",
                 },
                 {
-                    "value": "Product B",
+                    "value": {"name": "Product B"},
                     "quality": "Good",
                     "timestamp": "2025-10-28T18:20:44Z",
                 },

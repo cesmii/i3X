@@ -87,9 +87,11 @@ In addition to an HTTP based transport, i3X uses JSON encoding to exchange data 
 i3X relies on HTTP security best practices to secure communication between the client and server. This includes the use of HTTPs.
 
 - Implementations MUST support encrypted transport (HTTPS) in production
+- Implementations MUST require authentication in production for all endpoints except `GET /info` 
+  - The authentication scheme used is not specified
 - TLS 1.2 or higher SHOULD be used
 - Self-signed certificates MAY be used for development
-- Servers SHOULD limit client access based on the token
+- Servers SHOULD limit client access based on authentication
 
 ### Versioning
 

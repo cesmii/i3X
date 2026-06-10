@@ -184,7 +184,7 @@ class MQTTDataSource(I3XDataSource):
             with self.cache_lock:
                 # Convert / to _ in topic for elementId to avoid URL path issues
                 element_id = self._topic_to_element_id(msg.topic)
-                timestamp = datetime.now(timezone.utc).isoformat()
+                timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
 
                 # Create virtual parent nodes for all intermediate path segments
                 self._ensure_parent_chain(msg.topic, timestamp)
@@ -817,7 +817,7 @@ class MQTTDataSource(I3XDataSource):
         """Create the virtual root node that all top-level topics attach to."""
         with self.cache_lock:
             if '/' not in self.topic_cache:
-                timestamp = datetime.now(timezone.utc).isoformat()
+                timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
                 self.topic_cache['/'] = {
                     'value': None,
                     'timestamp': timestamp,

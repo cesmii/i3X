@@ -6,6 +6,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
 from fastapi.exceptions import HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.openapi.docs import get_redoc_html
@@ -158,6 +159,21 @@ async def custom_redoc():
         openapi_url=f"{root_path}{app.openapi_url}",
         title=app.title + " - ReDoc",
     )
+
+class SSEAwareGZipMiddleware(GZipMiddleware):
+    """GZipMiddleware buffers small writes, which would hold back individual SSE
+    events indefinitely — so the stream endpoint is exempt from compression."""
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http" and scope.get("path", "").endswith("/subscriptions/stream"):
+            await self.app(scope, receive, send)
+        else:
+            await super().__call__(scope, receive, send)
+
+
+# The Guide requires gzip whenever the client sends Accept-Encoding: gzip,
+# so compress unconditionally rather than only above a size threshold
+app.add_middleware(SSEAwareGZipMiddleware, minimum_size=0)
 
 # Add CORS middleware to handle cross-origin requests
 app.add_middleware(

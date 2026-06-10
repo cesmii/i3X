@@ -286,7 +286,7 @@ class MockDataSource(I3XDataSource):
         # Extract the value(s) from the records
         if isinstance(returned_records, list):
             # For historical values (list), extract value from each record with metadata
-            _now = datetime.now(timezone.utc).isoformat()
+            _now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
             return [{"value": record.get("value"), "quality": record.get("quality") or "Good", "timestamp": record.get("timestamp") or _now}
                    for record in returned_records if "value" in record]
         elif isinstance(returned_records, dict) and "value" in returned_records:
@@ -294,7 +294,7 @@ class MockDataSource(I3XDataSource):
             return {
                 "value": returned_records["value"],
                 "quality": returned_records.get("quality") or "Good",
-                "timestamp": returned_records.get("timestamp") or datetime.now(timezone.utc).isoformat(),
+                "timestamp": returned_records.get("timestamp") or datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
             }
         else:
             return None

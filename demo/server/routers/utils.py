@@ -28,6 +28,22 @@ def formatObjectType(type_def: Any) -> Any:
     return {k: v for k, v in type_def.items() if k in OBJECT_TYPE_FIELDS}
 
 
+def utc_now_iso() -> str:
+    """Current UTC time as RFC 3339 with the 'Z' suffix — the Guide forbids the '+00:00' offset form."""
+    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+
+
+def make_vqt(value: Any, quality: Any, timestamp: Any, now: str = None) -> dict:
+    """Build a VQT enforcing the Guide's pairing rules: a null value MUST carry
+    quality Bad or GoodNoData; Good/Uncertain imply a value is present."""
+    if value is None:
+        if quality not in ("Bad", "GoodNoData"):
+            quality = "GoodNoData"
+    elif not quality:
+        quality = "Good"
+    return {"value": value, "quality": quality, "timestamp": timestamp or now or utc_now_iso()}
+
+
 def success_response(result):
     return {"success": True, "result": result}
 
@@ -122,7 +138,7 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
         return {
             "isComposition": is_composition,
             "values": [
-                {"value": vqt.get("value"), "quality": vqt.get("quality"), "timestamp": vqt.get("timestamp")}
+                make_vqt(vqt.get("value"), vqt.get("quality"), vqt.get("timestamp"))
                 for vqt in data_list
             ]
         }, was_truncated
@@ -130,18 +146,16 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
         # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])
         parent_vqt = parent_data[0] if parent_data else {}
-        _now = datetime.now(timezone.utc).isoformat()
+        _now = utc_now_iso()
 
         components = {}
         for child_key in child_keys:
             child_data = element_data[child_key]
             if isinstance(child_data, dict) and "data" in child_data:
                 child_vqt = child_data["data"][0] if child_data["data"] else {}
-                child_entry = {
-                    "value": child_vqt.get("value"),
-                    "quality": child_vqt.get("quality") or "Good",
-                    "timestamp": child_vqt.get("timestamp") or _now,
-                }
+                child_entry = make_vqt(
+                    child_vqt.get("value"), child_vqt.get("quality"), child_vqt.get("timestamp"), _now
+                )
                 if child_data.get("_truncated"):
                     was_truncated = True
             else:
@@ -150,22 +164,17 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
 
         return {
             "isComposition": is_composition,
-            "value": parent_vqt.get("value"),
-            "quality": parent_vqt.get("quality") or "Good",
-            "timestamp": parent_vqt.get("timestamp") or _now,
+            **make_vqt(parent_vqt.get("value"), parent_vqt.get("quality"), parent_vqt.get("timestamp"), _now),
             "components": components,
         }, was_truncated
     else:
         # Simple leaf element (or composition element where all children were server-truncated)
         data_list = element_data.get("data", [{}])
         vqt = data_list[0] if data_list else {}
-        _now = datetime.now(timezone.utc).isoformat()
 
         return {
             "isComposition": is_composition,
-            "value": vqt.get("value"),
-            "quality": vqt.get("quality") or "Good",
-            "timestamp": vqt.get("timestamp") or _now,
+            **make_vqt(vqt.get("value"), vqt.get("quality"), vqt.get("timestamp")),
         }, was_truncated
 
 
@@ -210,7 +219,5 @@ def getSubscriptionValue(instance: Any, record: Any, maxDepth: int = 1, data_sou
 
     return {
         "elementId": element_id,
-        "value": actual_value,
-        "quality": quality,
-        "timestamp": timestamp
+        **make_vqt(actual_value, quality, timestamp),
     }

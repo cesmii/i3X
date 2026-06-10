@@ -63,7 +63,8 @@ class MockDataUpdater:
 
                 # Randomize numeric values in the current record's value
                 # Handle both primitive values and complex objects
-                if isinstance(current_record["value"], (int, float)):
+                # (bool is excluded: it subclasses int, but randomizing would corrupt it to 0/1)
+                if isinstance(current_record["value"], (int, float)) and not isinstance(current_record["value"], bool):
                     # For primitive numeric values, randomize directly
                     v = current_record["value"]
                     variation = v * 0.1
@@ -95,7 +96,10 @@ class MockDataUpdater:
         """Simulate data changes by changing numeric values in the data"""
         if isinstance(obj, dict):
             for k, v in obj.items():
-                if isinstance(v, (int, float)):
+                if isinstance(v, bool):
+                    # bool subclasses int — leave booleans alone or they degrade to 0/1
+                    continue
+                elif isinstance(v, (int, float)):
                     # Change numeric value randomly +/- up to 10%
                     variation = v * 0.1
                     new_val = v + random.uniform(-variation, variation)
@@ -105,7 +109,9 @@ class MockDataUpdater:
                     self.randomize_numeric_values(v)
         elif isinstance(obj, list):
             for i, item in enumerate(obj):
-                if isinstance(item, (int, float)):
+                if isinstance(item, bool):
+                    continue
+                elif isinstance(item, (int, float)):
                     variation = item * 0.1
                     new_val = item + random.uniform(-variation, variation)
                     obj[i] = int(new_val) if isinstance(item, int) else new_val
