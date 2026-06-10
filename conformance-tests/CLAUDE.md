@@ -76,9 +76,11 @@ npm publish note: `package.json` `files` includes `spec/`, which no longer conta
 ## Mock server switches
 
 `MOCK_TOKEN=secret` — require bearer auth (except `/info`, which the spec keeps open).
-`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` | `noclearall` | `nosinglestream` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these.
+`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` | `noclearall` | `nosinglestream` | `noscope` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these.
 
 ## History / open threads
+
+- 2026-06-10 (clientId scoping): community issue confirmed valid — guide mandates required `clientId` + client-scoped subscriptions, but the OpenAPI had it optional and demo/mock were lenient. Demo server and mock made strict per the guide (missing `clientId` → 400, cross-client access → 404, indistinguishable from nonexistent); added SUB-15/16 and the `noscope` break switch. The demo's OpenAPI regenerates from its Pydantic models, so refresh `spec/openapi.json` once the deployed demo is updated. SDK docs "Pattern 7" still needs its repository ops keyed by (clientId, subscriptionId) — maintained outside this repo.
 
 - 2026-06-10: full audit against the current Implementation Guide and CHANGELOG (all entries through #313). Existing tests already matched (history-as-MUST with GoodNoData, sync batches, POST-style subscription endpoints, UTC-only timestamps); added SUB-13 (`lastSequenceNumber=-1` clear-all, #311) and SUB-14 (single-stream takeover with clean close, #313). SUB-13/14 run mid-phase (after SUB-07/SUB-09) while the suite's subscription is still alive — array order ≠ id order there, deliberately.
 - An independent server implementation was validated against this suite (2026-06-10); the suite's findings were confirmed correct.

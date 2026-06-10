@@ -220,14 +220,47 @@ class TestI3XEndpoints(unittest.TestCase):
         self.assertNotIn("description", result["metadata"])
 
     def test_request_validation_errors(self):
-        """Test request validation - must provide elementIds array"""
+        """Test request validation - must provide elementIds array.
+        The guide's status table has no 422: malformed bodies are 400 with the error envelope."""
         # elementIds not provided
         response = self.client.post("/objects/list", json={})
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data["success"])
+        self.assertEqual(data["responseDetail"]["status"], 400)
 
         # Empty array provided
         response = self.client.post("/objects/list", json={"elementIds": []})
-        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.status_code, 400)
+
+    def test_subscription_client_scoping(self):
+        """clientId is required on all subscription endpoints (400 when missing);
+        a subscription accessed with a different clientId behaves as nonexistent (404)."""
+        # Missing clientId -> 400 with error envelope
+        response = self.client.post("/subscriptions", json={})
+        self.assertEqual(response.status_code, 400)
+        data = response.json()
+        self.assertFalse(data["success"])
+        self.assertEqual(data["responseDetail"]["status"], 400)
+
+        # Create with a clientId, then probe with a different one
+        response = self.client.post("/subscriptions", json={"clientId": "client-a"})
+        self.assertEqual(response.status_code, 200)
+        sub_id = response.json()["result"]["subscriptionId"]
+
+        response = self.client.post("/subscriptions/sync", json={"clientId": "client-b", "subscriptionId": sub_id})
+        self.assertEqual(response.status_code, 404)
+
+        response = self.client.post("/subscriptions/list", json={"clientId": "client-b", "subscriptionIds": [sub_id]})
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.json()["results"][0]["success"])
+
+        # Owner still has access, and cleans up
+        response = self.client.post("/subscriptions/sync", json={"clientId": "client-a", "subscriptionId": sub_id})
+        self.assertEqual(response.status_code, 200)
+        response = self.client.post("/subscriptions/delete", json={"clientId": "client-a", "subscriptionIds": [sub_id]})
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["results"][0]["success"])
 
     def test_hierarchical_relationships_endpoint(self):
         """Test RFC 4.1.4 - Relationship Types"""
@@ -242,13 +275,13 @@ class TestI3XEndpoints(unittest.TestCase):
     @unittest.skip("SSE stream hangs in test harness — requires real async server")
     def test_streaming_subscription(self):
         # Step 1: Create a subscription
-        response = self.client.post("/subscriptions", json={})
+        response = self.client.post("/subscriptions", json={"clientId": "test-client"})
         self.assertEqual(response.status_code, 200)
         subscription_id = response.json()["result"]["subscriptionId"]
         self.assertIsNotNone(subscription_id)
 
         # Step 2: Register monitored items
-        payload = {"subscriptionId": subscription_id, "elementIds": ["sensor-001"]}
+        payload = {"clientId": "test-client", "subscriptionId": subscription_id, "elementIds": ["sensor-001"]}
         response = self.client.post("/subscriptions/register", json=payload)
         self.assertEqual(response.status_code, 200)
 
@@ -259,7 +292,7 @@ class TestI3XEndpoints(unittest.TestCase):
         def stream_reader():
             try:
                 timeout = httpx.Timeout(5.0, read=8.0)
-                with self.client.stream("POST", "/subscriptions/stream", json={"subscriptionId": subscription_id}, timeout=timeout) as stream_resp:
+                with self.client.stream("POST", "/subscriptions/stream", json={"clientId": "test-client", "subscriptionId": subscription_id}, timeout=timeout) as stream_resp:
                     self.assertEqual(stream_resp.status_code, 200)
                     count = 0
                     for line in stream_resp.iter_lines():

@@ -4,7 +4,7 @@ import threading
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, Request
-from fastapi.exceptions import HTTPException
+from fastapi.exceptions import HTTPException, RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
@@ -189,6 +189,20 @@ async def http_exception_handler(request: Request, exc: HTTPException):
     return JSONResponse(
         status_code=exc.status_code,
         content={"success": False, "responseDetail": {"title": _HTTP_TITLES.get(exc.status_code, "Error"), "status": exc.status_code, "detail": exc.detail}}
+    )
+
+
+# The guide's status table has no 422: missing/invalid request fields are a
+# 400 Bad Request with the standard error envelope.
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = exc.errors()
+    first = errors[0] if errors else {}
+    loc = ".".join(str(p) for p in first.get("loc", []) if p != "body")
+    msg = first.get("msg", "Invalid request")
+    return JSONResponse(
+        status_code=400,
+        content={"success": False, "responseDetail": {"title": "Bad Request", "status": 400, "detail": f"{loc}: {msg}" if loc else msg}}
     )
 
 

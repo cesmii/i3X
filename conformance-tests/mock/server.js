@@ -17,6 +17,7 @@
 //     primitive     - strip properties from object schemas (verdict: Immature Type System)
 //     noclearall    - ignore lastSequenceNumber=-1 instead of clearing the queue
 //     nosinglestream - leave an existing SSE stream open when a new one is opened
+//     noscope       - accept subscription requests without clientId and skip ownership checks
 
 const http = require('node:http');
 const zlib = require('node:zlib');
@@ -271,6 +272,20 @@ function stageBatch(sub) {
   if (updates.length) sub.batches.push({ sequenceNumber: sub.nextSeq++, updates });
 }
 
+// Strict client scoping: clientId is required on every subscription endpoint,
+// and a subscription owned by another client behaves exactly like a
+// nonexistent one (404). MOCK_BREAK=noscope reverts to lenient behavior.
+function clientIdMissing(body) {
+  return !BREAK.has('noscope') && !(body && typeof body.clientId === 'string' && body.clientId);
+}
+
+function ownedSub(body, id) {
+  const sub = SUBSCRIPTIONS.get(id);
+  if (!sub) return null;
+  if (BREAK.has('noscope')) return sub;
+  return sub.clientId === body.clientId ? sub : null;
+}
+
 // ------------------------------------------------------------------- handlers
 
 const routes = {
@@ -443,6 +458,7 @@ const routes = {
 
   'POST /subscriptions': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     const subscriptionId = crypto.randomBytes(24).toString('base64url');
     SUBSCRIPTIONS.set(subscriptionId, {
       subscriptionId,
@@ -461,10 +477,11 @@ const routes = {
 
   'POST /subscriptions/list': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     if (!body || !Array.isArray(body.subscriptionIds)) return sendError(req, res, 400, 'Bad Request', 'subscriptionIds array is required');
     send(req, res, 200, bulk(body.subscriptionIds.map((id) => {
-      const sub = SUBSCRIPTIONS.get(id);
-      if (!sub || (body.clientId && sub.clientId && sub.clientId !== body.clientId)) {
+      const sub = ownedSub(body, id);
+      if (!sub) {
         return { success: false, subscriptionId: id, responseDetail: { title: 'Not Found', status: 404, detail: `Subscription not found: ${id}` } };
       }
       return {
@@ -481,10 +498,11 @@ const routes = {
 
   'POST /subscriptions/delete': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     if (!body || !Array.isArray(body.subscriptionIds)) return sendError(req, res, 400, 'Bad Request', 'subscriptionIds array is required');
     send(req, res, 200, bulk(body.subscriptionIds.map((id) => {
-      const sub = SUBSCRIPTIONS.get(id);
-      if (!sub || (body.clientId && sub.clientId && sub.clientId !== body.clientId)) {
+      const sub = ownedSub(body, id);
+      if (!sub) {
         return { success: false, subscriptionId: id, responseDetail: { title: 'Not Found', status: 404, detail: `Subscription not found: ${id}` } };
       }
       if (sub.streamRes) {
@@ -497,10 +515,11 @@ const routes = {
 
   'POST /subscriptions/register': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     if (!body || !body.subscriptionId || !Array.isArray(body.elementIds)) {
       return sendError(req, res, 400, 'Bad Request', 'subscriptionId and elementIds are required');
     }
-    const sub = SUBSCRIPTIONS.get(body.subscriptionId);
+    const sub = ownedSub(body, body.subscriptionId);
     if (!sub) return sendError(req, res, 404, 'Not Found', `Subscription not found: ${body.subscriptionId}`);
     send(req, res, 200, bulk(body.elementIds.map((id) => {
       if (!objectsById.has(id)) {
@@ -513,10 +532,11 @@ const routes = {
 
   'POST /subscriptions/unregister': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     if (!body || !body.subscriptionId || !Array.isArray(body.elementIds)) {
       return sendError(req, res, 400, 'Bad Request', 'subscriptionId and elementIds are required');
     }
-    const sub = SUBSCRIPTIONS.get(body.subscriptionId);
+    const sub = ownedSub(body, body.subscriptionId);
     if (!sub) return sendError(req, res, 404, 'Not Found', `Subscription not found: ${body.subscriptionId}`);
     send(req, res, 200, bulk(body.elementIds.map((id) => {
       if (!sub.monitored.has(id)) {
@@ -529,9 +549,10 @@ const routes = {
 
   'POST /subscriptions/sync': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     if (!body || !body.subscriptionId) return sendError(req, res, 400, 'Bad Request', 'subscriptionId is required');
-    const sub = SUBSCRIPTIONS.get(body.subscriptionId);
-    if (!sub || (body.clientId && sub.clientId && sub.clientId !== body.clientId)) {
+    const sub = ownedSub(body, body.subscriptionId);
+    if (!sub) {
       return sendError(req, res, 404, 'Not Found', `Subscription not found: ${body.subscriptionId}`);
     }
     if (sub.streamRes) return sendError(req, res, 400, 'Bad Request', 'Subscription has an open SSE stream; close it before calling sync');
@@ -545,9 +566,10 @@ const routes = {
 
   'POST /subscriptions/stream': async (req, res) => {
     const body = await readJson(req);
+    if (clientIdMissing(body)) return sendError(req, res, 400, 'Bad Request', 'clientId is required');
     if (!body || !body.subscriptionId) return sendError(req, res, 400, 'Bad Request', 'subscriptionId is required');
-    const sub = SUBSCRIPTIONS.get(body.subscriptionId);
-    if (!sub || (body.clientId && sub.clientId && sub.clientId !== body.clientId)) {
+    const sub = ownedSub(body, body.subscriptionId);
+    if (!sub) {
       return sendError(req, res, 404, 'Not Found', `Subscription not found: ${body.subscriptionId}`);
     }
     if (sub.streamRes && !BREAK.has('nosinglestream')) {

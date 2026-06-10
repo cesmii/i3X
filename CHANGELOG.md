@@ -5,6 +5,7 @@ Changes accepted between 1.0 Beta and the 1.0 Release.
 All notable changes to the i3X RFC, Implementation Guide, and demo are documented here so that implementers can identify the exact deltas they need to adopt.
 
 ## Summary
+- 2026-06-09 — Subscription client scoping enforced end-to-end: `clientId` is required in the request body of all subscription endpoints; requests without it MUST return 400 Bad Request. A subscription accessed with a different `clientId` MUST be treated as nonexistent and return 404 Not Found (per-item in bulk responses), so clients cannot probe for other clients' subscriptions. OpenAPI contract and demo server updated to match the Implementation Guide; conformance suite now tests both behaviors.
 - 2026-06-09 — Opening a new `/stream` connection while one is already active now closes the existing stream and opens the new one. The previously connected client receives a clean SSE stream close. | [#313](https://github.com/cesmii/i3X/issues/313)
 - 2026-05-26 — Clients may send `lastSequenceNumber=-1` in a `/sync` call to acknowledge and clear all pending updates in a single round trip | [#311](https://github.com/cesmii/i3X/issues/311)
 - 2026-05-22 — `/subscriptions/sync` response restructured: updates are now grouped into batches — `[{"sequenceNumber": N, "updates": [...]}]` — rather than a flat list where each update carried its own `sequenceNumber` | [#295](https://github.com/cesmii/i3X/issues/295)

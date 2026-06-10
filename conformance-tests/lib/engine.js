@@ -34,7 +34,9 @@ async function resolveBaseUrl(config, emit) {
   for (const base of candidates) {
     const client = makeClient({ ...config, baseUrl: base });
     const res = await client.request('GET', '/info', { noAuth: true });
-    if (res.ok && res.json !== null && res.status < 500) {
+    // Only a 2xx identifies the base — servers answer unknown paths with JSON
+    // 404s, which must not be mistaken for a working /info.
+    if (res.ok && res.json !== null && res.status >= 200 && res.status < 300) {
       if (base !== supplied) emit({ type: 'note', message: `Using base URL ${base} (resolved from ${supplied})` });
       return base;
     }

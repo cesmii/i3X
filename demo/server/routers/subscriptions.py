@@ -28,7 +28,7 @@ PARTIAL_CONTENT_DESCRIPTION = "Some updates were dropped from the subscription q
 
 # Not required, but showing what information is stored for simulated subscriptions
 class Subscription(BaseModel):
-    clientId: Optional[str] = None
+    clientId: str
     subscriptionId: str
     displayName: Optional[str] = None
     created: str
@@ -55,13 +55,16 @@ class Subscription(BaseModel):
 subs = APIRouter(prefix="", tags=["Subscribe"])
 
 
-def _find_sub(request: Request, subscription_id: str, client_id: Optional[str] = None) -> Optional[Subscription]:
-    """Locate a subscription by ID, optionally validating clientId scoping."""
+def _find_sub(request: Request, subscription_id: str, client_id: str) -> Optional[Subscription]:
+    """Locate a subscription by ID, scoped to the owning clientId.
+
+    A subscription owned by a different client is treated exactly like a
+    nonexistent one (404) so callers cannot probe for other clients' IDs.
+    """
     return next(
         (
             s for s in request.app.state.I3X_DATA_SUBSCRIPTIONS
-            if s.subscriptionId == subscription_id
-            and (client_id is None or s.clientId is None or s.clientId == client_id)
+            if s.subscriptionId == subscription_id and s.clientId == client_id
         ),
         None,
     )
@@ -294,8 +297,7 @@ def delete_subscriptions(request: Request, req: DeleteSubscriptionsRequest):
             (
                 i
                 for i, s in enumerate(request.app.state.I3X_DATA_SUBSCRIPTIONS)
-                if s.subscriptionId == sub_id
-                and (req.clientId is None or s.clientId is None or s.clientId == req.clientId)
+                if s.subscriptionId == sub_id and s.clientId == req.clientId
             ),
             None,
         )

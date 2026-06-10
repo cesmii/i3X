@@ -35,7 +35,7 @@ const SCENARIOS = [
   { name: 'updates omitted', env: { MOCK_BREAK: 'omit-updates' }, config: {}, expect: '1.0 Compatible' },
   { name: 'primitive-only types', env: { MOCK_BREAK: 'primitive' }, config: {}, expect: '1.0 Compliance, Immature Type System' },
   { name: 'broken server', env: { MOCK_BREAK: 'reverseof,nullgood,nogzip,badbulk' }, config: {}, expect: 'Not Compliant' },
-  { name: 'broken subscriptions', env: { MOCK_BREAK: 'noclearall,nosinglestream' }, config: {}, expect: 'Not Compliant' },
+  { name: 'broken subscriptions', env: { MOCK_BREAK: 'noclearall,nosinglestream,noscope' }, config: {}, expect: 'Not Compliant' },
   {
     name: 'bearer auth',
     env: { MOCK_TOKEN: 'selftest-token' },

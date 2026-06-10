@@ -54,6 +54,79 @@ module.exports = [
     }
   },
   {
+    // SUB-15/16 run after SUB-02 while the suite's subscription exists; ids are
+    // appended per the numbering convention.
+    id: 'SUB-15',
+    name: 'Subscription requests without a clientId are rejected with 400',
+    level: 'MUST',
+    ref: 'subscriptions',
+    async run(ctx) {
+      if (!ctx.subscriptionId) return skip('No subscription was created', 'blocked');
+      const problems = [];
+      const create = await ctx.client.request('POST', '/subscriptions', {
+        body: { displayName: 'i3X Test Suite clientId probe' }
+      });
+      if (!create.ok) {
+        problems.push(`POST /subscriptions (no clientId): request failed (${create.error})`);
+      } else if (create.status >= 200 && create.status < 300) {
+        problems.push('POST /subscriptions accepted a request without a clientId');
+        const strayId = create.json && create.json.result && create.json.result.subscriptionId;
+        if (strayId) await ctx.client.request('POST', '/subscriptions/delete', { body: { subscriptionIds: [strayId] } });
+      } else if (create.status !== 400) {
+        problems.push(`POST /subscriptions (no clientId) returned HTTP ${create.status}, expected 400 Bad Request`);
+      }
+      const sync = await ctx.client.request('POST', '/subscriptions/sync', {
+        body: { subscriptionId: ctx.subscriptionId }
+      });
+      if (!sync.ok) {
+        problems.push(`POST /subscriptions/sync (no clientId): request failed (${sync.error})`);
+      } else if (sync.status >= 200 && sync.status < 300) {
+        problems.push('POST /subscriptions/sync accepted a request without a clientId');
+      } else if (sync.status !== 400) {
+        problems.push(`POST /subscriptions/sync (no clientId) returned HTTP ${sync.status}, expected 400 Bad Request`);
+      }
+      if (problems.length) {
+        return fail(
+          `${firstProblems(problems)}. "The client MUST pass in a clientId unique to the client to scope the subscription to the client" — requests without one are malformed (400 Bad Request).`
+        );
+      }
+      return pass('create and sync without a clientId were rejected with 400');
+    }
+  },
+  {
+    id: 'SUB-16',
+    name: 'A subscription accessed with another clientId behaves as nonexistent (404)',
+    level: 'MUST',
+    ref: 'subscriptions',
+    async run(ctx) {
+      if (!ctx.subscriptionId) return skip('No subscription was created', 'blocked');
+      const wrongClient = `i3x-test-suite-other-${crypto.randomUUID()}`;
+      const scope = '"The subscriptionId MUST be scoped to the clientId to ensure that only the client has access to a subscription"';
+      const sync = await ctx.client.request('POST', '/subscriptions/sync', {
+        body: { clientId: wrongClient, subscriptionId: ctx.subscriptionId }
+      });
+      if (!sync.ok) return fail(httpProblem(sync, 'POST /subscriptions/sync (other clientId)'));
+      if (sync.status >= 200 && sync.status < 300) {
+        return fail(`Sync with a different clientId succeeded — another client can read this subscription's updates. ${scope}.`);
+      }
+      if (sync.status !== 404) {
+        return fail(
+          `Sync with a different clientId returned HTTP ${sync.status}; expected 404 — a subscription that is not yours must be indistinguishable from one that does not exist.`
+        );
+      }
+      const list = await ctx.client.request('POST', '/subscriptions/list', {
+        body: { clientId: wrongClient, subscriptionIds: [ctx.subscriptionId] }
+      });
+      if (okJson(list) && Array.isArray(list.json.results)) {
+        const item = list.json.results[0];
+        if (item && item.success === true) {
+          return fail(`List with a different clientId returned the subscription's details. ${scope}.`);
+        }
+      }
+      return pass();
+    }
+  },
+  {
     id: 'SUB-03',
     name: 'POST /subscriptions/register registers objects and returns per-item results',
     level: 'MUST',
