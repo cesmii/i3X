@@ -4,7 +4,7 @@ Validates an [i3X](https://github.com/cesmii/i3X) server implementation against 
 
 > This suite is part of the i3X repository but is fully self-contained: all commands below are run **from this folder** (`cd` into it from the repo root first). It has zero runtime dependencies and needs only Node.js ≥ 18.17.
 
-- **59 conformance tests** covering every required (MUST) behavior — transport & encoding, the `/info` capabilities contract, all Exploratory methods, current/historical value queries, the Subscribe lifecycle and sync acknowledgement — plus every optional (MAY) feature the server declares (updates, SSE streaming).
+- **58 conformance tests** covering every required (MUST) behavior — transport & encoding, the `/info` capabilities contract, all Exploratory methods, current/historical value queries, the Subscribe lifecycle and sync acknowledgement — plus every optional (MAY) feature the server declares (updates, SSE streaming).
 - **Optional features are never penalized for being omitted.** If a server *declares* a capability in `GET /info` but implements it incorrectly, that is a failure.
 - Every failure explains **what's wrong** and links to the **exact section of the Implementation Guide** to consult.
 - Zero runtime dependencies. Requires only **Node.js ≥ 18.17**.
@@ -24,6 +24,8 @@ No browser needed? Use the CLI directly:
 node bin/i3x-test.js run https://your-server.example.com/v1 --token <token>
 ```
 
+Testing a dev/test server with a **self-signed TLS certificate**? Pass `--insecure` on the CLI, or tick *Accept self-signed TLS certificates* in the web UI. This disables certificate verification for the run; the results always flag it with an advisory warning (CORE-05) that does not affect the verdict. Development servers only.
+
 > ⚠️ `npx serve` is **not** this tool — that's an unrelated npm package that serves static files. Until this package is published to npm, always run it via `npm start` / `npm run mock` / `node bin/i3x-test.js …` from this folder.
 
 ## Compliance levels
@@ -35,7 +37,7 @@ node bin/i3x-test.js run https://your-server.example.com/v1 --token <token>
 | **1.0 Compatible** | All MUST behavior passed; one or more optional features (updates, streaming) were omitted. |
 | **Not Compliant** | One or more MUST tests failed, or a declared optional feature behaves incorrectly. Failures are listed with spec links. |
 
-Advisory **SHOULD**-level findings (e.g. plain-HTTP endpoints, capability/behavior mismatches) appear as warnings and never affect the verdict.
+Advisory **SHOULD**-level findings (e.g. plain-HTTP endpoints, runs with TLS certificate verification disabled, capability/behavior mismatches) appear as warnings and never affect the verdict.
 
 ## Using the hosted web page (public endpoints)
 
@@ -68,7 +70,8 @@ i3x-test run <endpoint> [options]
   --header "<Name: value>"   Custom header (e.g. API keys); repeatable
   --no-writes                Skip write tests even if update capabilities are declared
   --timeout <ms>             Per-request timeout (default 20000)
-  --insecure                 Accept self-signed TLS certificates (development only)
+  --insecure                 Accept self-signed TLS certificates (development only;
+                             the run is flagged with an advisory warning, CORE-05)
   --json <file>              Write the full machine-readable report to a file
   --quiet                    Print only failures and the final summary
 ```
@@ -121,7 +124,7 @@ Operational notes:
 
 | Area | Tests | Notes |
 |---|---|---|
-| Transport & `/info` | CORE-01…06 | unauthenticated `/info`, capabilities matrix, gzip; advisories for HTTPS and for accepting unauthenticated requests |
+| Transport & `/info` | CORE-01…06 | unauthenticated `/info`, capabilities matrix, gzip; advisories for plain HTTP or unverified TLS (insecure mode) and for accepting unauthenticated requests |
 | Exploratory | EXP-01…22 | namespaces, object/relationship types, `reverseOf` symmetry, objects, roots, filters, metadata, bulk order/size, per-item 404s, bidirectional relationship traversal, hierarchy reachability |
 | Query | QRY-01…09 | VQT shape, quality/null pairing, **value-vs-type-schema conformance**, `maxDepth`/components semantics, history range & shapes |
 | Update (MAY) | UPD-01…05 | write-back of current values, read-after-write, partial failure, historical writes, 501 honesty |

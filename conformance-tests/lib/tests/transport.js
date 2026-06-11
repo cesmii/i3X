@@ -100,7 +100,14 @@ module.exports = [
     level: 'SHOULD',
     ref: 'security',
     async run(ctx) {
-      if (ctx.client.base.startsWith('https://')) return pass();
+      if (ctx.client.base.startsWith('https://')) {
+        if (ctx.config.insecure) {
+          return warn(
+            'Endpoint is HTTPS, but TLS certificate verification was disabled for this run (insecure mode) — the server\'s identity was not verified. Acceptable for development/internal testing only; production servers MUST present a certificate clients can validate.'
+          );
+        }
+        return pass();
+      }
       return warn(
         'Endpoint is plain HTTP. Implementations MUST support encrypted transport (HTTPS) in production; HTTP is acceptable only for development/internal testing.'
       );

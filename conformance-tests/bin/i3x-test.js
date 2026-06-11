@@ -19,7 +19,8 @@ Run options:
   --header "<Name: value>"   Custom header (repeatable; first use wins for auth)
   --no-writes                Skip write tests even if the server declares update capabilities
   --timeout <ms>             Per-request timeout (default 20000)
-  --insecure                 Accept self-signed TLS certificates (development only)
+  --insecure                 Accept self-signed TLS certificates (development only;
+                             the run is flagged with an advisory warning, CORE-05)
   --json <file>              Also write the full report as JSON
   --quiet                    Only print failures and the final summary
 

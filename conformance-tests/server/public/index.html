@@ -133,6 +133,11 @@
       Untick if you'd rather not write to this server at all (update features will then be reported as unverified).</span>
     </div>
 
+    <div class="check" style="margin-top:10px">
+      <input type="checkbox" id="insecure">
+      <span>Accept self-signed TLS certificates (development servers only — disables certificate verification)</span>
+    </div>
+
     <button class="primary" id="runBtn">Run conformance tests</button>
   </div>
 
@@ -286,7 +291,8 @@
     const body = {
       endpoint,
       auth: buildAuth(),
-      includeWrites: $('includeWrites').checked
+      includeWrites: $('includeWrites').checked,
+      insecure: $('insecure').checked
     };
 
     let results = [];

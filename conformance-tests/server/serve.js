@@ -60,7 +60,12 @@ async function handleRun(req, res) {
     auth: config.auth && typeof config.auth === 'object' ? config.auth : { type: 'none' },
     headers: {},
     includeWrites: config.includeWrites !== false,
-    timeoutMs: Math.min(Math.max(parseInt(config.timeoutMs, 10) || 20000, 1000), 60000)
+    timeoutMs: Math.min(Math.max(parseInt(config.timeoutMs, 10) || 20000, 1000), 60000),
+    // Accept self-signed certs (dev/test servers). Node's fetch has no
+    // per-request switch, so the engine toggles NODE_TLS_REJECT_UNAUTHORIZED
+    // for the duration of the run — concurrent runs in this process also skip
+    // certificate verification while an insecure run is active.
+    insecure: config.insecure === true
   };
   if (config.headers && typeof config.headers === 'object') {
     for (const [k, v] of Object.entries(config.headers)) {

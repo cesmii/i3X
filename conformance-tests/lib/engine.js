@@ -48,6 +48,32 @@ async function resolveBaseUrl(config, emit) {
 }
 
 /**
+ * TLS verification opt-out (insecure mode). Node's built-in fetch offers no
+ * per-request control over certificate checks, so NODE_TLS_REJECT_UNAUTHORIZED
+ * is the only zero-dependency lever — and it is process-global. Refcount so
+ * concurrent runs in the web server restore the previous value only after the
+ * last insecure run finishes. While any insecure run is active, other runs in
+ * the same process also skip certificate verification; fetch's keep-alive pool
+ * may additionally reuse an unverified connection to the same host for a few
+ * seconds after restoration. Acceptable for a dev/test tool — not a boundary
+ * to build security guarantees on.
+ */
+let insecureRuns = 0;
+let savedTlsReject;
+function disableTlsVerification() {
+  if (insecureRuns++ === 0) {
+    savedTlsReject = process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  }
+}
+function restoreTlsVerification() {
+  if (--insecureRuns === 0) {
+    if (savedTlsReject === undefined) delete process.env.NODE_TLS_REJECT_UNAUTHORIZED;
+    else process.env.NODE_TLS_REJECT_UNAUTHORIZED = savedTlsReject;
+  }
+}
+
+/**
  * Run the full suite.
  *
  * config: {
@@ -67,8 +93,15 @@ async function runSuite(config = {}, onEvent = () => {}) {
     }
   };
 
-  if (config.insecure) process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
+  if (config.insecure) disableTlsVerification();
+  try {
+    return await runSuiteInner(config, emit);
+  } finally {
+    if (config.insecure) restoreTlsVerification();
+  }
+}
 
+async function runSuiteInner(config, emit) {
   const cfg = {
     includeWrites: true,
     timeoutMs: 20000,
@@ -76,6 +109,10 @@ async function runSuite(config = {}, onEvent = () => {}) {
     auth: config.auth || { type: 'none' },
     headers: config.headers || {}
   };
+
+  if (cfg.insecure) {
+    emit({ type: 'note', message: 'TLS certificate verification is disabled for this run (insecure mode — development use only)' });
+  }
 
   const tests = allTests();
   const results = [];

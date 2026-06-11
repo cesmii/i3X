@@ -79,6 +79,7 @@ function computeSummary(results, ctx) {
     );
   }
   // Warnings are itemized in summary.warnings and rendered by the CLI/web UI.
+  // (Insecure-mode runs are flagged via the CORE-05 advisory warning.)
 
   return {
     verdict,
