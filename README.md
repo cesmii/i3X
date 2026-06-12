@@ -50,7 +50,7 @@ This specification was created by industry participants with experience developi
 
 A public endpoint for the in-progress Demo implementation is available at [https://api.i3x.dev/v1/](https://api.i3x.dev/v1/) with a Swagger page at [https://api.i3x.dev/v1/docs](https://api.i3x.dev/v1/docs).
 
-A MCP server that works against any compliant endpoint is available on [https://github.com/cesmii/i3X-MCP-Server](GitHub) and [NPM](https://www.npmjs.com/package/i3x-mcp).
+An MCP server that works against any compliant endpoint is available on [https://github.com/cesmii/i3X-MCP-Server](GitHub) and [NPM](https://www.npmjs.com/package/i3x-mcp).
 
 If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) publishes the *official* cross-platform [i3X Explorer](https://www.acetechnologies.net/i3x) client you can use to explore the i3X functions, and any published or accessible i3X Address Space.
 
