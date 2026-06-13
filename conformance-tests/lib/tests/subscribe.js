@@ -134,7 +134,21 @@ module.exports = [
     async run(ctx) {
       if (!ctx.subscriptionId) return skip('No subscription was created', 'blocked');
       if (!ctx.objects || !ctx.objects.length) return skip('No objects available to register', 'blocked');
-      const ids = ctx.objects.slice(0, 2).map((o) => o.elementId);
+
+      // Prefer objects that had Good-quality current values during the QRY
+      // phase so that SUB-07/SUB-13 can observe sync updates and exercise
+      // acknowledgement semantics.  Fall back to the first objects if none
+      // with values are found (e.g. empty address spaces).
+      let candidates = ctx.objects;
+      if (ctx.currentValues && ctx.currentValues.size) {
+        const withValues = ctx.objects.filter((o) =>
+          ctx.currentValues.has(o.elementId) &&
+          ctx.currentValues.get(o.elementId).quality === 'Good'
+        );
+        if (withValues.length >= 2) candidates = withValues;
+      }
+      const ids = candidates.slice(0, 2).map((o) => o.elementId);
+
       const res = await ctx.client.request('POST', '/subscriptions/register', {
         body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId, elementIds: ids }
       });
