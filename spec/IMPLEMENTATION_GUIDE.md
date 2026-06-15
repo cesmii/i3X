@@ -908,7 +908,7 @@ Returns one or more Objects without data/values given a collection of elementIds
 
 ```json
 {
-  "success": true,
+  "success": false,
   "results": [
     {
       "success": true,
@@ -939,7 +939,7 @@ Returns one or more Objects without data/values given a collection of elementIds
 
 ```json
 {
-  "success": true,
+  "success": false,
   "results": [
     {
       "success": true,
