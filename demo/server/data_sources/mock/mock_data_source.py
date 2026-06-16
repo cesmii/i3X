@@ -247,18 +247,17 @@ class MockDataSource(I3XDataSource):
 
         # Filter based on time range
         if startTime and endTime:
-            # Parse time strings to datetime objects for comparison
-            start_dt = datetime.fromisoformat(startTime.replace("Z", "+00:00"))
-            end_dt = datetime.fromisoformat(endTime.replace("Z", "+00:00"))
+            a = datetime.fromisoformat(startTime.replace("Z", "+00:00"))
+            b = datetime.fromisoformat(endTime.replace("Z", "+00:00"))
+            lo, hi = (a, b) if a <= b else (b, a)
 
-            # Filter records array to only include items within time range
             filtered_records = []
             for record in records_array:
                 if "timestamp" in record:
                     value_dt = datetime.fromisoformat(
                         record["timestamp"].replace("Z", "+00:00")
                     )
-                    if start_dt <= value_dt <= end_dt:
+                    if lo <= value_dt <= hi:
                         filtered_records.append(record)
 
             returned_records = filtered_records

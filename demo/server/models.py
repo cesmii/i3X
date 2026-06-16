@@ -317,6 +317,7 @@ class CurrentValueResult(BaseModel):
 class HistoricalValueResult(BaseModel):
     isComposition: bool = Field(..., description="True if this Object encapsulates composed child elements")
     values: List[VQT] = Field(..., description="Ordered array of VQT objects for the requested time range")
+    components: Optional[Dict[str, Any]] = Field(None, description="Child element history, present only on composition elements when maxDepth > 1")
 
 
 class SyncUpdateEntry(BaseModel):

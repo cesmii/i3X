@@ -1,4 +1,9 @@
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+
+_now = datetime.now(timezone.utc)
+
+def _ts(days_ago, time="18:20:44"):
+    return (_now - timedelta(days=days_ago)).strftime(f"%Y-%m-%dT{time}Z")
 
 # SIMPLIFIED I3X API compliant mock data - Industrial Information Interface eXchange (RFC 001)
 I3X_DATA = {
@@ -164,7 +169,7 @@ I3X_DATA = {
                 {
                     "value": {
                         # state-type schema requires a timestamp field inside the value
-                        "timestamp": "2025-10-29T18:20:44Z",
+                        "timestamp": _ts(0),
                         "description": "Pump is in maintenance",
                         "color": "#800080",
                         "type": {
@@ -185,11 +190,11 @@ I3X_DATA = {
                     #Values need metadata too, in fact some of the RFC 3.1.2 Object Metadata really belongs at the Value level
                     "quality": "Good",
                     #Our mock platform implementation was smart enough to lift this metadata from the payload. 
-                    "timestamp": "2025-10-29T18:20:44Z",
+                    "timestamp": _ts(0),
                 },
                 {
                     "value": {
-                        "timestamp": "2025-10-28T18:20:44Z",
+                        "timestamp": _ts(1),
                         "description": "Pump is in operation",
                         "color": "#00FF00",
                         "type": {
@@ -208,11 +213,11 @@ I3X_DATA = {
                         },
                     },
                     "quality": "Good",
-                    "timestamp": "2025-10-28T18:20:44Z",
+                    "timestamp": _ts(1),
                 },
                 {
                     "value": {
-                        "timestamp": "2025-10-27T18:20:44Z",
+                        "timestamp": _ts(2),
                         "description": "Pump is in operation",
                         "color": "#FFFF00",
                         "type": {
@@ -231,7 +236,7 @@ I3X_DATA = {
                         },
                     },
                     "quality": "Good",
-                    "timestamp": "2025-10-27T18:20:44Z",
+                    "timestamp": _ts(2),
                 },
             ],
         },
@@ -264,12 +269,12 @@ I3X_DATA = {
                 {
                     "value": {"name": "Product A"},
                     "quality": "Good",
-                    "timestamp": "2025-10-28T18:20:44Z",
+                    "timestamp": _ts(1),
                 },
                 {
                     "value": {"name": "Product B"},
                     "quality": "Good",
-                    "timestamp": "2025-10-28T18:20:44Z",
+                    "timestamp": _ts(1),
                 },
             ]
         },
@@ -305,7 +310,7 @@ I3X_DATA = {
                         "tolerance": 5.0,
                     },
                     "quality": "Good",
-                    "timestamp": "2025-10-28T18:20:44Z",
+                    "timestamp": _ts(1),
                 },
                 {
                     "value": {
@@ -313,7 +318,7 @@ I3X_DATA = {
                         "tolerance": 5.1,
                     },
                     "quality": "Good",
-                    "timestamp": "2025-10-27T18:20:44Z",
+                    "timestamp": _ts(2),
                 }
             ]
         },
@@ -334,37 +339,37 @@ I3X_DATA = {
                 {
                     "value": 70.34,
                     "quality": "Good",
-                    "timestamp": "2025-10-28T18:32:47Z"
+                    "timestamp": _ts(1, "18:32:47")
                 },
                 {
                     "value": 71.79,
                     "quality": "Good",
-                    "timestamp": "2025-10-27T18:32:47Z"
+                    "timestamp": _ts(2, "18:32:47")
                 },
                 {
                     "value": 69.95,
                     "quality": "Good",
-                    "timestamp": "2025-10-26T18:32:47Z"
+                    "timestamp": _ts(3, "18:32:47")
                 },
                 {
                     "value": 74.12,
                     "quality": "Good",
-                    "timestamp": "2025-10-25T18:32:47Z"
+                    "timestamp": _ts(4, "18:32:47")
                 },
                 {
                     "value": 76.88,
                     "quality": "Good",
-                    "timestamp": "2025-10-24T18:32:47Z"
+                    "timestamp": _ts(5, "18:32:47")
                 },
                 {
                     "value": 78.43,
                     "quality": "Uncertain",
-                    "timestamp": "2025-10-23T18:32:47Z"
+                    "timestamp": _ts(6, "18:32:47")
                 },
                 {
                     "value": 73.20,
                     "quality": "Good",
-                    "timestamp": "2025-10-22T18:32:47Z"
+                    "timestamp": _ts(7, "18:32:47")
                 },
             ],
         },
@@ -381,12 +386,12 @@ I3X_DATA = {
                 {
                     "value": 12,
                     "quality": "Good",
-                    "timestamp": "2025-10-28T18:32:47Z"
+                    "timestamp": _ts(1, "18:32:47")
                 },
                 {
                     "value": 13,
                     "quality": "Good",
-                    "timestamp": "2025-10-27T18:32:47Z"
+                    "timestamp": _ts(2, "18:32:47")
                 }
             ]
         },
@@ -434,44 +439,44 @@ I3X_DATA = {
                     "value": 67.1,
                     # Should these be specified (at least as optional)?
                     "quality": "Good",
-                    "timestamp": "2025-10-28T10:15:30Z",
+                    "timestamp": _ts(1, "10:15:30"),
                     # Extra value-specific metadata may originate in the publisher's payload and is allowable
                     "localTimestamp": "2025-01-28T07:15:30-03:00",
                 },
                 {
                     "value": 54.9,
                     "quality": "Good",
-                    "timestamp": "2025-10-27T10:15:30Z",
+                    "timestamp": _ts(2, "10:15:30"),
                     "localTimestamp": "2025-01-27T07:15:30-03:00",
                 },
                 {
                     "value": 68.2,
                     "quality": "Good",
-                    "timestamp": "2025-10-26T10:15:30Z",
+                    "timestamp": _ts(3, "10:15:30"),
                     "localTimestamp": "2025-01-26T07:15:30-03:00",
                 },
                 {
                     "value": 71.5,
                     "quality": "Good",
-                    "timestamp": "2025-10-25T10:15:30Z",
+                    "timestamp": _ts(4, "10:15:30"),
                     "localTimestamp": "2025-01-25T07:15:30-03:00",
                 },
                 {
                     "value": 63.8,
                     "quality": "Good",
-                    "timestamp": "2025-10-24T10:15:30Z",
+                    "timestamp": _ts(5, "10:15:30"),
                     "localTimestamp": "2025-01-24T07:15:30-03:00",
                 },
                 {
                     "value": 58.4,
                     "quality": "Uncertain",
-                    "timestamp": "2025-10-23T10:15:30Z",
+                    "timestamp": _ts(6, "10:15:30"),
                     "localTimestamp": "2025-01-23T07:15:30-03:00",
                 },
                 {
                     "value": 66.0,
                     "quality": "Good",
-                    "timestamp": "2025-10-22T10:15:30Z",
+                    "timestamp": _ts(7, "10:15:30"),
                     "localTimestamp": "2025-01-22T07:15:30-03:00",
                 },
             ],
@@ -501,7 +506,7 @@ I3X_DATA = {
                         "calibrationDate": "2025-06-01"
                     },
                     "quality": "GOOD",
-                    "timestamp": "2025-10-28T10:15:30Z",
+                    "timestamp": _ts(1, "10:15:30"),
                 },
                 {
                     "value": {
@@ -511,7 +516,7 @@ I3X_DATA = {
                         "calibrationDate": "2025-06-01"
                     },
                     "quality": "GOOD",
-                    "timestamp": "2025-10-27T10:15:30Z",
+                    "timestamp": _ts(2, "10:15:30"),
                 },
             ],
         },
@@ -541,7 +546,7 @@ I3X_DATA = {
                         "firmware_version": "2.3.1"
                     },
                     "quality": "Good",
-                    "timestamp": "2025-10-28T10:15:30Z",
+                    "timestamp": _ts(1, "10:15:30"),
                 },
                 {
                     "value": {
@@ -551,7 +556,7 @@ I3X_DATA = {
                         "firmware_version": "2.3.1"
                     },
                     "quality": "Good",
-                    "timestamp": "2025-10-27T10:15:30Z",
+                    "timestamp": _ts(2, "10:15:30"),
                 },
             ],
         },
