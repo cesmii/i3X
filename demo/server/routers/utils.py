@@ -135,13 +135,28 @@ def transform_value_result(element_id: str, ds_result: Any, instance: Any, is_hi
 
     if is_history:
         data_list = element_data.get("data", [])
-        return {
+        result = {
             "isComposition": is_composition,
             "values": [
                 make_vqt(vqt.get("value"), vqt.get("quality"), vqt.get("timestamp"))
                 for vqt in data_list
             ]
-        }, was_truncated
+        }
+        if child_keys:
+            components = {}
+            for child_key in child_keys:
+                child_data = element_data[child_key]
+                if isinstance(child_data, dict):
+                    components[child_key] = {
+                        "values": [
+                            make_vqt(vqt.get("value"), vqt.get("quality"), vqt.get("timestamp"))
+                            for vqt in child_data.get("data", [])
+                        ]
+                    }
+                    if child_data.get("_truncated"):
+                        was_truncated = True
+            result["components"] = components
+        return result, was_truncated
     elif child_keys:
         # Composition with children: parent's own VQT at top level, children under 'components'
         parent_data = element_data.get("data", [{}])

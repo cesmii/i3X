@@ -222,8 +222,8 @@ class GetObjectValueRequest(ElementIdRequest):
 
 class GetObjectHistoryRequest(ElementIdRequest):
     """Request model for POST /objects/history"""
-    startTime: Optional[str] = Field(default=None, description="ISO 8601 start time for filtering")
-    endTime: Optional[str] = Field(default=None, description="ISO 8601 end time for filtering")
+    startTime: str = Field(description="RFC 3339 timestamp for range start")
+    endTime: str = Field(description="RFC 3339 timestamp for range end")
     maxDepth: int = Field(default=1, ge=0, description="Controls recursion depth. 0=infinite, 1=no recursion")
 
 
