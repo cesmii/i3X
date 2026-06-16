@@ -153,18 +153,66 @@ class TestI3XEndpoints(unittest.TestCase):
 
     def test_historical_values_endpoint(self):
         """Test RFC 4.2.1.2 - Historical Values (POST /objects/history)"""
-        response = self.client.post("/objects/history", json={"elementIds": ["pump-101-state"]})
-        data = response.json()
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc)
+        earlier = (now - timedelta(days=10)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        later = now.strftime("%Y-%m-%dT%H:%M:%SZ")
 
+        # Forward range returns records
+        response = self.client.post("/objects/history", json={
+            "elementIds": ["pump-101-state"],
+            "startTime": earlier,
+            "endTime": later
+        })
+        data = response.json()
         self.assertEqual(response.status_code, 200)
-        self.assertIsInstance(data, dict)
-        succeeded = [r for r in data["results"] if r["success"]]
-        self.assertEqual(len(succeeded), 1)
-        item = succeeded[0]
-        self.assertEqual(item["elementId"], "pump-101-state")
-        self.assertIsInstance(item["result"], dict)
+        item = [r for r in data["results"] if r["success"]][0]
         self.assertIn("values", item["result"])
-        self.assertIsInstance(item["result"]["values"], list)
+        self.assertGreater(len(item["result"]["values"]), 0)
+
+        # Reversed range returns the same number of records
+        response2 = self.client.post("/objects/history", json={
+            "elementIds": ["pump-101-state"],
+            "startTime": later,
+            "endTime": earlier
+        })
+        self.assertEqual(response2.status_code, 200)
+        item2 = [r for r in response2.json()["results"] if r["success"]][0]
+        self.assertEqual(len(item["result"]["values"]), len(item2["result"]["values"]))
+
+        # maxDepth > 1 on a composition element returns child history under 'components'
+        response3 = self.client.post("/objects/history", json={
+            "elementIds": ["pump-101-measurements"],
+            "startTime": earlier,
+            "endTime": later,
+            "maxDepth": 2
+        })
+        self.assertEqual(response3.status_code, 200)
+        result3 = [r for r in response3.json()["results"] if r["success"]][0]["result"]
+        self.assertTrue(result3["isComposition"])
+        self.assertIn("pump-101-bearing-temperature", result3.get("components", {}))
+        self.assertGreater(len(result3["components"]["pump-101-bearing-temperature"]["values"]), 0)
+
+    def test_historical_values_validation(self):
+        """startTime and endTime are required and must be valid RFC 3339 timestamps"""
+        from datetime import datetime, timezone
+        valid_time = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        # Missing both times
+        response = self.client.post("/objects/history", json={"elementIds": ["pump-101-state"]})
+        self.assertEqual(response.status_code, 400)
+
+        # Missing endTime
+        response = self.client.post("/objects/history", json={"elementIds": ["pump-101-state"], "startTime": valid_time})
+        self.assertEqual(response.status_code, 400)
+
+        # Missing startTime
+        response = self.client.post("/objects/history", json={"elementIds": ["pump-101-state"], "endTime": valid_time})
+        self.assertEqual(response.status_code, 400)
+
+        # Invalid format
+        response = self.client.post("/objects/history", json={"elementIds": ["pump-101-state"], "startTime": "not-a-date", "endTime": valid_time})
+        self.assertEqual(response.status_code, 400)
 
     def test_relationship_type_query_endpoint(self):
         """Test RFC 4.1.4 - Relationship Type query (POST /relationshiptypes/query)"""

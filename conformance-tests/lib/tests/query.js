@@ -241,5 +241,55 @@ module.exports = [
       if (bad.success !== false) return fail(`Unknown elementId "${BOGUS_ID}" must fail per-item with a 404 responseDetail.`);
       return pass();
     }
+  },
+  {
+    id: 'QRY-10',
+    name: 'POST /objects/history requires startTime and endTime in RFC 3339 format',
+    level: 'MUST',
+    ref: 'queryMethods',
+    async run(ctx) {
+      if (!ctx.objects || !ctx.objects.length) return skip('No objects available', 'blocked');
+      const id = ctx.objects[0].elementId;
+      const validTime = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+
+      const r1 = await ctx.client.request('POST', '/objects/history', { body: { elementIds: [id], endTime: validTime } });
+      if (r1.status !== 400) return fail(`Missing startTime should return 400, got ${r1.status}`);
+
+      const r2 = await ctx.client.request('POST', '/objects/history', { body: { elementIds: [id], startTime: validTime } });
+      if (r2.status !== 400) return fail(`Missing endTime should return 400, got ${r2.status}`);
+
+      const r3 = await ctx.client.request('POST', '/objects/history', { body: { elementIds: [id], startTime: 'not-a-date', endTime: validTime } });
+      if (r3.status !== 400) return fail(`Invalid startTime format should return 400, got ${r3.status}`);
+
+      return pass();
+    }
+  },
+  {
+    id: 'QRY-11',
+    name: 'POST /objects/history with maxDepth > 1 returns child history under "components"',
+    level: 'MUST',
+    ref: 'maxDepth',
+    async run(ctx) {
+      if (!ctx.objects) return skip('No objects available', 'blocked');
+      const comp = ctx.objects.find((o) => o.isComposition === true);
+      if (!comp) return skip('No composition objects in the address space', 'untestable');
+      const endTime = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
+      const startTime = new Date(Date.now() - 24 * 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
+      const res = await ctx.client.request('POST', '/objects/history', { body: { elementIds: [comp.elementId], startTime, endTime, maxDepth: 2 } });
+      if (!okJson(res)) return fail(httpProblem(res, 'POST /objects/history (maxDepth=2)'));
+      const item = res.json.results && res.json.results[0];
+      if (!item || !item.success || !item.result) return fail(`Could not read history for composition object "${comp.elementId}"`);
+      if (!item.result.isComposition) return skip(`"${comp.elementId}" did not return isComposition=true in the history result`, 'untestable');
+      const components = item.result.components;
+      if (!components || typeof components !== 'object' || Array.isArray(components)) {
+        return fail(`Composition object "${comp.elementId}" queried with maxDepth=2 returned no "components" map. History responses must mirror current-value composition behaviour when maxDepth > 1.`);
+      }
+      const problems = [];
+      for (const [childId, child] of Object.entries(components)) {
+        if (!Array.isArray(child.values)) problems.push(`components.${childId} missing "values" array`);
+      }
+      if (problems.length) return fail(firstProblems(problems));
+      return pass(`${Object.keys(components).length} component(s) with history`);
+    }
   }
 ];

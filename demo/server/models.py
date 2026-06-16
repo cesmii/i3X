@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ConfigDict, model_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
 from typing import Optional, List, Dict, Any, Union, Callable, Generic, TypeVar
 from datetime import datetime
 from enum import Enum
@@ -225,6 +225,15 @@ class GetObjectHistoryRequest(ElementIdRequest):
     startTime: str = Field(description="RFC 3339 timestamp for range start")
     endTime: str = Field(description="RFC 3339 timestamp for range end")
     maxDepth: int = Field(default=1, ge=0, description="Controls recursion depth. 0=infinite, 1=no recursion")
+
+    @field_validator("startTime", "endTime")
+    @classmethod
+    def validate_rfc3339(cls, v: str) -> str:
+        try:
+            datetime.fromisoformat(v.replace("Z", "+00:00"))
+        except ValueError:
+            raise ValueError(f"must be a valid RFC 3339 timestamp, got: {v!r}")
+        return v
 
 
 class GetObjectTypesRequest(ElementIdRequest):

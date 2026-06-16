@@ -421,16 +421,24 @@ const routes = {
   'POST /objects/history': async (req, res) => {
     const body = await readJson(req);
     if (!body || !Array.isArray(body.elementIds)) return sendError(req, res, 400, 'Bad Request', 'elementIds array is required');
-    const start = body.startTime ? Date.parse(body.startTime) : -Infinity;
-    const end = body.endTime ? Date.parse(body.endTime) : Infinity;
+    if (!body.startTime || !body.endTime) return sendError(req, res, 400, 'Bad Request', 'startTime and endTime are required');
+    const a = Date.parse(body.startTime), b = Date.parse(body.endTime);
+    if (Number.isNaN(a) || Number.isNaN(b)) return sendError(req, res, 400, 'Bad Request', 'startTime and endTime must be valid RFC 3339 timestamps');
+    const lo = Math.min(a, b), hi = Math.max(a, b);
+    const maxDepth = body.maxDepth ?? 1;
     send(req, res, 200, bulk(body.elementIds.map((id) => {
       const o = objectsById.get(id);
       if (!o) return { success: false, elementId: id, responseDetail: { title: 'Not Found', status: 404, detail: `Element not found: ${id}` } };
-      const values = (HISTORY.get(id) || []).filter((v) => {
-        const t = Date.parse(v.timestamp);
-        return t >= start && t <= end;
-      });
-      return { success: true, elementId: id, result: { isComposition: o.isComposition, values } };
+      const values = (HISTORY.get(id) || []).filter((v) => { const t = Date.parse(v.timestamp); return t >= lo && t <= hi; });
+      const result = { isComposition: o.isComposition, values };
+      if (o.isComposition && (maxDepth === 0 || maxDepth > 1)) {
+        const children = (o.relationships && o.relationships.HasComponent) || [];
+        result.components = Object.fromEntries(children.map((childId) => {
+          const childValues = (HISTORY.get(childId) || []).filter((v) => { const t = Date.parse(v.timestamp); return t >= lo && t <= hi; });
+          return [childId, { values: childValues }];
+        }));
+      }
+      return { success: true, elementId: id, result };
     })));
   },
 
