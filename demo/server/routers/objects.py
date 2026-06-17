@@ -111,7 +111,7 @@ def query_related_objects(
 
 
 # RFC 4.2.1.1 - Object Element LastKnown Value
-@query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues", response_model=BulkResponse[CurrentValueResult], responses={206: {"model": BulkResponse[CurrentValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **BASE_ERROR_RESPONSES})
+@query.post("/objects/value", summary="Query Last Known Values", operation_id="queryLastKnownValues", response_model=BulkResponse[CurrentValueResult], response_model_exclude_unset=True, responses={206: {"model": BulkResponse[CurrentValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **BASE_ERROR_RESPONSES})
 def query_last_known_values(
     request_body: GetObjectValueRequest,
     data_source=Depends(get_data_source),
@@ -156,7 +156,7 @@ def query_last_known_values(
 
 
 # RFC 4.2.1.2 - Object Element HistoricalValue
-@query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues", response_model=BulkResponse[HistoricalValueResult], responses={206: {"model": BulkResponse[HistoricalValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **BASE_ERROR_RESPONSES})
+@query.post("/objects/history", summary="Query Historical Values", operation_id="queryHistoricalValues", response_model=BulkResponse[HistoricalValueResult], response_model_exclude_unset=True, responses={206: {"model": BulkResponse[HistoricalValueResult], "description": PARTIAL_CONTENT_DESCRIPTION}, **BASE_ERROR_RESPONSES})
 def query_historical_values(
     request_body: GetObjectHistoryRequest,
     data_source=Depends(get_data_source),

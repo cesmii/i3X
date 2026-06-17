@@ -218,10 +218,10 @@ I3X_DATA = {
                 {
                     "value": {
                         "timestamp": _ts(2),
-                        "description": "Pump is in operation",
+                        "description": "Pump is starved",
                         "color": "#FFFF00",
                         "type": {
-                            "id": 1,
+                            "id": 3,
                             "name": "Starved",
                             "description": "Equipment starved",
                         },
