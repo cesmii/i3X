@@ -1297,7 +1297,7 @@ A server whose platform stores no history SHOULD still implement this endpoint a
 
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
-| `elementIds` | string[] | No | One or more elementIds to query |
+| `elementIds` | string[] | Yes | One or more elementIds to query |
 | `startTime` | string | Yes | RFC 3339 timestamp for range start |
 | `endTime` | string | Yes | RFC 3339 timestamp for range end |
 | `maxDepth` | integer | No | Controls recursion depth |
