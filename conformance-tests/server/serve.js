@@ -4,6 +4,7 @@ const http = require('node:http');
 const fs = require('node:fs');
 const path = require('node:path');
 const { runSuite } = require('../lib/engine');
+const { SPEC_VERSION, BUILD } = require('../lib/version');
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const MIME = {
@@ -122,9 +123,14 @@ function serveStatic(req, res) {
 function startServer(port = 8330, host = process.env.I3X_HOST || '0.0.0.0') {
   const server = http.createServer((req, res) => {
     if (req.method === 'POST' && req.url === '/api/run') return handleRun(req, res);
+    if (req.method === 'GET' && req.url === '/api/version') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ specVersion: SPEC_VERSION, build: BUILD }));
+      return;
+    }
     if (req.method === 'GET' && req.url === '/api/health') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ ok: true, activeRuns }));
+      res.end(JSON.stringify({ ok: true, activeRuns, specVersion: SPEC_VERSION, build: BUILD }));
       return;
     }
     if (req.method === 'GET') return serveStatic(req, res);
@@ -132,7 +138,7 @@ function startServer(port = 8330, host = process.env.I3X_HOST || '0.0.0.0') {
     res.end('Method not allowed');
   });
   server.listen(port, host, () => {
-    console.log(`i3X Test Suite web UI listening on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
+    console.log(`i3X ${SPEC_VERSION} Test Suite (build ${BUILD}) web UI listening on http://${host === '0.0.0.0' ? 'localhost' : host}:${port}`);
   });
   return server;
 }

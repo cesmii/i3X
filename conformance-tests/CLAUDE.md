@@ -37,6 +37,11 @@ lib/validators.js    mini JSON Schema validator + SHAPES registry mirroring the 
 lib/client.js        fetch wrapper (auth, timeout); rawGzipProbe uses node:http because
                      fetch hides Content-Encoding
 lib/specrefs.js      REFS map: every test's `ref` key → Implementation Guide anchor URL
+lib/version.js       single source of truth for SPEC_VERSION (tracks the spec) and
+                     BUILD (bump when the tests themselves change). CLI prints both in
+                     the banner/USAGE and stamps them into the JSON report; the static
+                     UI reads them from GET /api/version and shows a header badge +
+                     stamps them into the downloaded report.
 lib/tests/*.js       test definitions per phase (transport, exploratory, query, update, subscribe)
 bin/i3x-test.js      CLI (run / serve / mock)
 server/serve.js      web server: static UI + POST /api/run → SSE event stream

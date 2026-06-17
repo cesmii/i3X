@@ -22,6 +22,7 @@
   header .brand .mark { width: 46px; height: 46px; flex: none; }
   header .brand .wordmark { height: 30px; width: auto; }
   header h1 { font-size: 26px; margin: 0 0 4px; }
+  header .suite-meta { color: var(--muted); font-size: 12.5px; margin: 0 0 8px; font-family: ui-monospace, monospace; }
   header p { color: var(--muted); margin: 0 0 28px; }
   header a { color: var(--blue); text-decoration: none; }
 
@@ -97,6 +98,7 @@
       <img class="wordmark" src="assets/i3X_logo_white.png" alt="i3X">
     </div>
     <h1>1.0 Conformance Test Suite</h1>
+    <p class="suite-meta" id="suiteMeta">v1.0</p>
     <p>Validate an <a href="https://github.com/cesmii/i3X" target="_blank" rel="noopener">i3X</a> server implementation
        against the 1.0 specification. Enter your server's public endpoint below — the suite exercises every required
        (MUST) behavior and any optional (MAY) features your server declares, then reports a compliance level: Full 1.0 Compliance, 1.0 Compatible or Not Compliant</p>
@@ -164,6 +166,18 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   let report = null;
+  let suiteInfo = null;
+
+  // Suite version/build come from the server (single source of truth: lib/version.js).
+  fetch('api/version')
+    .then((r) => (r.ok ? r.json() : null))
+    .then((v) => {
+      if (v && v.specVersion != null) {
+        suiteInfo = v;
+        $('suiteMeta').textContent = 'v' + v.specVersion + ' · build ' + v.build;
+      }
+    })
+    .catch(() => {});
 
   const AUTH_FIELDS = {
     none: '',
@@ -332,7 +346,13 @@
             $('progressBar').style.width = '100%';
             $('progressLabel').textContent = 'Finished — ' + (e.summary.counts.pass || 0) + ' of ' +
               (e.summary.counts.total || 0) + ' tests passed.';
-            report = { generatedBy: 'i3x-test-suite', endpoint, summary: e.summary, results };
+            report = {
+              generatedBy: 'i3x-test-suite',
+              suite: suiteInfo ? { specVersion: suiteInfo.specVersion, build: suiteInfo.build } : undefined,
+              endpoint,
+              summary: e.summary,
+              results
+            };
             showVerdict(e.summary);
           }
         }

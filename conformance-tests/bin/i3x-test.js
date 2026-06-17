@@ -5,8 +5,9 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { runSuite } = require('../lib/engine');
 const { SDK_DOCS } = require('../lib/specrefs');
+const { SPEC_VERSION, BUILD, SUITE_NAME, VERSION_BADGE } = require('../lib/version');
 
-const USAGE = `i3X 1.0 Conformance Test Suite
+const USAGE = `${SUITE_NAME} (${VERSION_BADGE})
 
 Usage:
   i3x-test run <endpoint> [options]   Run the suite against a server
@@ -88,7 +89,8 @@ async function cmdRun(argv) {
     process.exit(config.endpoint ? 0 : 1);
   }
 
-  console.log(bold(`\ni3X 1.0 Conformance Test Suite`));
+  console.log(bold(`\n${SUITE_NAME}`));
+  console.log(dim(`${VERSION_BADGE}`));
   console.log(dim(`Target: ${config.endpoint}\n`));
 
   let lastPhase = null;
@@ -154,7 +156,13 @@ async function cmdRun(argv) {
   console.log('');
 
   if (jsonPath) {
-    const report = { generatedBy: 'i3x-test-suite', endpoint: config.endpoint, summary, results };
+    const report = {
+      generatedBy: 'i3x-test-suite',
+      suite: { specVersion: SPEC_VERSION, build: BUILD },
+      endpoint: config.endpoint,
+      summary,
+      results
+    };
     fs.writeFileSync(path.resolve(jsonPath), JSON.stringify(report, null, 2));
     console.log(dim(`Report written to ${jsonPath}\n`));
   }
