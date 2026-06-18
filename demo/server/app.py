@@ -162,7 +162,10 @@ async def custom_redoc():
 
 class SSEAwareGZipMiddleware(GZipMiddleware):
     """GZipMiddleware buffers small writes, which would hold back individual SSE
-    events indefinitely — so the stream endpoint is exempt from compression."""
+    events indefinitely. The stream endpoint is therefore exempt from this generic
+    middleware and instead compresses per-event (with Z_SYNC_FLUSH) inside the
+    endpoint itself — see routers/subscriptions.py — so it still honors
+    Accept-Encoding: gzip without breaking real-time delivery."""
 
     async def __call__(self, scope, receive, send):
         if scope.get("type") == "http" and scope.get("path", "").endswith("/subscriptions/stream"):

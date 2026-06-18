@@ -7,6 +7,7 @@ import json
 import queue as thread_queue
 import time
 import uuid
+import zlib
 from pydantic import BaseModel, Field, ConfigDict
 from models import (
     CreateSubscriptionRequest,
@@ -198,13 +199,43 @@ async def stream_subscription(request: Request, req: StreamRequest):
     def push_update_to_client(update):
         tq.put(update)
 
+    # The Guide requires honoring Accept-Encoding: gzip on every endpoint. The generic
+    # GZipMiddleware can't be used here because it buffers small writes and would hold
+    # individual SSE events back, so we compress each event ourselves and force a
+    # Z_SYNC_FLUSH after it — that emits a fully-decodable chunk immediately, preserving
+    # real-time delivery while still producing a valid gzip stream.
+    use_gzip = "gzip" in request.headers.get("accept-encoding", "").lower()
+
+    async def gzip_event_stream():
+        # wbits = 16 + MAX_WBITS produces a gzip (not raw/zlib) header and trailer.
+        compressor = zlib.compressobj(wbits=16 + zlib.MAX_WBITS)
+        try:
+            async for event in event_stream():
+                chunk = compressor.compress(event.encode("utf-8"))
+                chunk += compressor.flush(zlib.Z_SYNC_FLUSH)
+                if chunk:
+                    yield chunk
+        finally:
+            tail = compressor.flush(zlib.Z_FINISH)
+            if tail:
+                yield tail
+
     sub.last_activity = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     sub.is_streaming = True
     sub.handler = push_update_to_client
     sub.event_loop = None
-    sub.streaming_response = StreamingResponse(
-        event_stream(), media_type="text/event-stream"
-    )
+    if use_gzip:
+        sub.streaming_response = StreamingResponse(
+            gzip_event_stream(),
+            media_type="text/event-stream",
+            headers={"Content-Encoding": "gzip", "Vary": "Accept-Encoding"},
+        )
+    else:
+        sub.streaming_response = StreamingResponse(
+            event_stream(),
+            media_type="text/event-stream",
+            headers={"Vary": "Accept-Encoding"},
+        )
 
     # Clear staged updates when switching to streaming — client will receive live SSE going forward
     sub.stagedUpdates.clear()
