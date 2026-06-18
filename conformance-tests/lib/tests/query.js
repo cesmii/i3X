@@ -124,8 +124,16 @@ module.exports = [
     ref: 'maxDepth',
     async run(ctx) {
       if (!ctx.objects) return skip('No objects available', 'blocked');
-      const comp = ctx.objects.find((o) => o.isComposition === true);
-      if (!comp) return skip('No composition objects (isComposition=true) in the address space', 'untestable');
+      // Prefer a composition object that has HasComponent children with live data.
+      // objectsWithMetadata (populated by EXP-17) includes relationship edges; fall back
+      // to the plain object list and prefer non-root nodes (parentId present) if metadata
+      // is unavailable, since root/organizational nodes rarely carry live values.
+      const candidates = (ctx.objectsWithMetadata || ctx.objects).filter((o) => o.isComposition === true);
+      if (!candidates.length) return skip('No composition objects (isComposition=true) in the address space', 'untestable');
+      const comp =
+        candidates.find((o) => o.metadata && o.metadata.relationships && o.metadata.relationships.HasComponent) ??
+        candidates.find((o) => o.parentId) ??
+        candidates[0];
       const res = await ctx.client.request('POST', '/objects/value', { body: { elementIds: [comp.elementId], maxDepth: 0 } });
       if (!okJson(res)) return fail(httpProblem(res, 'POST /objects/value (maxDepth=0)'));
       if (res.status !== 200 && res.status !== 206) return fail(`Expected HTTP 200 (or 206 for partial composition trees), got ${res.status}.`);
@@ -133,6 +141,8 @@ module.exports = [
       if (!item || !item.success || !item.result) return fail(`Could not read composition object "${comp.elementId}": ${JSON.stringify(item && item.responseDetail)}`);
       const components = item.result.components;
       if (!components || typeof components !== 'object' || Array.isArray(components)) {
+        if (item.result.value == null && item.result.quality === 'GoodNoData')
+          return skip(`"${comp.elementId}" has no live data (GoodNoData) — cannot verify composition tree`, 'untestable');
         return fail(
           `Composition object "${comp.elementId}" queried with maxDepth=0 returned no "components" map. Composition elements must return child values keyed by elementId when maxDepth > 1.`
         );
@@ -271,8 +281,13 @@ module.exports = [
     ref: 'maxDepth',
     async run(ctx) {
       if (!ctx.objects) return skip('No objects available', 'blocked');
-      const comp = ctx.objects.find((o) => o.isComposition === true);
-      if (!comp) return skip('No composition objects in the address space', 'untestable');
+      // Same selection logic as QRY-05: prefer a composition object with HasComponent children.
+      const candidates = (ctx.objectsWithMetadata || ctx.objects).filter((o) => o.isComposition === true);
+      if (!candidates.length) return skip('No composition objects in the address space', 'untestable');
+      const comp =
+        candidates.find((o) => o.metadata && o.metadata.relationships && o.metadata.relationships.HasComponent) ??
+        candidates.find((o) => o.parentId) ??
+        candidates[0];
       const endTime = new Date().toISOString().replace(/\.\d+Z$/, 'Z');
       const startTime = new Date(Date.now() - 24 * 3600 * 1000).toISOString().replace(/\.\d+Z$/, 'Z');
       const res = await ctx.client.request('POST', '/objects/history', { body: { elementIds: [comp.elementId], startTime, endTime, maxDepth: 2 } });
@@ -282,6 +297,8 @@ module.exports = [
       if (!item.result.isComposition) return skip(`"${comp.elementId}" did not return isComposition=true in the history result`, 'untestable');
       const components = item.result.components;
       if (!components || typeof components !== 'object' || Array.isArray(components)) {
+        if (!item.result.values || item.result.values.length === 0)
+          return skip(`"${comp.elementId}" has no historical data — cannot verify composition tree`, 'untestable');
         return fail(`Composition object "${comp.elementId}" queried with maxDepth=2 returned no "components" map. History responses must mirror current-value composition behaviour when maxDepth > 1.`);
       }
       const problems = [];

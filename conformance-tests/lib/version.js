@@ -9,7 +9,7 @@
 //                 tests change (added/removed/retuned checks) without the spec
 //                 version moving, so a result can be traced to an exact suite rev.
 const SPEC_VERSION = '1.0';
-const BUILD = 4;
+const BUILD = 5;
 
 // e.g. "i3X 1.0 Conformance Test Suite"
 const SUITE_NAME = `i3X ${SPEC_VERSION} Conformance Test Suite`;
