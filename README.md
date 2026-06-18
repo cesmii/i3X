@@ -8,7 +8,7 @@
 
 The API definition is now stable, with final response payloads and subscription API signatures for 1.0. In late 2026, a new charter will be established to begin work on vNext. Until that time, only documentation and demo bugs will be addressed. Specification issues and features will be considered for vNext -- if you want to help, please see [Contributing.md](Contributing.md).
 
-Note: [Discussions](https://github.com/cesmii/i3X/discussions) have been enabled -- when in doubt, start there before creating an Issue.
+**Note:** [Discussions](https://github.com/cesmii/i3X/discussions) have been enabled -- when in doubt, start there before creating an Issue.
 
 ## What is i3X?
 
