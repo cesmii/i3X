@@ -5,7 +5,9 @@ In the spirit of collaboration and consensus-driven evolution, changes to the pr
 
 1. [Read the RFC](https://github.com/cesmii/i3X/blob/1.0/RFC%20for%20Contextualized%20Manufacturing%20Information%20API.md) in detail to ensure your proposed changes are within the spirit and intent of this effort.
 2. [Review existing Issues](https://github.com/cesmii/i3X/issues), both open and closed, to ensure your ideas have not already been addressed or discussed.
-3. [Create a New Issue](https://github.com/cesmii/i3X/issues/new?template=bug_report.md) using the template to describe your proposed changes or problem. The Working Group triages issues twice a month.
+3. [Review existing Discussion](https://github.com/cesmii/i3X/discussions) topics, to see if the community is already engaged in your topic.
+4. [Open or Comment on a Discussion](https://github.com/cesmii/i3X/discussions) to gather feedback or answer questions.
+5. If all else fails, [create a New Issue](https://github.com/cesmii/i3X/issues/new?template=bug_report.md) using the template to describe your proposed changes or problem. The Working Group triages periodically.
 
 If an issue is accepted by the Working Group, and you wish to provide a proposed solution (which is much appreciated!) please follow these steps:
 
