@@ -1,3 +1,4 @@
+import copy
 import threading
 import time
 import random
@@ -13,6 +14,14 @@ class MockDataUpdater:
         self.running = False
         self.thread = None
         self.update_callback = None
+
+        # History accumulation: the live "head" record (index 0) is mutated every tick to
+        # drive subscriptions, but to give clients a continuously-rolling history we also
+        # freeze a snapshot of the head into the records array every `history_interval_s`
+        # seconds, capping the buffer at `max_history_points` so memory stays bounded.
+        self.history_interval_s = 30
+        self.max_history_points = 480  # 30s * 480 ≈ 4 hours of rolling history
+        self._last_snapshot: Dict[str, float] = {}  # elementId -> monotonic time of last snapshot
 
     def start(self, update_callback: Optional[Callable] = None):
         """Start the background thread that generates random updates"""
@@ -89,6 +98,19 @@ class MockDataUpdater:
                 # If callback is provided, notify about the update
                 if self.update_callback and old_record != current_record:
                     self.update_callback(instance, current_record)
+
+                # Periodically freeze the current head into history so clients get a
+                # continuously-rolling trend (not just one moving point). We insert a
+                # copy at index 0: the copy becomes the new live head that future ticks
+                # mutate, while the prior head (now at index 1) is preserved as a sample.
+                element_id = instance.get("elementId")
+                last = self._last_snapshot.get(element_id, 0.0)
+                if time.monotonic() - last >= self.history_interval_s:
+                    records_array.insert(0, copy.deepcopy(current_record))
+                    # Cap the buffer so a long-running server doesn't grow unbounded
+                    if len(records_array) > self.max_history_points:
+                        del records_array[self.max_history_points:]
+                    self._last_snapshot[element_id] = time.monotonic()
 
             time.sleep(1)  # Update every second
 
