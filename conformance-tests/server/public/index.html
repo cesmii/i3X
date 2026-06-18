@@ -108,6 +108,18 @@
     <label for="endpoint">Server endpoint URL — the full versioned base, including the <code>/v1</code> prefix</label>
     <input type="text" id="endpoint" placeholder="https://your-server.example.com/i3x/v1" autocomplete="off">
 
+    <div class="row" style="margin-top:14px">
+      <div>
+        <label for="timeoutPreset" style="margin-top:0">Test timeout — applies to all requests and stream operations</label>
+        <select id="timeoutPreset">
+          <option value="5000">5 seconds — 🤩</option>
+          <option value="15000">15 seconds — 😃</option>
+          <option value="30000">30 seconds — 🙂</option>
+          <option value="45000">45 seconds — 😕</option>
+        </select>
+      </div>
+    </div>
+
     <div class="row">
       <div>
         <label for="authType">Authentication</label>
@@ -305,6 +317,7 @@
     const body = {
       endpoint,
       auth: buildAuth(),
+      timeoutMs: parseInt($('timeoutPreset').value, 10),
       includeWrites: $('includeWrites').checked,
       insecure: $('insecure').checked
     };

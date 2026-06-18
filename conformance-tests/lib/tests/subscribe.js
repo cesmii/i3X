@@ -7,12 +7,6 @@ const V = require('../validators');
 const BOGUS_ID = 'i3x-test-suite-nonexistent-element-7f3a9c';
 const BOGUS_SUB = 'i3x-test-suite-nonexistent-subscription-2b81e0';
 
-// Grace window allowed for the server to close the *previous* SSE stream after a
-// second stream is opened on the same subscription (SUB-14). The reference servers
-// close in ~50ms, but real implementations behind reverse proxies legitimately need
-// longer to tear down the old connection (proxy buffering, FIN latency), so this is
-// deliberately generous — it only ever delays the negative (still-open) verdict.
-const STREAM_TAKEOVER_GRACE_MS = 15000;
 
 function firstProblems(problems, n = 5) {
   return problems.slice(0, n).join('; ') + (problems.length > n ? ` (+${problems.length - n} more)` : '');
@@ -349,7 +343,7 @@ module.exports = [
       try {
         res = await ctx.client.open('POST', '/subscriptions/stream', {
           body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId },
-          timeout: 10000
+          timeout: ctx.config.timeoutMs
         });
       } catch (e) {
         return fail(`POST /subscriptions/stream: request failed (${e.message}) — capabilities.subscribe.stream is declared true, so SSE streaming must work.`);
@@ -381,7 +375,7 @@ module.exports = [
       try {
         resA = await ctx.client.open('POST', '/subscriptions/stream', {
           body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId },
-          timeout: 30000
+          timeout: ctx.config.timeoutMs
         });
       } catch (e) {
         return skip(`Could not open the first stream (${e.message}) — stream behavior is covered by SUB-09`, 'blocked');
@@ -406,7 +400,7 @@ module.exports = [
       try {
         resB = await ctx.client.open('POST', '/subscriptions/stream', {
           body: { clientId: ctx.clientId, subscriptionId: ctx.subscriptionId },
-          timeout: STREAM_TAKEOVER_GRACE_MS
+          timeout: ctx.config.timeoutMs
         });
       } catch (e) {
         try { await readerA.cancel(); } catch { /* probe cleanup */ }
@@ -419,10 +413,10 @@ module.exports = [
             `The second stream was refused (HTTP ${resB.status}, Content-Type "${ctype}"). "If a client opens a new stream while one is already active, the server MUST close the existing stream and open the new one".`
           );
         }
-        const outcome = await Promise.race([closedA, new Promise((r) => setTimeout(r, STREAM_TAKEOVER_GRACE_MS, 'timeout'))]);
+        const outcome = await Promise.race([closedA, new Promise((r) => setTimeout(r, ctx.config.timeoutMs, 'timeout'))]);
         if (outcome === 'timeout') {
           return fail(
-            `The first stream was still open ${STREAM_TAKEOVER_GRACE_MS / 1000}s after the server accepted a second stream. "Server MUST only allow a single SSE stream per subscription" — the existing stream must be closed when a new one opens.`
+            `The first stream was still open ${ctx.config.timeoutMs / 1000}s after the server accepted a second stream. "Server MUST only allow a single SSE stream per subscription" — the existing stream must be closed when a new one opens.`
           );
         }
         if (outcome !== 'closed') {

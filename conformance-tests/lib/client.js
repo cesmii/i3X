@@ -23,7 +23,7 @@ function buildAuthHeaders(auth) {
   return {};
 }
 
-function makeClient({ baseUrl, auth, headers = {}, timeoutMs = 20000 } = {}) {
+function makeClient({ baseUrl, auth, headers = {}, timeoutMs = 15000 } = {}) {
   const base = String(baseUrl || '').replace(/\/+$/, '');
   const authHeaders = buildAuthHeaders(auth);
 

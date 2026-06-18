@@ -19,7 +19,8 @@ Run options:
   --basic <user:pass>        HTTP Basic authentication
   --header "<Name: value>"   Custom header (repeatable; first use wins for auth)
   --no-writes                Skip write tests even if the server declares update capabilities
-  --timeout <ms>             Per-request timeout (default 20000)
+  --timeout <ms>             Timeout for all requests and stream operations (default 15000;
+                             typical presets: 15000 = fast, 30000 = normal, 45000 = slow)
   --insecure                 Accept self-signed TLS certificates (development only;
                              the run is flagged with an advisory warning, CORE-05)
   --json <file>              Also write the full report as JSON
@@ -64,7 +65,7 @@ function parseRunArgs(argv) {
       const idx = raw.indexOf(':');
       if (idx > 0) config.headers[raw.slice(0, idx).trim()] = raw.slice(idx + 1).trim();
     } else if (a === '--no-writes') config.includeWrites = false;
-    else if (a === '--timeout') config.timeoutMs = parseInt(argv[++i], 10) || 20000;
+    else if (a === '--timeout') config.timeoutMs = parseInt(argv[++i], 10) || 15000;
     else if (a === '--insecure') config.insecure = true;
     else if (a === '--json') out.jsonPath = argv[++i];
     else if (a === '--quiet') out.quiet = true;

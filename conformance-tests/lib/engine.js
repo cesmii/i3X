@@ -78,7 +78,7 @@ function restoreTlsVerification() {
  *
  * config: {
  *   endpoint, auth: {type, token, username, password, name, value},
- *   headers: {..}, includeWrites: true, timeoutMs: 20000, insecure: false
+ *   headers: {..}, includeWrites: true, timeoutMs: 15000, insecure: false
  * }
  * onEvent: receives {type: 'start'|'note'|'phase'|'test:start'|'test:end'|'done', ...}
  *
@@ -104,7 +104,7 @@ async function runSuite(config = {}, onEvent = () => {}) {
 async function runSuiteInner(config, emit) {
   const cfg = {
     includeWrites: true,
-    timeoutMs: 20000,
+    timeoutMs: 15000,
     ...config,
     auth: config.auth || { type: 'none' },
     headers: config.headers || {}
