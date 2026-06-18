@@ -4,7 +4,7 @@ Validates an [i3X](https://github.com/cesmii/i3X) server implementation against 
 
 > This suite is part of the i3X repository but is fully self-contained: all commands below are run **from this folder** (`cd` into it from the repo root first). It has zero runtime dependencies and needs only Node.js ≥ 18.17.
 
-- **58 conformance tests** covering every required (MUST) behavior — transport & encoding, the `/info` capabilities contract, all Exploratory methods, current/historical value queries, the Subscribe lifecycle and sync acknowledgement — plus every optional (MAY) feature the server declares (updates, SSE streaming).
+- **60 conformance tests** covering every required (MUST) behavior — transport & encoding, the `/info` capabilities contract, all Exploratory methods, current/historical value queries, the Subscribe lifecycle and sync acknowledgement — plus every optional (MAY) feature the server declares (updates, SSE streaming).
 - **Optional features are never penalized for being omitted.** If a server *declares* a capability in `GET /info` but implements it incorrectly, that is a failure.
 - Every failure explains **what's wrong** and links to the **exact section of the Implementation Guide** to consult.
 - Zero runtime dependencies. Requires only **Node.js ≥ 18.17**.
@@ -69,7 +69,8 @@ i3x-test run <endpoint> [options]
   --basic <user:pass>        HTTP Basic authentication
   --header "<Name: value>"   Custom header (e.g. API keys); repeatable
   --no-writes                Skip write tests even if update capabilities are declared
-  --timeout <ms>             Per-request timeout (default 20000)
+  --timeout <ms>             Timeout for all requests and stream operations (default 15000;
+                             typical presets: 5000 🤩 / 15000 😃 / 30000 🙂 / 45000 😕)
   --insecure                 Accept self-signed TLS certificates (development only;
                              the run is flagged with an advisory warning, CORE-05)
   --json <file>              Write the full machine-readable report to a file
