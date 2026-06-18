@@ -1,9 +1,39 @@
+import math
+import random
 from datetime import datetime, timedelta, timezone
 
 _now = datetime.now(timezone.utc)
 
 def _ts(days_ago, time="18:20:44"):
     return (_now - timedelta(days=days_ago)).strftime(f"%Y-%m-%dT{time}Z")
+
+
+def _trend(points=180, interval_minutes=5, base=65.0, amplitude=8.0,
+           noise=1.5, engUnit_localtz_offset=-3):
+    """Generate a dense numeric VQT history ending "now" so a client can render a
+    real trend chart for a single point.
+
+    Produces `points` records spaced `interval_minutes` apart (default: 180 points
+    every 5 min ≈ the last 15 hours), shaped as a sine wave + small noise. Records
+    are newest-first (index 0 is the most recent), matching the convention the
+    /value endpoint and MockDataUpdater rely on. A few points are marked
+    "Uncertain" so quality handling is exercised too.
+    """
+    records = []
+    for i in range(points):
+        ts = _now - timedelta(minutes=interval_minutes * i)
+        # a few full cycles across the whole window so the chart is visibly wavy
+        phase = (i / max(points - 1, 1)) * 2 * math.pi * 4
+        value = round(base + amplitude * math.sin(phase) + random.uniform(-noise, noise), 2)
+        local = ts + timedelta(hours=engUnit_localtz_offset)
+        records.append({
+            "value": value,
+            "quality": "Uncertain" if i % 37 == 0 and i != 0 else "Good",
+            "timestamp": ts.strftime("%Y-%m-%dT%H:%M:%S.%fZ"),
+            # value-specific metadata that may originate in the publisher's payload
+            "localTimestamp": local.strftime(f"%Y-%m-%dT%H:%M:%S{engUnit_localtz_offset:+03d}:00"),
+        })
+    return records
 
 # SIMPLIFIED I3X API compliant mock data - Industrial Information Interface eXchange (RFC 001)
 I3X_DATA = {
@@ -434,52 +464,9 @@ I3X_DATA = {
             # returned as-is when includeMetadata=true. These describe the object itself, not its value.
             "engUnit": "CEL",
             "calibrationDate": "2025-01-15",
-            "records": [
-                {
-                    "value": 67.1,
-                    # Should these be specified (at least as optional)?
-                    "quality": "Good",
-                    "timestamp": _ts(1, "10:15:30"),
-                    # Extra value-specific metadata may originate in the publisher's payload and is allowable
-                    "localTimestamp": "2025-01-28T07:15:30-03:00",
-                },
-                {
-                    "value": 54.9,
-                    "quality": "Good",
-                    "timestamp": _ts(2, "10:15:30"),
-                    "localTimestamp": "2025-01-27T07:15:30-03:00",
-                },
-                {
-                    "value": 68.2,
-                    "quality": "Good",
-                    "timestamp": _ts(3, "10:15:30"),
-                    "localTimestamp": "2025-01-26T07:15:30-03:00",
-                },
-                {
-                    "value": 71.5,
-                    "quality": "Good",
-                    "timestamp": _ts(4, "10:15:30"),
-                    "localTimestamp": "2025-01-25T07:15:30-03:00",
-                },
-                {
-                    "value": 63.8,
-                    "quality": "Good",
-                    "timestamp": _ts(5, "10:15:30"),
-                    "localTimestamp": "2025-01-24T07:15:30-03:00",
-                },
-                {
-                    "value": 58.4,
-                    "quality": "Uncertain",
-                    "timestamp": _ts(6, "10:15:30"),
-                    "localTimestamp": "2025-01-23T07:15:30-03:00",
-                },
-                {
-                    "value": 66.0,
-                    "quality": "Good",
-                    "timestamp": _ts(7, "10:15:30"),
-                    "localTimestamp": "2025-01-22T07:15:30-03:00",
-                },
-            ],
+            # Dense synthetic history (~15 hours at 5-min spacing) so a client can render
+            # a meaningful trend chart for this single point over a recent window.
+            "records": _trend(base=65.0, amplitude=8.0, noise=1.5),
         },
         {
             # Example of allOf type extension: precision-temperature-sensor-type inherits
