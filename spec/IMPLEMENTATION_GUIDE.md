@@ -4,7 +4,7 @@ This document provides guidance for implementing i3X (Industrial Information Int
 
 ## Status of This Document
 
-This document is a Release Candidate, and should be considered nearly complete and normative. This guide is informed by RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to minor changes.
+This document is 1.0 final, and should be considered complete and normative. This guide is informed by RFC 001 "Common API for Industrial Information Interface eXchange (i3X)". All contents are subject to minor changes.
 
 ## Table of Contents
 
@@ -1898,8 +1898,6 @@ Once deleted, the Subscription SHALL NOT be returned by any API endpoint and MUS
 ---
 
 ## Appendix (for now)
-
-[TODO] This is useful stuff that I can't figure out yet whereto put
 
 ### Relationship Semantics
 
