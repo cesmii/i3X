@@ -5,7 +5,7 @@
 - End Date: January 2028 (15 months)
 - Chairs: Matthew Parris (GE Appliances, a Haier Company), Aron Semle (HighByte), Jonathan Wise (CESMII)
 - Team Contact: i3x@cesmii.org
-- Meeting Schedule: Video Conference twice per month
+- Meeting Schedule: Video Conference twice per month (per workstream)
 
 ## Motivation and Background
 The manufacturing information ecosystem benefits from the contributions of many players, over multiple decades of technology evolution. While this diversity creates a lot of platform choice for manufacturers, it has the opposite effect on the creation of app value. Application developers must choose which platforms to build against, and therefore are forced to develop against proprietary API implementations with no hope of portability between them.
@@ -15,8 +15,9 @@ This working group is guiding the evolution of a common API, consisting of a bas
 ## Scope
 - Evolution and maintenance of the specification for a common API that can be implemented on a wide variety of information platform architectures, including those that are standards-based, and those that are proprietary but wishing to support a layer of openness.
 - Draft guidance for i3X-on-OPC UA implementations, especially as it pertains to serializing a UA Information Model.
-- Developer Documentation, Tools and Demos to support the understanding and adoption of the API.
-- Conformance tests and tools to help adopters validate their implementation.
+- Updating Developer Documentation, Tools and Demos to support the understanding and adoption of the API.
+- Updating Conformance tests and tools to help adopters validate their implementation.
+- *Updating Sample implementation*
 - Triage of feature requests, bug reports, and ideas from the broader community of adopters.
 - Community engagement, evangelism and feedback gathering to inform the evolution of the API.
 
@@ -26,7 +27,7 @@ This working group is guiding the evolution of a common API, consisting of a bas
 
 ## Deliverables
 - A 1.0.1 Patch Release to address documentation bugs or gaps in 1.0, clarify ambiguous guidance, or sharpen implementation details. Includes updates to the Conformance Tests.
-- A 1.1.0 Minor Release which will provide additive functionality with no breaking changes from 1.0. Includes updates to the Conformance Tests.
+- A 1.1.0 Minor Release which will provide additive functionality with no *breaking changes (define breaking)* from 1.0. Includes updates to the Conformance Tests.
 - A Draft Guide for i3X-on-OPC UA implementations, providing prescriptive information on how to best preserve the fidelity of OPC UA Namespaces and serialize an OPC UA Address Space.
 - Updates to sample implementation of the API as a server which includes an open API test page (via Swagger, or similar interface) and some sample data, available as open source software.
 - Updates to reference implementation of a client of the API to be used as a test, demonstration and discoverability tool, available as open source software.
@@ -74,6 +75,8 @@ The group will seek to make decisions through such consensus where possible; how
 To afford asynchronous decisions and organizational deliberation, any resolution taken in a face-to-face meeting or teleconference may be considered provisional, depending on the Chairs' evaluation of the group consensus on the issue. In the case of ongoing contention, a call for consensus (CfC) will be issued (for example, via email, GitHub Issue or web-based survey), with a response period of two weeks, unless all Chairpersons are present and in unanimity. If no clear consensus can be reached by the end of the response period, the resolution will be adjudicated by the Chairpersons outside of a meeting, with a publicly recorded decision.
 
 All decisions made should be considered resolved unless and until new information becomes available or unless reopened at the discretion of the Chairs. Consensus or Chairperson ruling should be recorded in the comments of the GitHub Issue or Pull Request where the issue was tracked or originated.
+
+*Non-specification decisions (define) can be made via another medium (TBD)*
 
 ## Patent Policy
 To promote the widest adoption of standards, this Working Group seeks to issue a specification that can be implemented on a permissive Open Source License and Royalty-Free basis. No contributor will include or claim IP rights over the output of the Working Group.
