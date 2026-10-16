@@ -5,7 +5,7 @@
 - End Date: January 2028 (15 months)
 - Chairs: Matthew Parris (GE Appliances, a Haier Company), Aron Semle (HighByte), Jonathan Wise (CESMII)
 - Team Contact: i3x@cesmii.org
-- Meeting Schedule: Video Conference twice per month
+- Meeting Schedule: Video Conference twice per month (per workstream)
 
 ## Motivation and Background
 The manufacturing information ecosystem benefits from the contributions of many players, over multiple decades of technology evolution. While this diversity creates a lot of platform choice for manufacturers, it has the opposite effect on the creation of app value. Application developers must choose which platforms to build against, and therefore are forced to develop against proprietary API implementations with no hope of portability between them.
@@ -14,25 +14,27 @@ This working group is guiding the evolution of a common API, consisting of a bas
 
 ## Scope
 - Evolution and maintenance of the specification for a common API that can be implemented on a wide variety of information platform architectures, including those that are standards-based, and those that are proprietary but wishing to support a layer of openness.
-- Draft guidance for i3X-on-OPC UA implementations, especially as it pertains to serializing a UA Information Model.
-- Developer Documentation, Tools and Demos to support the understanding and adoption of the API.
-- Conformance tests and tools to help adopters validate their implementation.
+- Maintain the RFC's vision of creating an interface that is simple for client consumption, even when this approach demands higher requirements from the server implementation.
+- Draft Guide for i3X-on-OPC UA implementations, especially as it pertains to serializing a UA Information Model.
+- Updating Developer Documentation, Tools and Demos to support the understanding and adoption of the API.
+- Updating Conformance tests and tools to help adopters validate their implementation.
+- Updating the Sample implementation to better illustrate the specification, and improve the demo data.
 - Triage of feature requests, bug reports, and ideas from the broader community of adopters.
 - Community engagement, evangelism and feedback gathering to inform the evolution of the API.
 
 ### Out of Scope
 - Implementation of the API on all possible targets.
-- Breaking changes or a 2.0 release.
+- Changes that are not backward compatible, or a 2.0 release.
 
 ## Deliverables
 - A 1.0.1 Patch Release to address documentation bugs or gaps in 1.0, clarify ambiguous guidance, or sharpen implementation details. Includes updates to the Conformance Tests.
-- A 1.1.0 Minor Release which will provide additive functionality with no breaking changes from 1.0. Includes updates to the Conformance Tests.
+- A 1.1.0 Minor Release which adds new functionality while remaining backward compatible with 1.0: any client written against 1.0 will continue to work, without modification, against a 1.1.0 server. New functionality will be additive and will not remove or change the meaning of anything defined in 1.0. 
 - A Draft Guide for i3X-on-OPC UA implementations, providing prescriptive information on how to best preserve the fidelity of OPC UA Namespaces and serialize an OPC UA Address Space.
 - Updates to sample implementation of the API as a server which includes an open API test page (via Swagger, or similar interface) and some sample data, available as open source software.
 - Updates to reference implementation of a client of the API to be used as a test, demonstration and discoverability tool, available as open source software.
 - Updates to sample or SDK code in at least two programming languages demonstrating how to consume the API.
 - Updates to sample test cases to support demo validation.
-- Updates to Conformance Test Suite to validate implementations online and within a private network.
+- Updates to the Conformance Tests, which may make tests stricter where the spec was ambiguous, and which will be versioned so that a 1.0 implementation remains 1.0-conformant. Conformance tests will be available online and within a private network.
 
 ## Planned Timeline
 - October 2026: General Kick-off, establish Charter 2
@@ -49,7 +51,8 @@ This working group is guiding the evolution of a common API, consisting of a bas
 ## Success Criteria
 - Demonstration of sample client interacting with updated sample server implementation.
 - Demonstration of interoperability against the updated API implemented on three or more information server platforms.
-- All new features should have expressions of interest from at least two potential implementors before being incorporated in the specification.
+- All new features should have expressions of interest from at least two potential implementers before being incorporated in the specification.
+- Draft OPC UA guidance for discussion with the OPC Foundation Technical Steering Committee.
 
 ## Coordination
 - The Working Group will seek community review and feedback through GitHub Issues and email sent to i3x@cesmii.org.
@@ -59,7 +62,7 @@ This working group is guiding the evolution of a common API, consisting of a bas
 - The Working Group will make Conformance Test tools publicly available through a web endpoint on the i3x.dev domain, and downloadable for on-prem testing.
 
 ## Participation
-To be successful, this Working Group is expected to have 6 or more active participants for its duration, including representatives from the key implementors of this specification. The Working Group participants are expected to contribute a minimum of 1 hour, two times per month. Meetings must be led by at least one Chairperson.
+To be successful, this Working Group is expected to have 6 or more active participants for its duration, including representatives from the key implementers of this specification. The Working Group participants are expected to contribute a minimum of 1 hour, two times per month. Meetings must be led by at least one Chairperson.
 
 Documentation, code and test implementation will be a voluntary contribution to the Working Group's output, as time allows.
 
@@ -71,9 +74,11 @@ Typically, a member of the public or working group participant makes an initial 
 
 The group will seek to make decisions through such consensus where possible; however, when consensus is not easily arrived at, final decisions may be made by the three Chairpersons. In the event that one Chairperson has to resign, decisions may be made by the remaining two Chairpersons. In the event that two Chairpersons have to resign, the Working Group will pause until at least one replacement Chair is nominated and accepts. 
 
-To afford asynchronous decisions and organizational deliberation, any resolution taken in a face-to-face meeting or teleconference may be considered provisional, depending on the Chairs' evaluation of the group consensus on the issue. In the case of ongoing contention, a call for consensus (CfC) will be issued (for example, via email, GitHub Issue or web-based survey), with a response period of two weeks, unless all Chairpersons are present and in unanimity. If no clear consensus can be reached by the end of the response period, the resolution will be adjudicated by the Chairpersons outside of a meeting, with a publicly recorded decision.
+To afford asynchronous decisions and organizational deliberation, any resolution taken in a face-to-face meeting or teleconference may be considered provisional, depending on the Chairs' evaluation of the group consensus on the issue. In the case of ongoing contention, a call for consensus (CfC) will be issued (for example, via email, GitHub Issue or web-based survey), with a response period of two weeks. The CfC may be skipper if all Chairpersons are present and in unanimous. If no clear consensus can be reached by the end of the response period, the resolution will be adjudicated by the Chairpersons outside of a meeting, with a publicly recorded decision.
 
 All decisions made should be considered resolved unless and until new information becomes available or unless reopened at the discretion of the Chairs. Consensus or Chairperson ruling should be recorded in the comments of the GitHub Issue or Pull Request where the issue was tracked or originated.
+
+Participants may collaborate freely in any setting (in person, offline, or in other chat channels) to explore ideas and build prototypes, tools, or samples. However, any decision that affects the specification or its conformance requirements must be proposed and resolved publicly through GitHub, as described above.
 
 ## Patent Policy
 To promote the widest adoption of standards, this Working Group seeks to issue a specification that can be implemented on a permissive Open Source License and Royalty-Free basis. No contributor will include or claim IP rights over the output of the Working Group.
