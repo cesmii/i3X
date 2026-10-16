@@ -14,6 +14,7 @@ This working group is guiding the evolution of a common API, consisting of a bas
 
 ## Scope
 - Evolution and maintenance of the specification for a common API that can be implemented on a wide variety of information platform architectures, including those that are standards-based, and those that are proprietary but wishing to support a layer of openness.
+- Maintain the RFC's vision of creating an interface that is simple for client consumption, even when this approach demands higher requirements from the server implementation.
 - Draft Guide for i3X-on-OPC UA implementations, especially as it pertains to serializing a UA Information Model.
 - Updating Developer Documentation, Tools and Demos to support the understanding and adoption of the API.
 - Updating Conformance tests and tools to help adopters validate their implementation.
