@@ -370,7 +370,7 @@ class MQTTDataSource(I3XDataSource):
         # Build VQT from cached topic data
         vqt = {
             "value": topic_data.get("value"),
-            "quality": "GOOD",
+            "quality": "Good",
             "timestamp": topic_data.get("timestamp")
         }
 

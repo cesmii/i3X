@@ -17,12 +17,13 @@ from models import (
     DeleteSubscriptionsRequest,
     ListSubscriptionsRequest,
     CreateSubscriptionResponse,
+    ErrorResponse,
     SuccessResponse,
     BulkResponse,
     SyncBatch,
     SubscriptionDetail,
 )
-from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE
+from .utils import getSubscriptionValue, success_response, bulk_response, get_data_source, capability_enabled, BASE_ERROR_RESPONSES, NOT_FOUND_RESPONSE, NOT_IMPLEMENTED_RESPONSE
 
 PARTIAL_CONTENT_DESCRIPTION = "Some updates were dropped from the subscription queue due to overflow. See the `detail` field in the response body."
 
@@ -163,10 +164,24 @@ def unregister_objects(request: Request, req: UnregisterMonitoredItemsRequest):
     "/subscriptions/stream",
     summary="Stream Values (SSE)",
     operation_id="streamSubscription",
-    responses={**NOT_FOUND_RESPONSE, **BASE_ERROR_RESPONSES},
+    response_class=StreamingResponse,
+    responses={
+        200: {
+            "description": "Server-Sent Events stream. Each event's `data` is a JSON array of updates: "
+                           "[{\"elementId\": \"...\", \"value\": ..., \"quality\": \"Good\", \"timestamp\": \"...\"}]",
+            "content": {"text/event-stream": {"schema": {"type": "string"}}},
+        },
+        **NOT_FOUND_RESPONSE,
+        **NOT_IMPLEMENTED_RESPONSE,
+        **BASE_ERROR_RESPONSES,
+    },
 )
 async def stream_subscription(request: Request, req: StreamRequest):
-    """Open a Server-Sent Events (SSE) stream. subscriptionId is passed in the request body."""
+    """Open a Server-Sent Events (SSE) stream. subscriptionId is passed in the request body.
+    Any updates queued while no stream was open are sent first.
+    Returns HTTP 501 if the server does not support streaming (capabilities.subscribe.stream=false)."""
+    if not capability_enabled(request, "subscribe", "stream", True):
+        raise HTTPException(status_code=501, detail="Streaming is not supported by this server; use /subscriptions/sync")
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
@@ -237,7 +252,10 @@ async def stream_subscription(request: Request, req: StreamRequest):
             headers={"Vary": "Accept-Encoding"},
         )
 
-    # Clear staged updates when switching to streaming — client will receive live SSE going forward
+    # Guide § Streaming: the server sends any values queued while the stream was closed.
+    # Hand staged (never-delivered) updates to this stream ahead of live ones.
+    for staged in sub.stagedUpdates:
+        tq.put(staged)
     sub.stagedUpdates.clear()
     sub.batches.clear()
 
@@ -251,7 +269,8 @@ async def stream_subscription(request: Request, req: StreamRequest):
     operation_id="syncSubscription",
     response_model=SuccessResponse[List[SyncBatch]],
     responses={
-        206: {"description": PARTIAL_CONTENT_DESCRIPTION},
+        206: {"model": SuccessResponse[List[SyncBatch]], "description": PARTIAL_CONTENT_DESCRIPTION},
+        400: {"model": ErrorResponse, "description": "Bad Request — e.g. the subscription has an open stream; close the stream before calling sync"},
         **NOT_FOUND_RESPONSE,
         **BASE_ERROR_RESPONSES,
     },
@@ -260,17 +279,27 @@ def sync_subscription(request: Request, req: SyncRequest):
     """Acknowledge previously received batches and return all pending batches in one call.
 
     If `lastSequenceNumber` is provided, all batches with sequenceNumber <= lastSequenceNumber are
-    removed first (acknowledged). Any staged updates are then bundled into a new batch and appended.
+    removed first (acknowledged). `-1` acknowledges everything pending. A value that is neither -1
+    nor a sequence number the server has issued is invalid and clears nothing.
+    Any staged updates are then bundled into a new batch and appended.
     Returns HTTP 206 if updates were dropped from the staging queue due to overflow.
+    Returns HTTP 400 if the subscription currently has an open stream.
     subscriptionId is passed in the request body.
     """
     sub = _find_sub(request, req.subscriptionId, req.clientId)
     if not sub:
         raise HTTPException(status_code=404, detail="Subscription not found")
 
+    # Guide § Sync: the server MUST return an error if the subscription has an open stream.
+    if sub.is_streaming:
+        raise HTTPException(status_code=400, detail="Subscription has an open stream; close the stream before calling sync")
+
     # Acknowledge batches the client has already processed.
     # lastSequenceNumber=-1 is a sentinel meaning "ack all pending updates."
-    if req.lastSequenceNumber is not None:
+    # Guide § Sync: the queue MUST NOT be cleared when lastSequenceNumber is invalid
+    # (below -1, or beyond the highest sequence number issued so far).
+    highest_issued = sub.nextSequence - 1
+    if req.lastSequenceNumber is not None and (req.lastSequenceNumber == -1 or 0 <= req.lastSequenceNumber <= highest_issued):
         if req.lastSequenceNumber == -1:
             sub.batches.clear()
             sub.lastAckedSequence = sub.nextSequence - 1

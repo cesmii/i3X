@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Query, HTTPException, Depends
+from fastapi import APIRouter, Query, HTTPException, Depends, Request
 from fastapi.responses import JSONResponse
 from typing import Optional, List
 from urllib.parse import unquote
@@ -11,13 +11,12 @@ from models import (
     UpdateHistoryRequest,
     SuccessResponse,
     BulkResponse,
-    ErrorResponse,
     ObjectInstanceResponse,
     RelatedObjectResult,
     CurrentValueResult,
     HistoricalValueResult,
 )
-from .utils import getObject, success_response, bulk_response, transform_value_result, get_data_source, BASE_ERROR_RESPONSES, PARTIAL_CONTENT_DESCRIPTION
+from .utils import getObject, success_response, bulk_response, transform_value_result, get_data_source, capability_enabled, BASE_ERROR_RESPONSES, NOT_IMPLEMENTED_RESPONSE, PARTIAL_CONTENT_DESCRIPTION, DEPTH_LIMIT_DETAIL
 
 explore = APIRouter(prefix="", tags=["Explore"])
 query = APIRouter(prefix="", tags=["Query"])
@@ -151,7 +150,7 @@ def query_last_known_values(
 
     response_body = bulk_response(results)
     if any_truncated:
-        return JSONResponse(content=response_body, status_code=206)
+        return JSONResponse(content={**response_body, "responseDetail": DEPTH_LIMIT_DETAIL}, status_code=206)
     return response_body
 
 
@@ -198,7 +197,7 @@ def query_historical_values(
 
     response_body = bulk_response(results)
     if any_truncated:
-        return JSONResponse(content=response_body, status_code=206)
+        return JSONResponse(content={**response_body, "responseDetail": DEPTH_LIMIT_DETAIL}, status_code=206)
     return response_body
 
 
@@ -208,9 +207,10 @@ def query_historical_values(
     summary="Update Values of Objects",
     operation_id="updateObjectValues",
     response_model=BulkResponse[None],
-    responses={**BASE_ERROR_RESPONSES},
+    responses={**NOT_IMPLEMENTED_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def update_object_values(
+    request: Request,
     request_body: UpdateValueRequest,
     data_source=Depends(get_data_source),
 ):
@@ -220,7 +220,10 @@ def update_object_values(
     Request body: {"updates": [{"elementId": "...", "value": {...}}, ...]}
 
     Returns bulk response with succeeded/failed per elementId.
+    Returns HTTP 501 if the server does not support current-value writes (capabilities.update.current=false).
     """
+    if not capability_enabled(request, "update", "current", True):
+        raise HTTPException(status_code=501, detail="Current value updates are not supported by this server")
     results = []
     for item in request_body.updates:
         eid = unquote(item.elementId)
@@ -241,7 +244,8 @@ def update_object_values(
     "/objects/history",
     summary="Update Historical Values of Objects",
     operation_id="updateObjectHistory",
-    responses={501: {"model": ErrorResponse, "description": "Not Implemented — optional feature not supported by this server"}, **BASE_ERROR_RESPONSES},
+    response_model=BulkResponse[None],
+    responses={**NOT_IMPLEMENTED_RESPONSE, **BASE_ERROR_RESPONSES},
 )
 def update_object_history(
     request_body: UpdateHistoryRequest,
