@@ -79,7 +79,7 @@ npm publish note: this folder no longer has a `spec/` directory (`package.json` 
 ## Mock server switches
 
 `MOCK_TOKEN=secret` — require bearer auth (except `/info`, which the spec keeps open).
-`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` | `noclearall` | `nosinglestream` | `noscope` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these.
+`MOCK_BREAK=` comma list: `reverseof` | `nullgood` | `nogzip` | `badbulk` | `noclearall` | `nosinglestream` | `noscope` (→ Not Compliant), `omit-updates` (→ 1.0 Compatible), `primitive` (→ Immature Type System). `test/selftest.js` depends on these. `MOCK_LOCALE=de` translates every error's `responseDetail.title`/`detail` to German and must stay *Full 1.0 Compliance*: no check may match server message wording.
 
 ## History / open threads
 

@@ -44,7 +44,9 @@
             "current": true,
             "history": false
         },
-        "subscribe": true
+        "subscribe": {
+            "stream": true
+        }
     },
     "data_source_routing": {
         "primary": "exploratory",

@@ -8,7 +8,7 @@
 
 The API definition is now stable, with final response payloads and subscription API signatures for 1.0. In late 2026, a new charter will be established to begin work on vNext. Until that time, only documentation and demo bugs will be addressed. Specification issues and features will be considered for vNext -- if you want to help, please see [Contributing.md](Contributing.md).
 
-**Note:** [Discussions](https://github.com/cesmii/i3X/discussions) have been enabled -- when in doubt, start there before creating an Issue.
+**Note:** The Working Group has started work on follow-up 1.0.1 (patch) and 1.1.0 (minor) releases, both non-breaking. To follow or raise issue for that effort, please see the [vNext branch](https://github.com/cesmii/i3X/tree/vNext) and open [issues](https://github.com/cesmii/i3X/issues).
 
 ## What is i3X?
 
@@ -56,7 +56,7 @@ An MCP server that works against any compliant endpoint is available on [GitHub]
 
 If you prefer a GUI, [ACE Technologies](https://www.acetechnologies.net) publishes the *official* cross-platform [i3X Explorer](https://www.acetechnologies.net/i3x) client you can use to explore the i3X functions, and any published or accessible i3X Address Space.
 
-<img src="https://www.acetechnologies.net/i3X/screenshots/subscriptions.png" height=200 style="height:200px">
+<img src="https://raw.githubusercontent.com/ace-technologies-inc/.github/refs/heads/main/i3x/screenshots/subscriptions.png" height=300 style="height:300px">
 
 The Demo data includes an exploration of the complex relationships supported by i3X. [Review the demo readme](demo/README.md) for an explanation of how these relationships work. 
 

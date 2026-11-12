@@ -18,6 +18,9 @@
 //     noclearall    - ignore lastSequenceNumber=-1 instead of clearing the queue
 //     nosinglestream - leave an existing SSE stream open when a new one is opened
 //     noscope       - accept subscription requests without clientId and skip ownership checks
+//   MOCK_LOCALE=de             answer every error's responseDetail.title/detail in German.
+//                              Still compliant: those are human-readable text, which the
+//                              spec does not fix; status codes and enum tokens stay as-is.
 
 const http = require('node:http');
 const zlib = require('node:zlib');
@@ -25,6 +28,7 @@ const crypto = require('node:crypto');
 
 const BREAK = new Set(String(process.env.MOCK_BREAK || '').split(',').map((s) => s.trim()).filter(Boolean));
 const TOKEN = process.env.MOCK_TOKEN || null;
+const LOCALE = process.env.MOCK_LOCALE || '';
 
 const nowIso = () => new Date().toISOString().replace(/\.\d+Z$/, 'Z');
 const isoAgo = (ms) => new Date(Date.now() - ms).toISOString().replace(/\.\d+Z$/, 'Z');
@@ -180,8 +184,46 @@ const SUBSCRIPTIONS = new Map(); // id -> {clientId, displayName, monitored: Map
 
 // ------------------------------------------------------------------ plumbing
 
+// German wording for MOCK_LOCALE=de. Only the free text changes: status codes, field names
+// and spec tokens (quality, etc.) are wire format and are never translated.
+const GERMAN_TITLES = {
+  'Bad Request': 'Ungültige Anfrage',
+  Unauthorized: 'Nicht autorisiert',
+  'Not Found': 'Nicht gefunden',
+  'Internal Server Error': 'Interner Serverfehler',
+  'Not Implemented': 'Nicht implementiert'
+};
+const GERMAN_DETAILS = {
+  400: 'Die Anfrage ist unvollständig oder fehlerhaft',
+  401: 'Fehlendes oder ungültiges Bearer-Token',
+  404: 'Das angeforderte Element wurde nicht gefunden',
+  500: 'Bei der Verarbeitung ist ein Fehler aufgetreten',
+  501: 'Diese Funktion wird von diesem Server nicht unterstützt'
+};
+
+function germanDetail(detail) {
+  // Keep the identifier a detail names ("Element not found: pump-101"), translate the rest.
+  const subject = /: (\S+)$/.exec(String(detail.detail || ''));
+  const text = GERMAN_DETAILS[detail.status] || 'Die Anfrage ist fehlgeschlagen';
+  return {
+    ...detail,
+    title: GERMAN_TITLES[detail.title] || detail.title,
+    detail: subject ? `${text}: ${subject[1]}` : `${text}.`
+  };
+}
+
+function localized(obj) {
+  if (Array.isArray(obj)) return obj.map(localized);
+  if (!obj || typeof obj !== 'object') return obj;
+  const out = {};
+  for (const [k, v] of Object.entries(obj)) {
+    out[k] = k === 'responseDetail' && v && typeof v === 'object' ? germanDetail(v) : localized(v);
+  }
+  return out;
+}
+
 function send(req, res, status, obj) {
-  const body = Buffer.from(JSON.stringify(obj));
+  const body = Buffer.from(JSON.stringify(LOCALE === 'de' ? localized(obj) : obj));
   const wantsGzip = String(req.headers['accept-encoding'] || '').includes('gzip') && !BREAK.has('nogzip');
   const headers = { 'Content-Type': 'application/json' };
   let payload = body;
