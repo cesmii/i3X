@@ -92,7 +92,7 @@ i3x-test mock                  # http://localhost:8331/v1
 i3x-test run http://localhost:8331/v1
 ```
 
-It can also simulate spec violations to exercise the failure reporting (`MOCK_BREAK=reverseof,nullgood,nogzip,badbulk,noclearall,nosinglestream,noscope`), require auth (`MOCK_TOKEN=secret`), omit optional features (`MOCK_BREAK=omit-updates` → *1.0 Compatible*), or serve a primitive-only type registry (`MOCK_BREAK=primitive` → *Immature Type System*).
+It can also simulate spec violations to exercise the failure reporting (`MOCK_BREAK=reverseof,nullgood,nogzip,badbulk,noclearall,nosinglestream,noscope`), require auth (`MOCK_TOKEN=secret`), answer error messages in German (`MOCK_LOCALE=de`, still *Full 1.0 Compliance*), omit optional features (`MOCK_BREAK=omit-updates` → *1.0 Compatible*), or serve a primitive-only type registry (`MOCK_BREAK=primitive` → *Immature Type System*).
 
 ## Deploying the public instance
 

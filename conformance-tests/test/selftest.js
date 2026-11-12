@@ -10,7 +10,8 @@ function withMock(env, port, fn) {
   return new Promise((resolve, reject) => {
     const prevBreak = process.env.MOCK_BREAK;
     const prevToken = process.env.MOCK_TOKEN;
-    Object.assign(process.env, { MOCK_BREAK: '', MOCK_TOKEN: '' }, env);
+    const prevLocale = process.env.MOCK_LOCALE;
+    Object.assign(process.env, { MOCK_BREAK: '', MOCK_TOKEN: '', MOCK_LOCALE: '' }, env);
     // mock/server reads env at require time — bust the cache per scenario
     delete require.cache[require.resolve('../mock/server')];
     const { startMock } = require('../mock/server');
@@ -24,6 +25,7 @@ function withMock(env, port, fn) {
         server.close();
         process.env.MOCK_BREAK = prevBreak || '';
         process.env.MOCK_TOKEN = prevToken || '';
+        process.env.MOCK_LOCALE = prevLocale || '';
       }
     });
     server.on('error', reject);
@@ -32,6 +34,9 @@ function withMock(env, port, fn) {
 
 const SCENARIOS = [
   { name: 'compliant server', env: {}, config: {}, expect: 'Full 1.0 Compliance' },
+  // Error title/detail are human-readable text, so a server answering them in German is just as
+  // compliant. Guards against a check that matches English message wording.
+  { name: 'German error messages', env: { MOCK_LOCALE: 'de' }, config: {}, expect: 'Full 1.0 Compliance' },
   { name: 'updates omitted', env: { MOCK_BREAK: 'omit-updates' }, config: {}, expect: '1.0 Compatible' },
   { name: 'primitive-only types', env: { MOCK_BREAK: 'primitive' }, config: {}, expect: '1.0 Compliance, Immature Type System' },
   { name: 'broken server', env: { MOCK_BREAK: 'reverseof,nullgood,nogzip,badbulk' }, config: {}, expect: 'Not Compliant' },
