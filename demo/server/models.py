@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator
+from pydantic import BaseModel, Field, ConfigDict, model_validator, field_validator, model_serializer
 from typing import Optional, List, Dict, Any, Union, Callable, Generic, TypeVar
 from datetime import datetime
 from enum import Enum
@@ -110,14 +110,14 @@ class HistoricalValue(BaseModel):
 
 class VQT(BaseModel):
     value: Any
-    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, Uncertain, or a more specific OPC UA StatusCode symbolic name (e.g. Bad_NotConnected, Uncertain_LastUsableValue)")
     timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
 
 
 class VQTInput(BaseModel):
     """VQT for write requests — quality and timestamp are optional (server supplies defaults)."""
     value: Any
-    quality: Optional[str] = Field(default="Good", description="Data quality indicator. Defaults to 'Good' if omitted.")
+    quality: Optional[str] = Field(default="Good", description="Data quality indicator: Good, GoodNoData, Bad, Uncertain, or a more specific OPC UA StatusCode symbolic name (e.g. Bad_NotConnected, Uncertain_LastUsableValue). Defaults to 'Good' if omitted.")
     timestamp: Optional[str] = Field(default=None, description="RFC 3339 timestamp. Defaults to server time if omitted.")
 
 
@@ -149,14 +149,16 @@ class CreateSubscriptionRequest(BaseModel):
 class CreateSubscriptionResponse(BaseModel):
     clientId: str
     subscriptionId: str
-    displayName: Optional[str] = None
+    # Guide § POST /subscriptions: displayName is a required response field. It is
+    # null only when the client did not supply one on create.
+    displayName: Optional[str] = Field(..., description="Friendly name for the subscription")
 
 
 class RegisterMonitoredItemsRequest(BaseModel):
     clientId: str = Field(..., description="The clientId scoping this subscription")
     subscriptionId: str = Field(..., description="The subscription to register items with")
     elementIds: List[str]
-    maxDepth: Optional[int] = 1  # 0 means infinite recursion, 1 means no recursion, >1 recurses to that depth
+    maxDepth: int = Field(default=1, ge=0, description="Controls recursion depth for all elementIds in this call. 0=infinite, 1=no recursion")
 
 
 class UnregisterMonitoredItemsRequest(BaseModel):
@@ -259,9 +261,22 @@ class ErrorResponse(BaseModel):
     responseDetail: ErrorDetail
 
 
-class SuccessResponse(BaseModel, Generic[T]):
+class _OmitNullResponseDetail(BaseModel):
+    """Guide § Response Format: success responses (2xx, including 206) MAY carry a
+    top-level responseDetail, and 206 responses MUST. Omit it from the wire when unset."""
+
+    @model_serializer(mode="wrap")
+    def _omit_null_response_detail(self, handler):
+        data = handler(self)
+        if isinstance(data, dict) and data.get("responseDetail") is None:
+            data.pop("responseDetail", None)
+        return data
+
+
+class SuccessResponse(_OmitNullResponseDetail, Generic[T]):
     success: bool
     result: Optional[T] = None
+    responseDetail: Optional[ErrorDetail] = Field(None, description="RFC 9457 problem details. Required on HTTP 206; optional informational context on other 2xx responses")
 
 
 class BulkResultItem(BaseModel, Generic[T]):
@@ -272,9 +287,10 @@ class BulkResultItem(BaseModel, Generic[T]):
     responseDetail: Optional[ErrorDetail] = None
 
 
-class BulkResponse(BaseModel, Generic[T]):
+class BulkResponse(_OmitNullResponseDetail, Generic[T]):
     success: bool
     results: List[BulkResultItem[T]]
+    responseDetail: Optional[ErrorDetail] = Field(None, description="RFC 9457 problem details. Required on HTTP 206; optional informational context on other 2xx responses")
 
 
 # --- Endpoint-specific result models ---
@@ -292,8 +308,8 @@ class ObjectTypeResponse(BaseModel):
 
 
 class ObjectInstanceMetadata(BaseModel):
-    typeNamespaceUri: Optional[str] = None
-    sourceTypeId: Optional[str] = None
+    typeNamespaceUri: str = Field(..., description="Namespace the Object's ObjectType definition belongs to")
+    sourceTypeId: str = Field(..., description="Identifier of the Object's type within its source namespace")
     description: Optional[str] = None
     relationships: Optional[Dict[str, Any]] = None
     schemaExtensions: Optional[Dict[str, Any]] = None
@@ -304,9 +320,9 @@ class ObjectInstanceResponse(BaseModel):
     elementId: str
     displayName: str
     typeElementId: str
-    parentId: Optional[str] = None
+    parentId: Optional[str] = Field(..., description="ElementId of the parent Object; null if this is a root Object")
     isComposition: bool
-    isExtended: bool = False
+    isExtended: bool
     metadata: Optional[ObjectInstanceMetadata] = None
 
 
@@ -315,25 +331,36 @@ class RelatedObjectResult(BaseModel):
     object: ObjectInstanceResponse
 
 
+class ComponentValue(VQT):
+    """A HasComponent child's VQT. Guide § maxDepth: recursion continues up to maxDepth
+    levels, so a component may itself carry the values of its own components."""
+    components: Optional[Dict[str, "ComponentValue"]] = Field(None, description="This component's own HasComponent children, keyed by elementId, when the requested depth reaches them")
+
+
 class CurrentValueResult(BaseModel):
     isComposition: bool = Field(..., description="True if this Object encapsulates composed child elements")
     value: Any
-    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, Uncertain, or a more specific OPC UA StatusCode symbolic name (e.g. Bad_NotConnected, Uncertain_LastUsableValue)")
     timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
-    components: Optional[Dict[str, VQT]] = Field(None, description="Child element values, present only on composition elements when maxDepth > 1")
+    components: Optional[Dict[str, ComponentValue]] = Field(None, description="Child element values, present only on composition elements when maxDepth > 1")
+
+
+class HistoricalComponentValue(BaseModel):
+    values: List[VQT] = Field(..., description="Ordered array of VQT objects for the requested time range")
+    components: Optional[Dict[str, "HistoricalComponentValue"]] = Field(None, description="This component's own HasComponent children, keyed by elementId, when the requested depth reaches them")
 
 
 class HistoricalValueResult(BaseModel):
     isComposition: bool = Field(..., description="True if this Object encapsulates composed child elements")
     values: List[VQT] = Field(..., description="Ordered array of VQT objects for the requested time range")
-    components: Optional[Dict[str, Any]] = Field(None, description="Child element history, present only on composition elements when maxDepth > 1")
+    components: Optional[Dict[str, HistoricalComponentValue]] = Field(None, description="Child element history, present only on composition elements when maxDepth > 1")
 
 
 class SyncUpdateEntry(BaseModel):
     model_config = ConfigDict(extra='allow')
     elementId: str
     value: Any
-    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, or Uncertain")
+    quality: str = Field(..., description="Data quality indicator: Good, GoodNoData, Bad, Uncertain, or a more specific OPC UA StatusCode symbolic name (e.g. Bad_NotConnected, Uncertain_LastUsableValue)")
     timestamp: str = Field(..., description="RFC 3339 UTC timestamp when this value was recorded")
 
 
