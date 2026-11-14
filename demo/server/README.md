@@ -83,6 +83,8 @@ pip install -r requirements.txt
 
 Create `config.json` from the provided `config-example.json` template and customize as needed:
 
+If a configured data source fails to start, the server logs the error and falls back to the mock data source. To stop with the error instead (useful before a conformance run, so simulated values are never tested by mistake), set `"strict_data_source": true` under `"app"` in `config.json`, or set the environment variable `I3X_STRICT_DATA_SOURCE=1`.
+
 **Mock Data Source (simulated data with random updates):**
 ```json
 {
