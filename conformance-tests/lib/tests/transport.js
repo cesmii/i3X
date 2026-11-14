@@ -130,5 +130,23 @@ module.exports = [
       }
       return skip(`Unauthenticated probe returned HTTP ${res.status} — could not determine auth posture`, 'untestable');
     }
+  },
+  {
+    id: 'CORE-07',
+    name: 'API endpoints are served under the {baseURL}/v1 version prefix',
+    level: 'SHOULD',
+    ref: 'versioning',
+    async run(ctx) {
+      // The Implementation Guide says servers MUST prefix endpoints with baseURL/v1. Pre-production
+      // endpoints do not always control their path, so (per issue #358) this is reported as a warning.
+      let path;
+      try { path = new URL(ctx.client.base).pathname.replace(/\/+$/, ''); } catch { return skip('Could not parse the base URL', 'untestable'); }
+      const m = path.match(/\/v(\d+)$/);
+      if (m && m[1] === '1') return pass(`Served under ${path}`);
+      if (m) return warn(`Endpoints are served under /v${m[1]}. An i3X 1.0 server is expected to use the /v1 prefix.`);
+      return warn(
+        `Endpoints answered at ${path || '/'} without a version prefix. The Implementation Guide requires: "The server MUST prefix API endpoints with baseURL/v1".`
+      );
+    }
   }
 ];
