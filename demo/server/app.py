@@ -58,6 +58,10 @@ async def lifespan(app: FastAPI):
             )
     except Exception as e:
         print(f"Failed to initialize data source(s): {e}")
+        # Strict mode: stop instead of quietly serving mock data, so a misconfigured server cannot
+        # pass a conformance run (or answer clients) with simulated values.
+        if app_config.get("strict_data_source") or os.environ.get("I3X_STRICT_DATA_SOURCE") == "1":
+            raise
         print("Falling back to MOCK data source as fallback")
         data_source = DataSourceFactory.create_data_source(
             {"type": "mock", "config": {}}
